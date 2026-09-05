@@ -1,9 +1,5 @@
 name: Build Android APK
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -16,37 +12,39 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Node Dependencies
-        run: npm ci || npm install
+      - name: Install Dependencies
+        run: |
+          npm install --legacy-peer-deps --no-audit
 
       - name: Build Web App
-        run: npm run build
+        run: |
+          npm run build
 
       - name: Add Capacitor Android Platform
         run: |
-          npm install @capacitor/android
-          npx cap add android || true
+          npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
+          npx cap init "NOVA Player" "com.sourav.novaplayer" --web-dir dist
+          npx cap add android
           npx cap sync android
 
       - name: Build Debug APK with Gradle
-        working-directory: ./android
         run: |
+          cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NOVA-Player-v3.4.0-debug.apk
+          name: NOVA-Player-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
