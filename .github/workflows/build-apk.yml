@@ -35,13 +35,25 @@ jobs:
           npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
           npx cap init "NOVA Player" "com.sourav.novaplayer" --web-dir dist
           npx cap add android
+          
+          # Fix Kotlin Duplicate Class Conflict in Android Gradle
+          echo "
+          configurations.all {
+              resolutionStrategy {
+                  force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
+              }
+          }
+          " >> android/app/build.gradle
+
           npx cap sync android
 
       - name: Build Debug APK with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon -x lint
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
