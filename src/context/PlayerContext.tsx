@@ -129,6 +129,8 @@ const DEFAULT_SETTINGS: SettingsState = {
   libraryViewMode: 'list',
   searchInstantFilter: true,
   systemNotificationsEnabled: true,
+  transitionDelaySecs: 0, // 0s Instant / Gapless transition by default
+  autoAdvanceLoop: true, // Seamless continuous auto-advance
 };
 
 const DEFAULT_EQ: EqualizerState = {
@@ -198,7 +200,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [volume, setVolumeState] = useState<number>(0.85);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [shuffle, setShuffle] = useState<ShuffleMode>('off');
-  const [repeat, setRepeat] = useState<RepeatMode>('off');
+  const [repeat, setRepeat] = useState<RepeatMode>('all');
 
   const [queue, setQueue] = useState<Track[]>(DEFAULT_TRACKS);
   const [queueIndex, setQueueIndex] = useState<number>(0);
@@ -225,7 +227,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [scannerOpen, setScannerOpen] = useState<boolean>(false);
   const [playlistModalOpen, setPlaylistModalOpen] = useState<boolean>(false);
 
-  // References for event loops
+  // References for event loops and timer management
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+  const settingsRef = useRef<SettingsState>(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
   const stateRef = useRef({
     currentTrack,
     isPlaying,
@@ -359,7 +367,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const handleTrackEnded = () => {
-    const { repeat, queue, queueIndex, sleepTimer } = stateRef.current;
+    const { repeat, queue, queueIndex, sleepTimer, tracks } = stateRef.current;
+    const currentSettings = settingsRef.current;
+
+    // Clear any active auto-advance timer
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
 
     // Check sleep timer endOfTrack
     if (sleepTimer.endOfTrack && sleepTimer.remainingSeconds !== null && sleepTimer.remainingSeconds <= 0) {
@@ -379,27 +394,62 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (queueIndex < queue.length - 1) {
-      const nextIdx = queueIndex + 1;
-      const nextTr = queue[nextIdx];
+    // Determine effective queue
+    let effectiveQueue = queue;
+    let nextIdx = queueIndex + 1;
+
+    // If current queue only had 1 song or is empty, seamlessly fall back to full library tracks
+    if (effectiveQueue.length <= 1 && tracks.length > 1) {
+      effectiveQueue = tracks;
+      const curId = stateRef.current.currentTrack?.id;
+      const foundIdx = effectiveQueue.findIndex(t => t.id === curId);
+      nextIdx = foundIdx !== -1 ? foundIdx + 1 : 0;
+    }
+
+    if (stateRef.current.shuffle === 'all' && effectiveQueue.length > 1) {
+      do {
+        nextIdx = Math.floor(Math.random() * effectiveQueue.length);
+      } while (nextIdx === queueIndex && effectiveQueue.length > 1);
+    } else if (nextIdx >= effectiveQueue.length) {
+      // Loop back to start if repeat is 'all' or autoAdvanceLoop is enabled (default true)
+      if (repeat === 'all' || currentSettings.autoAdvanceLoop !== false) {
+        nextIdx = 0;
+      } else {
+        setIsPlaying(false);
+        return;
+      }
+    }
+
+    const nextTr = effectiveQueue[nextIdx];
+    if (!nextTr) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const delaySecs = currentSettings.transitionDelaySecs ?? 0;
+    const delayMs = Math.max(0, delaySecs * 1000);
+
+    const executeAdvance = () => {
+      setQueue(effectiveQueue);
       setQueueIndex(nextIdx);
       setCurrentTrack(nextTr);
       setDuration(nextTr.duration);
       setCurrentTime(0);
-      audioEngine.playTrack(nextTr, 0, settings.crossfadeSecs);
       setIsPlaying(true);
+      audioEngine.playTrack(nextTr, 0, currentSettings.crossfadeSecs);
       incrementPlayCount(nextTr.id);
-    } else if (repeat === 'all' && queue.length > 0) {
-      const firstTr = queue[0];
-      setQueueIndex(0);
-      setCurrentTrack(firstTr);
-      setDuration(firstTr.duration);
-      setCurrentTime(0);
-      audioEngine.playTrack(firstTr, 0, settings.crossfadeSecs);
-      setIsPlaying(true);
-      incrementPlayCount(firstTr.id);
-    } else {
+    };
+
+    if (delayMs > 0) {
+      // User specified a time gap before next song starts
+      audioEngine.pause();
       setIsPlaying(false);
+      autoAdvanceTimerRef.current = window.setTimeout(() => {
+        executeAdvance();
+      }, delayMs);
+    } else {
+      // 0s Instant transition - plays immediately!
+      executeAdvance();
     }
   };
 
@@ -422,6 +472,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const playTrack = (track: Track, newQueue?: Track[]) => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+
     let q = queue;
     let idx = queueIndex;
 
@@ -449,11 +504,16 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentTime(0);
     setIsPlaying(true);
 
-    audioEngine.playTrack(track, 0, settings.crossfadeSecs);
+    audioEngine.playTrack(track, 0, settingsRef.current.crossfadeSecs);
     incrementPlayCount(track.id);
   };
 
   const togglePlayPause = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+
     if (!currentTrack) {
       if (tracks.length > 0) {
         playTrack(tracks[0]);
@@ -471,35 +531,52 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const nextTrack = () => {
-    const { queue, queueIndex, shuffle, repeat } = stateRef.current;
-    if (queue.length === 0) return;
-
-    let nextIdx = queueIndex + 1;
-    if (shuffle === 'all' && queue.length > 1) {
-      do {
-        nextIdx = Math.floor(Math.random() * queue.length);
-      } while (nextIdx === queueIndex && queue.length > 1);
-    } else if (nextIdx >= queue.length) {
-      if (repeat === 'all') {
-        nextIdx = 0;
-      } else {
-        return;
-      }
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
     }
 
-    const nextTr = queue[nextIdx];
+    const { queue, queueIndex, shuffle, tracks } = stateRef.current;
+    let effectiveQueue = queue;
+    if (effectiveQueue.length <= 1 && tracks.length > 1) {
+      effectiveQueue = tracks;
+    }
+    if (effectiveQueue.length === 0) return;
+
+    let nextIdx = queueIndex + 1;
+    if (shuffle === 'all' && effectiveQueue.length > 1) {
+      do {
+        nextIdx = Math.floor(Math.random() * effectiveQueue.length);
+      } while (nextIdx === queueIndex && effectiveQueue.length > 1);
+    } else if (nextIdx >= effectiveQueue.length) {
+      nextIdx = 0; // Wrap around smoothly
+    }
+
+    const nextTr = effectiveQueue[nextIdx];
+    if (!nextTr) return;
+
+    setQueue(effectiveQueue);
     setQueueIndex(nextIdx);
     setCurrentTrack(nextTr);
     setDuration(nextTr.duration);
     setCurrentTime(0);
     setIsPlaying(true);
-    audioEngine.playTrack(nextTr, 0, settings.crossfadeSecs);
+    audioEngine.playTrack(nextTr, 0, settingsRef.current.crossfadeSecs);
     incrementPlayCount(nextTr.id);
   };
 
   const prevTrack = () => {
-    const { queue, queueIndex } = stateRef.current;
-    if (queue.length === 0) return;
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+
+    const { queue, queueIndex, tracks } = stateRef.current;
+    let effectiveQueue = queue;
+    if (effectiveQueue.length <= 1 && tracks.length > 1) {
+      effectiveQueue = tracks;
+    }
+    if (effectiveQueue.length === 0) return;
 
     if (currentTime > 3) {
       audioEngine.seek(0);
@@ -509,16 +586,19 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     let prevIdx = queueIndex - 1;
     if (prevIdx < 0) {
-      prevIdx = queue.length - 1;
+      prevIdx = effectiveQueue.length - 1;
     }
 
-    const prevTr = queue[prevIdx];
+    const prevTr = effectiveQueue[prevIdx];
+    if (!prevTr) return;
+
+    setQueue(effectiveQueue);
     setQueueIndex(prevIdx);
     setCurrentTrack(prevTr);
     setDuration(prevTr.duration);
     setCurrentTime(0);
     setIsPlaying(true);
-    audioEngine.playTrack(prevTr, 0, settings.crossfadeSecs);
+    audioEngine.playTrack(prevTr, 0, settingsRef.current.crossfadeSecs);
     incrementPlayCount(prevTr.id);
   };
 

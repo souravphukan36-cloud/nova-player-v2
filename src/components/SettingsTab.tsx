@@ -22,7 +22,9 @@ import {
   Search,
   Activity,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  FastForward,
+  Zap
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { notificationService } from '../services/notificationService';
@@ -252,6 +254,77 @@ export const SettingsTab: React.FC = () => {
             onChange={(e) => updateCrossfade(parseInt(e.target.value, 10))}
             className="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
           />
+        </div>
+
+        {/* Song Transition Delay (User Request: Ek song ke baad dusra song jaldi play hona) */}
+        <div className="space-y-3 pt-3 border-t border-white/10">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center gap-1.5">
+              <FastForward className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-semibold text-white/90">Song Transition Delay</span>
+            </div>
+            <span className="font-bold text-xs px-2 py-0.5 rounded-full bg-white/10" style={{ color: settings.accentColor }}>
+              {settings.transitionDelaySecs === 0 ? '0s (Instant)' : `${settings.transitionDelaySecs}s Delay`}
+            </span>
+          </div>
+          <p className="text-[11px] text-white/50">
+            Ek song khatam hone ke baad agla song kitne second me play hoga. 0s chune taaki turant bina rukaawat agla song baj jaye.
+          </p>
+
+          <input
+            type="range"
+            min="0"
+            max="5"
+            step="0.5"
+            value={settings.transitionDelaySecs ?? 0}
+            onChange={(e) => updateSettings?.({ transitionDelaySecs: parseFloat(e.target.value) })}
+            className="w-full accent-amber-400 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+          />
+
+          {/* Quick Preset Buttons */}
+          <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+            {[
+              { label: '⚡ 0s Instant', val: 0 },
+              { label: '0.5s', val: 0.5 },
+              { label: '1.0s', val: 1.0 },
+              { label: '2.0s', val: 2.0 },
+              { label: '3.0s', val: 3.0 },
+            ].map((preset) => {
+              const isSelected = (settings.transitionDelaySecs ?? 0) === preset.val;
+              return (
+                <button
+                  key={preset.val}
+                  type="button"
+                  onClick={() => updateSettings?.({ transitionDelaySecs: preset.val })}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap transition-all ${
+                    isSelected
+                      ? 'bg-amber-400 text-black shadow-md scale-105'
+                      : 'bg-white/10 text-white/60 hover:bg-white/15 hover:text-white'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Continuous Loop Queue at End */}
+        <div className="flex items-center justify-between pt-2 border-t border-white/10">
+          <div>
+            <span className="text-xs font-semibold text-white block">Auto-Loop Playlist</span>
+            <span className="text-[11px] text-white/50">Aakhiri gaane ke baad dobara shuru se bajana jari rakhein</span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ autoAdvanceLoop: settings.autoAdvanceLoop === false ? true : false })}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+              settings.autoAdvanceLoop !== false
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'bg-white/10 text-white/60'
+            }`}
+          >
+            {settings.autoAdvanceLoop !== false ? 'ENABLED' : 'DISABLED'}
+          </button>
         </div>
 
         {/* Gapless Playback Toggle */}

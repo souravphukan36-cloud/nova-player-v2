@@ -87,4 +87,6 @@ export interface SettingsState {
   libraryViewMode: 'list' | 'grid'; // Grid vs List for albums & artists
   searchInstantFilter: boolean; // Instant live search
   systemNotificationsEnabled: boolean; // System Notification & media session
+  transitionDelaySecs: number; // Delay between songs in seconds (0 = instant, 0.5s, 1s, 2s, 3s, etc.)
+  autoAdvanceLoop: boolean; // Loop back to start when queue finishes so playback never stops
 }

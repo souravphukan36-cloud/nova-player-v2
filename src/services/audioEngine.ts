@@ -25,6 +25,7 @@ class AudioEngine {
   // Callbacks
   private onTimeUpdateCallback?: (currentTime: number) => void;
   private onEndedCallback?: () => void;
+  private hasTriggeredEnded: boolean = false;
 
   private currentTrack: Track | null = null;
   private isPlaying: boolean = false;
@@ -124,11 +125,25 @@ class AudioEngine {
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
           this.onTimeUpdateCallback(this.audioElement.currentTime);
+          // Android & WebView fallback: If track reached end without firing native 'ended' event
+          if (
+            this.audioElement.duration > 0 &&
+            this.audioElement.currentTime >= this.audioElement.duration - 0.25 &&
+            !this.hasTriggeredEnded
+          ) {
+            this.hasTriggeredEnded = true;
+            if (this.onEndedCallback) {
+              this.onEndedCallback();
+            }
+          }
         }
       });
       this.audioElement.addEventListener('ended', () => {
-        if (this.onEndedCallback) {
-          this.onEndedCallback();
+        if (!this.hasTriggeredEnded) {
+          this.hasTriggeredEnded = true;
+          if (this.onEndedCallback) {
+            this.onEndedCallback();
+          }
         }
       });
 
@@ -173,6 +188,10 @@ class AudioEngine {
 
     this.currentTrack = track;
     this.isPlaying = true;
+    this.hasTriggeredEnded = false;
+    if (this.audioElement) {
+      this.audioElement.loop = false;
+    }
 
     // Ensure volume is not zero
     if (this.mainGain && this.ctx) {
@@ -370,6 +389,7 @@ class AudioEngine {
     this.stopSynth();
     this.isSynthPlaying = true;
     this.synthTime = startTime;
+    this.hasTriggeredEnded = false;
 
     // Keep Android 14/15/16 OS Media Notification alive by playing silent audio loop
     if (this.audioElement) {
