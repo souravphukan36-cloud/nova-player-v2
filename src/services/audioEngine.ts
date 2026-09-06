@@ -363,11 +363,24 @@ class AudioEngine {
     return data;
   }
 
+  private silentAudioCarrier: string = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAP8A';
+
   // Real-time Procedural Musical Synthesizer for default tracks
   private startSynth(track: Track, startTime: number) {
     this.stopSynth();
     this.isSynthPlaying = true;
     this.synthTime = startTime;
+
+    // Keep Android 14/15/16 OS Media Notification alive by playing silent audio loop
+    if (this.audioElement) {
+      try {
+        this.audioElement.src = this.silentAudioCarrier;
+        this.audioElement.loop = true;
+        this.audioElement.play().catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
 
     const tempoMap: Record<string, number> = {
       synthwave: 118,
@@ -510,6 +523,13 @@ class AudioEngine {
     if (this.synthInterval) {
       clearInterval(this.synthInterval);
       this.synthInterval = null;
+    }
+    if (this.audioElement && this.audioElement.src.startsWith('data:audio/wav')) {
+      try {
+        this.audioElement.pause();
+      } catch {
+        // ignore
+      }
     }
   }
 

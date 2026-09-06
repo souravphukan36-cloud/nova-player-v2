@@ -94,10 +94,17 @@ export const SettingsTab: React.FC = () => {
   }, []);
 
   const handleRequestNotificationPermission = async () => {
+    const current = notificationService.getPermissionStatus();
+    if (current === 'denied') {
+      alert("Samsung Android 14/15/16 Notification Step:\n\n1. Go to phone Home Screen\n2. Long-press 'NOVA Player' app icon and tap (i) App info\n3. Tap 'Notifications'\n4. Turn ON 'Allow notifications'\n\nAfter turning it on, notifications and lock screen player will start working!");
+      return;
+    }
     const granted = await notificationService.requestPermission();
     setNotifPermission(notificationService.getPermissionStatus());
     if (granted && updateSettings) {
       updateSettings({ systemNotificationsEnabled: true });
+    } else if (!granted) {
+      alert("Notification was not enabled by Android.\n\nTo enable on Samsung:\n1. Long-press NOVA Player icon on home screen > App info (i)\n2. Tap Notifications > Turn ON 'Allow notifications'.");
     }
   };
 
