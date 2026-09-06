@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Wifi, Battery, Volume2, Moon, Bell, Lock } from 'lucide-react';
+import { Lock, Bell, Sliders } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 export const StatusBar: React.FC = () => {
   const { 
     setLockScreenOpen, 
     setNotificationShadeOpen, 
+    setEqualizerOpen,
     equalizer, 
-    sleepTimer, 
     settings 
   } = usePlayer();
   const [time, setTime] = useState<string>('');
@@ -22,65 +22,63 @@ export const StatusBar: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Setting to hide or show top bar
+  if (!settings.showTopStatusBar) {
+    return null;
+  }
+
+  const redAccentClass = settings.topBarRedAccent
+    ? 'text-red-500 font-bold tracking-wider'
+    : 'text-white/80 font-medium';
+
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-5 pt-2 pb-1.5 bg-black/90 backdrop-blur-md text-xs font-medium text-white/80 select-none">
-      {/* Time & Quick Toggles */}
+    <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 bg-black/95 border-b border-red-500/20 text-xs select-none backdrop-blur-md">
+      {/* Left: TIME in Red */}
       <div className="flex items-center gap-2">
-        <span className="font-semibold text-white tracking-tight">{time || '12:00'}</span>
+        <span className={`text-sm ${redAccentClass} font-mono`}>
+          {time || '12:00'}
+        </span>
+      </div>
+
+      {/* Center: EQ Toggle Button */}
+      <button
+        id="btn-top-eq"
+        onClick={() => setEqualizerOpen(true)}
+        title="Open Equalizer"
+        className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full border transition-all active:scale-95 ${
+          settings.topBarRedAccent
+            ? 'border-red-500/40 text-red-500 hover:bg-red-500/10 font-bold'
+            : 'border-white/20 text-white hover:bg-white/10'
+        } ${equalizer.enabled ? 'bg-red-500/20' : 'bg-transparent'}`}
+      >
+        <Sliders className="w-3 h-3" />
+        <span className="text-[11px] font-bold tracking-wider uppercase">EQ</span>
         {equalizer.enabled && (
-          <span 
-            className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider text-black"
-            style={{ backgroundColor: settings.accentColor }}
-            title="NOVA Equalizer Active"
-          >
-            EQ
-          </span>
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse ml-0.5" />
         )}
-        {sleepTimer.remainingSeconds !== null && (
-          <span className="flex items-center gap-0.5 text-[10px] text-amber-400 font-mono">
-            <Moon className="w-2.5 h-2.5" />
-            {Math.ceil(sleepTimer.remainingSeconds / 60)}m
-          </span>
-        )}
-      </div>
+      </button>
 
-      {/* Punchhole Camera notch */}
-      <div className="w-3.5 h-3.5 rounded-full bg-black border border-white/20 shadow-inner flex items-center justify-center">
-        <div className="w-1.5 h-1.5 rounded-full bg-neutral-900" />
-      </div>
-
-      {/* Right side: Simulation buttons + Network & Battery */}
-      <div className="flex items-center gap-2.5">
-        {/* Simulation Shortcuts for testing Lock Screen & Notification Shade */}
+      {/* Right: LOCK and PANEL Buttons in Red Text */}
+      <div className="flex items-center gap-2">
         <button
           id="btn-open-lockscreen"
           onClick={() => setLockScreenOpen(true)}
-          title="Simulate Lock Screen Player"
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white/90 transition-colors"
+          title="Lock Screen Player"
+          className={`flex items-center gap-1 px-2 py-0.5 rounded border border-red-500/30 hover:bg-red-500/10 transition-colors ${redAccentClass}`}
         >
-          <Lock className="w-2.5 h-2.5" />
-          <span>Lock</span>
+          <Lock className="w-3 h-3 text-red-500" />
+          <span className="text-[11px] uppercase">LOCK</span>
         </button>
 
         <button
           id="btn-open-notifications"
           onClick={() => setNotificationShadeOpen(true)}
-          title="Simulate Android Notification Player"
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-white/90 transition-colors"
+          title="Android Notification Shade"
+          className={`flex items-center gap-1 px-2 py-0.5 rounded border border-red-500/30 hover:bg-red-500/10 transition-colors ${redAccentClass}`}
         >
-          <Bell className="w-2.5 h-2.5" />
-          <span>Panel</span>
+          <Bell className="w-3 h-3 text-red-500" />
+          <span className="text-[11px] uppercase">PANEL</span>
         </button>
-
-        <div className="flex items-center gap-1.5 text-white/70">
-          <span className="text-[10px] font-bold tracking-tight text-white/90">5G</span>
-          <Wifi className="w-3.5 h-3.5" />
-          <Volume2 className="w-3.5 h-3.5" />
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-medium text-white/80">98%</span>
-            <Battery className="w-4 h-4 text-white rotate-90" />
-          </div>
-        </div>
       </div>
     </header>
   );

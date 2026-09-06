@@ -46,7 +46,7 @@ export const SearchTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-28 px-5 select-none animate-in fade-in duration-200">
+    <div className="space-y-4 pb-36 px-5 select-none animate-in fade-in duration-200">
       {/* Search Input Bar (Samsung One UI Search Bar) */}
       <div className="relative flex items-center">
         <SearchIcon className="absolute left-4 w-4 h-4 text-white/40" />
@@ -119,10 +119,15 @@ export const SearchTab: React.FC = () => {
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
                       <div 
-                        className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md flex items-center justify-center text-xs font-bold text-white"
+                        className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md relative overflow-hidden flex items-center justify-center text-xs font-bold text-white"
                         style={{ background: track.coverArt }}
                       >
-                        {isCurrent && isPlaying ? '▶' : idx + 1}
+                        {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
+                          <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : null}
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                          {isCurrent && isPlaying ? '▶' : idx + 1}
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4 

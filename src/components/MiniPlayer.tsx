@@ -44,6 +44,9 @@ export const MiniPlayer: React.FC = () => {
             className="w-11 h-11 rounded-xl shadow-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden"
             style={{ background: currentTrack.coverArt }}
           >
+            {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
+              <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : null}
             {isPlaying && (
               <div className="absolute inset-0 bg-black/30 flex items-center justify-center gap-0.5">
                 <span className="w-1 h-3 bg-white rounded-full animate-pulse" />

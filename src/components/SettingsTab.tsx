@@ -13,9 +13,19 @@ import {
   Smartphone,
   Download,
   Share2,
-  Copy
+  Copy,
+  Bell,
+  Eye,
+  SlidersHorizontal,
+  Home,
+  Music2,
+  Search,
+  Activity,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { notificationService } from '../services/notificationService';
 
 const ACCENT_COLORS = [
   { name: 'Electric Purple (Default)', value: '#7C6EFF' },
@@ -34,9 +44,19 @@ const THEMES = [
   { id: 'slate', name: 'Deep Slate', bg: '#0F172A' },
 ];
 
+const LIBRARY_SUB_TABS = [
+  { id: 'tracks', label: 'Tracks / Songs' },
+  { id: 'albums', label: 'Albums' },
+  { id: 'artists', label: 'Artists' },
+  { id: 'playlists', label: 'Playlists' },
+  { id: 'folders', label: 'Folders' },
+  { id: 'genres', label: 'Genres' },
+];
+
 export const SettingsTab: React.FC = () => {
   const {
     settings,
+    updateSettings,
     updateTheme,
     updateAccentColor,
     updateCrossfade,
@@ -53,8 +73,12 @@ export const SettingsTab: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
 
   useEffect(() => {
+    // Check notification permission
+    setNotifPermission(notificationService.getPermissionStatus());
+
     // Check if already in standalone PWA mode
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
@@ -69,6 +93,14 @@ export const SettingsTab: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
+  const handleRequestNotificationPermission = async () => {
+    const granted = await notificationService.requestPermission();
+    setNotifPermission(notificationService.getPermissionStatus());
+    if (granted && updateSettings) {
+      updateSettings({ systemNotificationsEnabled: true });
+    }
+  };
+
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
@@ -78,7 +110,6 @@ export const SettingsTab: React.FC = () => {
       }
       setDeferredPrompt(null);
     } else {
-      // Fallback instruction alert / toggle
       alert("To install NOVA Player on your phone:\n\n1. Open this page in Chrome or Samsung Internet\n2. Tap the 3 dots (⋮) menu in top right\n3. Tap 'Install app' or 'Add to Home screen'\n\nNOVA Player will be installed to your phone's app drawer!");
     }
   };
@@ -104,8 +135,374 @@ export const SettingsTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-28 px-5 select-none animate-in fade-in duration-200">
-      {/* 1. Theme & Appearance */}
+    <div className="space-y-6 pb-36 px-5 select-none animate-in fade-in duration-200">
+      {/* 1. Top Status Bar Customization (User Request 7) */}
+      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-white font-bold text-sm">
+          <Eye className="w-4 h-4 text-rose-400" />
+          <span>Top Status Bar Customization</span>
+        </div>
+        <p className="text-xs text-white/50">
+          Clean status bar without clutter. Only shows red words (LOCK • TIME • EQ • PANEL) or hide completely.
+        </p>
+
+        {/* Toggle Show/Hide Top Status Bar */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Top Status Bar</span>
+            <span className="text-[11px] text-white/50">Show or completely hide the top status bar</span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ showTopStatusBar: !settings.showTopStatusBar })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.showTopStatusBar !== false ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.showTopStatusBar !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Toggle Red Accent Words */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Red Accent Status Words</span>
+            <span className="text-[11px] text-white/50">
+              Highlight LOCK, TIME, EQ, PANEL in prominent red
+            </span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ topBarRedAccent: !settings.topBarRedAccent })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.topBarRedAccent !== false ? 'bg-rose-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.topBarRedAccent !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Audio & SoundAlive Spectrum (User Request 3) */}
+      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <Activity className="w-4 h-4" style={{ color: settings.accentColor }} />
+            <span>Audio & SoundAlive Visualizer</span>
+          </div>
+          <button
+            onClick={() => setEqualizerOpen(true)}
+            className="text-xs font-bold px-3 py-1 rounded-full text-black flex items-center gap-1.5"
+            style={{ backgroundColor: settings.accentColor }}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Equalizer</span>
+          </button>
+        </div>
+
+        {/* SoundAlive Visualizer Toggle */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">SoundAlive Spectrum Visualizer</span>
+            <span className="text-[11px] text-white/50">
+              Live spectrum frequency bars (Off by default for cleaner screen)
+            </span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ soundAliveSpectrum: !settings.soundAliveSpectrum })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.soundAliveSpectrum ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.soundAliveSpectrum ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Crossfade Duration */}
+        <div className="space-y-2 pt-2 border-t border-white/10">
+          <div className="flex justify-between items-center text-xs">
+            <span className="font-semibold text-white/70">Crossfade Between Tracks</span>
+            <span className="font-bold text-white" style={{ color: settings.accentColor }}>
+              {settings.crossfadeSecs}s
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="12"
+            step="1"
+            value={settings.crossfadeSecs}
+            onChange={(e) => updateCrossfade(parseInt(e.target.value, 10))}
+            className="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
+
+        {/* Gapless Playback Toggle */}
+        <div className="flex items-center justify-between pt-2">
+          <div>
+            <span className="text-xs font-semibold text-white block">Gapless Playback</span>
+            <span className="text-[11px] text-white/50">Zero pause between consecutive tracks</span>
+          </div>
+          <button
+            onClick={toggleGapless}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+              settings.gapless 
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                : 'bg-white/10 text-white/60'
+            }`}
+          >
+            {settings.gapless ? 'ENABLED' : 'DISABLED'}
+          </button>
+        </div>
+      </div>
+
+      {/* 3. System Permission & Notifications (User Request 5) */}
+      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-white font-bold text-sm">
+          <Bell className="w-4 h-4 text-amber-400" />
+          <span>System Permissions & Notifications</span>
+        </div>
+        <p className="text-xs text-white/50">
+          Receive playback status, song singer name, album art, and controls in phone notification shade.
+        </p>
+
+        {/* Status Badge */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div className="flex items-center gap-2">
+            {notifPermission === 'granted' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-amber-400" />
+            )}
+            <div>
+              <span className="text-xs font-semibold text-white block">Notification Permission</span>
+              <span className="text-[11px] text-white/50">
+                {notifPermission === 'granted'
+                  ? 'Permission is active'
+                  : 'Permission required for background notification'}
+              </span>
+            </div>
+          </div>
+
+          {notifPermission !== 'granted' && notifPermission !== 'unsupported' ? (
+            <button
+              onClick={handleRequestNotificationPermission}
+              className="text-xs font-bold px-3 py-1.5 rounded-full text-black"
+              style={{ backgroundColor: settings.accentColor }}
+            >
+              Allow Permission
+            </button>
+          ) : (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              GRANTED
+            </span>
+          )}
+        </div>
+
+        {/* System Notifications Toggle */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Active Playback Notification</span>
+            <span className="text-[11px] text-white/50">
+              Display song details and singer name in system notification
+            </span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ systemNotificationsEnabled: !settings.systemNotificationsEnabled })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.systemNotificationsEnabled ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.systemNotificationsEnabled ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Home Screen Customization (User Request 8) */}
+      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-white font-bold text-sm">
+          <Home className="w-4 h-4 text-sky-400" />
+          <span>Home Screen Sections</span>
+        </div>
+        <p className="text-xs text-white/50">
+          Choose which sections appear on the main Home dashboard.
+        </p>
+
+        {/* Toggle Resume Card */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Now Playing / Resume Card</span>
+            <span className="text-[11px] text-white/50">Hero card with quick play/pause controls</span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ homeShowResumeCard: !settings.homeShowResumeCard })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.homeShowResumeCard !== false ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.homeShowResumeCard !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Toggle Recent Section */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Recently Played</span>
+            <span className="text-[11px] text-white/50">Horizontal carousel of recently played tracks</span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ homeShowRecent: !settings.homeShowRecent })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.homeShowRecent !== false ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.homeShowRecent !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Toggle Most Played Section */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Most Played / Top Tracks</span>
+            <span className="text-[11px] text-white/50">Tracks with the highest playback count</span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ homeShowMostPlayed: !settings.homeShowMostPlayed })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.homeShowMostPlayed !== false ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.homeShowMostPlayed !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* 5. Library Screen Customization (User Request 8) */}
+      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-white font-bold text-sm">
+          <Music2 className="w-4 h-4 text-emerald-400" />
+          <span>Library Customization</span>
+        </div>
+        <p className="text-xs text-white/50">
+          Configure default tab and layout density in your music library.
+        </p>
+
+        {/* Default Sub-Tab Selection */}
+        <div className="space-y-2">
+          <span className="text-xs font-semibold text-white/70">Default Library Tab</span>
+          <div className="grid grid-cols-3 gap-2">
+            {LIBRARY_SUB_TABS.map((tab) => {
+              const isSelected = (settings.libraryDefaultSubTab || 'tracks') === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => updateSettings?.({ libraryDefaultSubTab: tab.id as any })}
+                  className={`p-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
+                    isSelected
+                      ? 'border-white text-white font-bold shadow-md'
+                      : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                  style={{
+                    backgroundColor: isSelected ? settings.accentColor : undefined,
+                    color: isSelected ? '#000000' : undefined,
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* View Mode */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Display Density</span>
+            <span className="text-[11px] text-white/50">
+              {settings.libraryViewMode === 'comfortable' ? 'Comfortable spacing' : 'Compact high-density'}
+            </span>
+          </div>
+          <div className="flex rounded-xl bg-white/10 p-1">
+            <button
+              onClick={() => updateSettings?.({ libraryViewMode: 'compact' })}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                settings.libraryViewMode !== 'comfortable' ? 'bg-white text-black' : 'text-white/60'
+              }`}
+            >
+              Compact
+            </button>
+            <button
+              onClick={() => updateSettings?.({ libraryViewMode: 'comfortable' })}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                settings.libraryViewMode === 'comfortable' ? 'bg-white text-black' : 'text-white/60'
+              }`}
+            >
+              Comfortable
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Search Screen Customization (User Request 8) */}
+      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-white font-bold text-sm">
+          <Search className="w-4 h-4 text-violet-400" />
+          <span>Search Customization</span>
+        </div>
+        <p className="text-xs text-white/50">
+          Configure how fast and dynamically search responds to your queries.
+        </p>
+
+        {/* Instant Search Filter */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Instant Live Filter</span>
+            <span className="text-[11px] text-white/50">
+              Filter songs, singers, and albums instantly on every keystroke
+            </span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ searchInstantFilter: !settings.searchInstantFilter })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.searchInstantFilter !== false ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.searchInstantFilter !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* 7. Theme & Appearance */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
         <div className="flex items-center gap-2 text-white font-bold text-sm">
           <Palette className="w-4 h-4" style={{ color: settings.accentColor }} />
@@ -121,141 +518,70 @@ export const SettingsTab: React.FC = () => {
               return (
                 <button
                   key={theme.id}
-                  onClick={() => updateTheme(theme.id as typeof settings.theme)}
-                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                  onClick={() => updateTheme(theme.id as any)}
+                  className={`p-3 rounded-2xl text-left border transition-all flex items-center justify-between ${
                     isSelected
-                      ? 'border-white/40 bg-white/10'
-                      : 'border-white/5 bg-white/5 hover:bg-white/10'
+                      ? 'border-white bg-white/10 shadow-lg'
+                      : 'border-white/10 bg-white/5 hover:bg-white/10'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <div 
+                    <div
                       className="w-4 h-4 rounded-full border border-white/20"
                       style={{ backgroundColor: theme.bg }}
                     />
-                    <span className="text-xs font-medium text-white">{theme.name.split(' ')[0]}</span>
+                    <span className="text-xs font-semibold text-white truncate">{theme.name}</span>
                   </div>
-                  {isSelected && <Check className="w-3.5 h-3.5" style={{ color: settings.accentColor }} />}
+                  {isSelected && <Check className="w-4 h-4 text-white" />}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Accent Color Picker */}
+        {/* Accent Color Palettes */}
         <div className="space-y-2 pt-2 border-t border-white/10">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/60">Purple Accent & Colors</span>
-            <span className="text-xs font-mono font-bold" style={{ color: settings.accentColor }}>
-              {settings.accentColor}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+          <span className="text-xs font-semibold text-white/60">One UI Accent Colors</span>
+          <div className="flex flex-wrap gap-2.5">
             {ACCENT_COLORS.map((col) => {
               const isSelected = settings.accentColor.toLowerCase() === col.value.toLowerCase();
               return (
                 <button
                   key={col.value}
                   onClick={() => updateAccentColor(col.value)}
-                  className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-transform ${
-                    isSelected ? 'scale-110 ring-2 ring-white' : 'hover:scale-105'
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110 relative ${
+                    isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-black scale-105' : ''
                   }`}
                   style={{ backgroundColor: col.value }}
                   title={col.name}
                 >
-                  {isSelected && <Check className="w-4 h-4 text-black font-bold" />}
+                  {isSelected && <Check className="w-4 h-4 text-black font-extrabold" />}
                 </button>
               );
             })}
           </div>
-
-          {/* Custom Hex input */}
-          <form onSubmit={handleCustomHexSubmit} className="flex items-center gap-2 pt-1">
-            <input
-              type="text"
-              value={customHex}
-              onChange={(e) => setCustomHex(e.target.value)}
-              placeholder="#7C6EFF"
-              className="flex-1 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-mono uppercase focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="px-3 py-1.5 rounded-xl text-xs font-bold text-black"
-              style={{ backgroundColor: settings.accentColor }}
-            >
-              Apply
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* 2. Audio Quality & Playback Settings */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Sliders className="w-4 h-4" style={{ color: settings.accentColor }} />
-            <span>Audio Quality & Playback</span>
-          </div>
-          <button
-            onClick={() => setEqualizerOpen(true)}
-            className="text-xs font-semibold hover:underline"
-            style={{ color: settings.accentColor }}
-          >
-            Equalizer
-          </button>
         </div>
 
-        {/* Crossfade duration */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-white/80 font-medium">Crossfade Transition</span>
-            <span className="font-mono text-white/50">{settings.crossfadeSecs} seconds</span>
-          </div>
+        {/* Custom Hex Code Picker */}
+        <form onSubmit={handleCustomHexSubmit} className="flex gap-2 pt-2">
           <input
-            type="range"
-            min="0"
-            max="10"
-            step="1"
-            value={settings.crossfadeSecs}
-            onChange={(e) => updateCrossfade(parseInt(e.target.value))}
-            className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer"
-            style={{ accentColor: settings.accentColor }}
+            type="text"
+            value={customHex}
+            onChange={(e) => setCustomHex(e.target.value)}
+            placeholder="#7C6EFF"
+            className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-white/30"
           />
-          <p className="text-[11px] text-white/40">Fades smoothly between tracks when skipping</p>
-        </div>
-
-        {/* Gapless Playback Toggle */}
-        <div className="flex items-center justify-between pt-2 border-t border-white/10">
-          <div>
-            <p className="text-xs font-semibold text-white">Gapless Playback</p>
-            <p className="text-[11px] text-white/40">Removes silence between continuous tracks</p>
-          </div>
           <button
-            onClick={toggleGapless}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-              settings.gapless ? 'text-black' : 'bg-white/10 text-white/50'
-            }`}
-            style={{ backgroundColor: settings.gapless ? settings.accentColor : undefined }}
+            type="submit"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-black shadow-md transition-opacity hover:opacity-90"
+            style={{ backgroundColor: settings.accentColor }}
           >
-            {settings.gapless ? 'ENABLED' : 'DISABLED'}
+            Apply Hex
           </button>
-        </div>
-
-        {/* Audio Output Engine Details */}
-        <div className="p-3 rounded-2xl bg-white/5 text-[11px] text-white/60 space-y-1">
-          <div className="flex justify-between">
-            <span>Audio Engine:</span>
-            <span className="font-semibold text-white">Web Audio DSP (32-bit float)</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Output Sample Rate:</span>
-            <span className="font-semibold text-white">48,000 Hz Stereo</span>
-          </div>
-        </div>
+        </form>
       </div>
 
-      {/* 3. Scan Folders Management & Storage */}
+      {/* 8. Scan Folders & Storage */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white font-bold text-sm">
@@ -271,7 +597,7 @@ export const SettingsTab: React.FC = () => {
           </button>
         </div>
 
-        {/* Scanned directories */}
+        {/* Monitored directories */}
         <div className="space-y-1.5">
           <span className="text-xs font-semibold text-white/60">Monitored Music Folders</span>
           {settings.scanFolders.map((folder) => (
@@ -294,7 +620,7 @@ export const SettingsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Install App on Phone (PWA) */}
+      {/* 9. Install App on Phone (PWA) */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white font-bold text-sm">
@@ -352,14 +678,14 @@ export const SettingsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Cache & Storage Management */}
+      {/* 10. Cache & Storage Management */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-3">
         <div className="flex items-center gap-2 text-white font-bold text-sm">
           <HardDrive className="w-4 h-4 text-rose-400" />
           <span>Cache & Memory Management</span>
         </div>
         <p className="text-xs text-white/50">
-          Stored metadata, playlists, and cached audio data for {tracks.length} tracks.
+          Stored metadata, playlists, and persistent audio data for {tracks.length} tracks.
         </p>
 
         <div className="flex items-center justify-between pt-2">
@@ -379,7 +705,7 @@ export const SettingsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. About NOVA Player */}
+      {/* 11. About NOVA Player */}
       <div className="p-6 rounded-3xl bg-neutral-900/90 border border-white/10 shadow-2xl space-y-4 text-center relative overflow-hidden">
         {/* Glow accent */}
         <div 
@@ -397,7 +723,7 @@ export const SettingsTab: React.FC = () => {
 
           <div>
             <h3 className="text-lg font-black text-white tracking-tight">NOVA Player</h3>
-            <p className="text-xs text-white/50 mt-0.5">High-Fidelity Offline Audio Player</p>
+            <p className="text-xs text-white/50 mt-0.5">Samsung One UI High-Fidelity Audio Player</p>
           </div>
 
           {/* Prominent Developed by Sourav Phukan Banner */}
@@ -429,12 +755,12 @@ export const SettingsTab: React.FC = () => {
               <span className="font-bold text-white">Sourav Phukan</span>
             </div>
             <div>
-              <span className="text-white/40 block text-[10px] uppercase font-bold">Platform</span>
-              <span className="font-bold text-white">Android (Flutter)</span>
+              <span className="text-white/40 block text-[10px] uppercase font-bold">Design Language</span>
+              <span className="font-bold text-white">Samsung One UI</span>
             </div>
             <div className="pt-2 border-t border-white/10">
               <span className="text-white/40 block text-[10px] uppercase font-bold">App Version</span>
-              <span className="font-semibold text-white">v3.4.0 Release</span>
+              <span className="font-semibold text-white">v3.5.0 Release</span>
             </div>
             <div className="pt-2 border-t border-white/10">
               <span className="text-white/40 block text-[10px] uppercase font-bold">DSP Engine</span>

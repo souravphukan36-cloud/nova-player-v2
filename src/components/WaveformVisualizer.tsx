@@ -16,6 +16,10 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { isPlaying, settings } = usePlayer();
 
+  if (!settings.soundAliveSpectrum) {
+    return null;
+  }
+
   useEffect(() => {
     let animId: number;
     const canvas = canvasRef.current;

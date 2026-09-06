@@ -10,6 +10,8 @@ import {
 } from '../types';
 import { DEFAULT_TRACKS, INITIAL_PLAYLISTS } from '../data/defaultTracks';
 import { audioEngine } from '../services/audioEngine';
+import { getAllStoredTracks, deleteStoredTrack, clearAllAudioStorage } from '../services/storageDb';
+import { notificationService } from '../services/notificationService';
 
 interface PlayerContextType {
   tracks: Track[];
@@ -93,6 +95,7 @@ interface PlayerContextType {
   updateCrossfade: (secs: number) => void;
   toggleGapless: () => void;
   clearCache: () => void;
+  updateSettings: (partial: Partial<SettingsState>) => void;
 }
 
 const EQ_PRESETS: Record<EQPreset, [number, number, number, number, number]> = {
@@ -116,6 +119,16 @@ const DEFAULT_SETTINGS: SettingsState = {
   supportedFormats: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'],
   scanFolders: ['/Storage/emulated/0/Music', '/Storage/emulated/0/Download'],
   autoScanOnStartup: true,
+  soundAliveSpectrum: false, // Turned OFF by default as requested
+  showTopStatusBar: true,
+  topBarRedAccent: true,
+  homeShowResumeCard: true,
+  homeShowRecent: true,
+  homeShowMostPlayed: true,
+  libraryDefaultSubTab: 'songs',
+  libraryViewMode: 'list',
+  searchInstantFilter: true,
+  systemNotificationsEnabled: true,
 };
 
 const DEFAULT_EQ: EqualizerState = {
@@ -237,6 +250,24 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, [currentTrack, isPlaying, queue, queueIndex, repeat, shuffle, sleepTimer, tracks]);
 
+  // Load tracks from IndexedDB to restore dropped/imported files across sessions
+  useEffect(() => {
+    getAllStoredTracks().then((stored) => {
+      if (stored && stored.length > 0) {
+        setTracks(prev => {
+          const existingIds = new Set(prev.map(t => t.id));
+          const newStored = stored.filter(s => !existingIds.has(s.id));
+          if (newStored.length > 0) {
+            return [...newStored, ...prev];
+          }
+          return prev;
+        });
+      }
+    }).catch(err => {
+      console.warn('Error loading stored tracks:', err);
+    });
+  }, []);
+
   // Persist tracks
   useEffect(() => {
     try {
@@ -265,6 +296,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // ignore
     }
   }, [settings]);
+
+  // System Playback Notification
+  useEffect(() => {
+    if (settings.systemNotificationsEnabled && currentTrack) {
+      notificationService.showPlaybackNotification(currentTrack, isPlaying);
+    }
+  }, [currentTrack, isPlaying, settings.systemNotificationsEnabled]);
 
   // Persist & apply EQ
   useEffect(() => {
@@ -636,6 +674,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const deleteTrack = (trackId: string) => {
+    deleteStoredTrack(trackId);
     setTracks(prev => prev.filter(t => t.id !== trackId));
     setQueue(prev => prev.filter(t => t.id !== trackId));
     setPlaylists(prev => prev.map(p => ({
@@ -709,11 +748,16 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSettings(prev => ({ ...prev, gapless: !prev.gapless }));
   };
 
+  const updateSettings = (partial: Partial<SettingsState>) => {
+    setSettings(prev => ({ ...prev, ...partial }));
+  };
+
   const clearCache = () => {
     setTracks(DEFAULT_TRACKS);
     setPlaylists(INITIAL_PLAYLISTS);
     localStorage.removeItem('nova_tracks');
     localStorage.removeItem('nova_playlists');
+    clearAllAudioStorage();
   };
 
   return (
@@ -794,6 +838,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updateCrossfade,
         toggleGapless,
         clearCache,
+        updateSettings,
       }}
     >
       {children}

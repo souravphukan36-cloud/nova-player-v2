@@ -1,4 +1,5 @@
 import { Track, EqualizerState } from '../types';
+import { getStoredAudio } from './storageDb';
 
 class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -131,11 +132,27 @@ class AudioEngine {
         }
       });
 
-      // Hook media source
-      this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
-      this.mediaSourceNode.connect(this.bassBoostFilter);
+      // Hook media source with direct fallback for Android WebView
+      try {
+        this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
+        this.mediaSourceNode.connect(this.bassBoostFilter);
+      } catch (mediaErr) {
+        console.warn('createMediaElementSource failed (using direct HTML5 audio routing):', mediaErr);
+      }
     } catch (err) {
       console.warn('AudioContext initialization error:', err);
+    }
+  }
+
+  public ensureAudioUnlocked() {
+    if (!this.ctx) {
+      this.init();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    if (this.mainGain && this.ctx) {
+      this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime);
     }
   }
 
@@ -147,18 +164,21 @@ class AudioEngine {
   public async playTrack(track: Track, startTime: number = 0, crossfadeSecs: number = 0) {
     this.init();
     if (this.ctx && this.ctx.state === 'suspended') {
-      await this.ctx.resume();
+      try {
+        await this.ctx.resume();
+      } catch (err) {
+        console.warn('Could not resume AudioContext:', err);
+      }
     }
 
     this.currentTrack = track;
     this.isPlaying = true;
 
-    // Crossfade handling
-    if (crossfadeSecs > 0 && this.mainGain && this.ctx) {
+    // Ensure volume is not zero
+    if (this.mainGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.mainGain.gain.cancelScheduledValues(now);
-      this.mainGain.gain.setValueAtTime(0.01, now);
-      this.mainGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : this.volume, now + Math.min(crossfadeSecs, 4));
+      this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : Math.max(0.2, this.volume), now);
     }
 
     // Update system Media Session (Android lock screen & notifications)
@@ -174,6 +194,8 @@ class AudioEngine {
           this.audioElement.src = track.audioUrl;
         }
         this.audioElement.currentTime = startTime;
+        this.audioElement.volume = this.isMuted ? 0 : this.volume;
+        this.audioElement.muted = this.isMuted;
         try {
           await this.audioElement.play();
         } catch (e) {
@@ -182,11 +204,33 @@ class AudioEngine {
         }
       }
     } else {
-      // Procedural Web Audio playback
-      if (this.audioElement) {
-        this.audioElement.pause();
+      // Check if stored in IndexedDB first
+      let storedBlob: Blob | null = null;
+      try {
+        storedBlob = await getStoredAudio(track.id);
+      } catch {
+        // ignore
       }
-      this.startSynth(track, startTime);
+
+      if (storedBlob && this.audioElement) {
+        this.stopSynth();
+        this.audioElement.src = URL.createObjectURL(storedBlob);
+        this.audioElement.currentTime = startTime;
+        this.audioElement.volume = this.isMuted ? 0 : this.volume;
+        this.audioElement.muted = this.isMuted;
+        try {
+          await this.audioElement.play();
+        } catch (e) {
+          console.warn('IndexedDB audio play error', e);
+          this.startSynth(track, startTime);
+        }
+      } else {
+        // Procedural Web Audio playback
+        if (this.audioElement) {
+          this.audioElement.pause();
+        }
+        this.startSynth(track, startTime);
+      }
     }
   }
 
@@ -209,8 +253,17 @@ class AudioEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
-    if (this.currentTrack.file || this.currentTrack.audioUrl) {
-      this.audioElement?.play();
+    if (this.audioElement && this.audioElement.src && !this.isSynthPlaying) {
+      if (this.synthTime > 0) {
+        try {
+          this.audioElement.currentTime = this.synthTime;
+        } catch {
+          // ignore
+        }
+      }
+      this.audioElement.play().catch(() => {});
+    } else if (this.currentTrack.file || this.currentTrack.audioUrl) {
+      this.audioElement?.play().catch(() => {});
     } else {
       this.startSynth(this.currentTrack, this.synthTime);
     }
@@ -220,10 +273,23 @@ class AudioEngine {
   }
 
   public seek(seconds: number) {
-    if (this.audioElement && (this.currentTrack?.file || this.currentTrack?.audioUrl)) {
-      this.audioElement.currentTime = seconds;
+    this.synthTime = Math.max(0, seconds);
+    const wasPlaying = this.isPlaying;
+    
+    if (this.audioElement && (this.audioElement.src || this.currentTrack?.file || this.currentTrack?.audioUrl) && !this.isSynthPlaying) {
+      try {
+        this.audioElement.currentTime = seconds;
+        if (wasPlaying && this.audioElement.paused) {
+          this.audioElement.play().catch(() => {});
+        }
+      } catch (e) {
+        console.warn('Seek error on audio element:', e);
+      }
     } else {
-      this.synthTime = seconds;
+      // Synth / procedural audio: re-trigger smoothly from the new timestamp if playing
+      if (wasPlaying && this.currentTrack) {
+        this.startSynth(this.currentTrack, seconds);
+      }
     }
     if (this.onTimeUpdateCallback) {
       this.onTimeUpdateCallback(seconds);
@@ -235,12 +301,19 @@ class AudioEngine {
     if (this.mainGain && this.ctx && !this.isMuted) {
       this.mainGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
     }
+    if (this.audioElement) {
+      this.audioElement.volume = this.isMuted ? 0 : this.volume;
+    }
   }
 
   public setMute(muted: boolean) {
     this.isMuted = muted;
     if (this.mainGain && this.ctx) {
       this.mainGain.gain.setValueAtTime(muted ? 0 : this.volume, this.ctx.currentTime);
+    }
+    if (this.audioElement) {
+      this.audioElement.muted = muted;
+      this.audioElement.volume = muted ? 0 : this.volume;
     }
   }
 
@@ -443,12 +516,16 @@ class AudioEngine {
   private updateMediaSession(track: Track) {
     if ('mediaSession' in navigator) {
       try {
+        const artworkUrl = (track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')))
+          ? track.coverArt
+          : '/assets/aistudio/logo.png';
+
         navigator.mediaSession.metadata = new MediaMetadata({
           title: track.title,
           artist: track.artist,
           album: track.album,
           artwork: [
-            { src: '/assets/aistudio/logo.png', sizes: '512x512', type: 'image/png' }
+            { src: artworkUrl, sizes: '512x512', type: 'image/png' }
           ]
         });
 
@@ -471,8 +548,33 @@ class AudioEngine {
             this.seek(details.seekTime);
           }
         });
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+          const skip = details.seekOffset || 10;
+          const cur = this.audioElement ? this.audioElement.currentTime : this.synthTime;
+          this.seek(Math.max(0, cur - skip));
+        });
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+          const skip = details.seekOffset || 10;
+          const cur = this.audioElement ? this.audioElement.currentTime : this.synthTime;
+          this.seek(cur + skip);
+        });
       } catch (e) {
         console.warn('MediaSession error', e);
+      }
+    }
+
+    // System Notification trigger if permission granted
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        const notifImg = (track.coverArt && track.coverArt.startsWith('http')) ? track.coverArt : undefined;
+        new Notification(`Playing: ${track.title}`, {
+          body: `${track.artist} • ${track.album}`,
+          icon: notifImg,
+          tag: 'nova-now-playing',
+          silent: true,
+        });
+      } catch {
+        // Notification silent fallback
       }
     }
   }

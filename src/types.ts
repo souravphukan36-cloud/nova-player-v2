@@ -76,4 +76,15 @@ export interface SettingsState {
   supportedFormats: AudioFormat[];
   scanFolders: string[];
   autoScanOnStartup: boolean;
+  // User Customizations
+  soundAliveSpectrum: boolean; // Sound live spectrum toggle (default: false)
+  showTopStatusBar: boolean; // Show top status bar toggle
+  topBarRedAccent: boolean; // Show Lock, Time, EQ, Panel in sleek red word style
+  homeShowResumeCard: boolean; // Home screen hero card
+  homeShowRecent: boolean; // Home screen recently played
+  homeShowMostPlayed: boolean; // Home screen most played
+  libraryDefaultSubTab: LibrarySubTab; // Default library sub-tab
+  libraryViewMode: 'list' | 'grid'; // Grid vs List for albums & artists
+  searchInstantFilter: boolean; // Instant live search
+  systemNotificationsEnabled: boolean; // System Notification & media session
 }

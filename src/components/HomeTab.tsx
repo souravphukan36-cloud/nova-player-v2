@@ -48,9 +48,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
   };
 
   return (
-    <div className="space-y-6 pb-28 px-5 select-none animate-in fade-in duration-200">
+    <div className="space-y-6 pb-36 px-5 select-none animate-in fade-in duration-200">
       {/* Featured / Resume Playback Hero Card */}
-      {currentTrack && (
+      {currentTrack && settings.homeShowResumeCard !== false && (
         <div 
           onClick={() => setNowPlayingOpen(true)}
           className="relative overflow-hidden rounded-3xl p-5 border border-white/10 shadow-2xl cursor-pointer group transition-all duration-300 hover:border-white/20"
@@ -67,10 +67,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
           <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-4 min-w-0 flex-1 pr-3">
               <div 
-                className="w-16 h-16 rounded-2xl flex-shrink-0 shadow-xl flex items-center justify-center text-white text-lg font-bold group-hover:scale-105 transition-transform"
+                className="w-16 h-16 rounded-2xl flex-shrink-0 shadow-xl overflow-hidden relative flex items-center justify-center text-white text-lg font-bold group-hover:scale-105 transition-transform"
                 style={{ background: currentTrack.coverArt }}
               >
-                {isPlaying ? '▶' : '♫'}
+                {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
+                  <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : null}
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                  {isPlaying ? '▶' : '♫'}
+                </div>
               </div>
 
               <div className="min-w-0 flex-1">
@@ -127,126 +132,138 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
       </div>
 
       {/* Recently Played Section (Horizontal Carousel) */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-white/70" />
-            <h3 className="text-sm font-bold tracking-tight text-white uppercase">Recently Played</h3>
+      {settings.homeShowRecent !== false && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-white/70" />
+              <h3 className="text-sm font-bold tracking-tight text-white uppercase">Recently Played</h3>
+            </div>
+            <button 
+              onClick={() => onNavigateToLibrary('songs')}
+              className="text-xs font-semibold hover:underline"
+              style={{ color: settings.accentColor }}
+            >
+              See All ({tracks.length})
+            </button>
           </div>
-          <button 
-            onClick={() => onNavigateToLibrary('songs')}
-            className="text-xs font-semibold hover:underline"
-            style={{ color: settings.accentColor }}
-          >
-            See All ({tracks.length})
-          </button>
-        </div>
 
-        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
-          {recentlyPlayed.map((track) => {
-            const isCurrent = currentTrack?.id === track.id;
-            return (
-              <div
-                key={track.id}
-                onClick={() => playTrack(track, recentlyPlayed)}
-                className="w-36 flex-shrink-0 p-3 rounded-2xl bg-neutral-900/80 border border-white/10 hover:border-white/20 cursor-pointer transition-all hover:-translate-y-1 group"
-              >
-                <div 
-                  className="w-full aspect-square rounded-xl mb-2.5 shadow-md relative overflow-hidden flex items-center justify-center text-white font-bold"
-                  style={{ background: track.coverArt }}
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
+            {recentlyPlayed.map((track) => {
+              const isCurrent = currentTrack?.id === track.id;
+              return (
+                <div
+                  key={track.id}
+                  onClick={() => playTrack(track, recentlyPlayed)}
+                  className="w-36 flex-shrink-0 p-3 rounded-2xl bg-neutral-900/80 border border-white/10 hover:border-white/20 cursor-pointer transition-all hover:-translate-y-1 group"
                 >
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div 
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-black shadow-lg"
-                      style={{ backgroundColor: settings.accentColor }}
-                    >
-                      <Play className="w-4 h-4 fill-current ml-0.5" />
-                    </div>
-                  </div>
-                  {isCurrent && isPlaying && (
-                    <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-emerald-400 font-bold">
-                      PLAYING
-                    </div>
-                  )}
-                </div>
-
-                <h4 className="text-xs font-bold text-white truncate">{track.title}</h4>
-                <p className="text-[11px] text-white/50 truncate mt-0.5">{track.artist}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Most Played Tracks Section */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-bold tracking-tight text-white uppercase">Most Played</h3>
-          </div>
-          <button 
-            onClick={() => onNavigateToLibrary('playlists')}
-            className="text-xs font-semibold hover:underline"
-            style={{ color: settings.accentColor }}
-          >
-            Playlists
-          </button>
-        </div>
-
-        <div className="space-y-1.5">
-          {mostPlayed.map((track, idx) => {
-            const isCurrent = currentTrack?.id === track.id;
-            return (
-              <div
-                key={track.id}
-                onClick={() => playTrack(track, mostPlayed)}
-                className={`flex items-center justify-between p-2.5 rounded-2xl cursor-pointer transition-colors ${
-                  isCurrent ? 'bg-white/10 border border-white/15' : 'hover:bg-white/5'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                  <span className="w-4 text-center text-xs font-mono font-bold text-white/40">
-                    {idx + 1}
-                  </span>
                   <div 
-                    className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md flex items-center justify-center text-xs font-bold text-white"
+                    className="w-full aspect-square rounded-xl mb-2.5 shadow-md relative overflow-hidden flex items-center justify-center text-white font-bold"
                     style={{ background: track.coverArt }}
                   >
-                    {isCurrent && isPlaying ? '▶' : '♫'}
+                    {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
+                      <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : null}
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div 
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-black shadow-lg"
+                        style={{ backgroundColor: settings.accentColor }}
+                      >
+                        <Play className="w-4 h-4 fill-current ml-0.5" />
+                      </div>
+                    </div>
+                    {isCurrent && isPlaying && (
+                      <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-emerald-400 font-bold">
+                        PLAYING
+                      </div>
+                    )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 
-                      className={`text-xs font-bold truncate ${isCurrent ? 'text-white' : 'text-white/90'}`}
-                      style={{ color: isCurrent ? settings.accentColor : undefined }}
-                    >
-                      {track.title}
-                    </h4>
-                    <p className="text-[11px] text-white/50 truncate">
-                      {track.artist} • <span className="text-amber-400/80">{track.playCount} plays</span>
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-white/40">{formatTime(track.duration)}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(track.id);
-                    }}
-                    className={`p-1.5 rounded-full hover:bg-white/10 ${
-                      track.isFavorite ? 'text-rose-500' : 'text-white/40 hover:text-white'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${track.isFavorite ? 'fill-current' : ''}`} />
-                  </button>
+                  <h4 className="text-xs font-bold text-white truncate">{track.title}</h4>
+                  <p className="text-[11px] text-white/50 truncate mt-0.5">{track.artist}</p>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Most Played Tracks Section */}
+      {settings.homeShowMostPlayed !== false && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold tracking-tight text-white uppercase">Most Played</h3>
+            </div>
+            <button 
+              onClick={() => onNavigateToLibrary('playlists')}
+              className="text-xs font-semibold hover:underline"
+              style={{ color: settings.accentColor }}
+            >
+              Playlists
+            </button>
+          </div>
+
+          <div className="space-y-1.5">
+            {mostPlayed.map((track, idx) => {
+              const isCurrent = currentTrack?.id === track.id;
+              return (
+                <div
+                  key={track.id}
+                  onClick={() => playTrack(track, mostPlayed)}
+                  className={`flex items-center justify-between p-2.5 rounded-2xl cursor-pointer transition-colors ${
+                    isCurrent ? 'bg-white/10 border border-white/15' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                    <span className="w-4 text-center text-xs font-mono font-bold text-white/40">
+                      {idx + 1}
+                    </span>
+                    <div 
+                      className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md overflow-hidden relative flex items-center justify-center text-xs font-bold text-white"
+                      style={{ background: track.coverArt }}
+                    >
+                      {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
+                        <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : null}
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                        {isCurrent && isPlaying ? '▶' : '♫'}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 
+                        className={`text-xs font-bold truncate ${isCurrent ? 'text-white' : 'text-white/90'}`}
+                        style={{ color: isCurrent ? settings.accentColor : undefined }}
+                      >
+                        {track.title}
+                      </h4>
+                      <p className="text-[11px] text-white/50 truncate">
+                        {track.artist} • <span className="text-amber-400/80">{track.playCount} plays</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono text-white/40">{formatTime(track.duration)}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(track.id);
+                      }}
+                      className={`p-1.5 rounded-full hover:bg-white/10 ${
+                        track.isFavorite ? 'text-rose-500' : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      <Heart className={`w-4 h-4 ${track.isFavorite ? 'fill-current' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

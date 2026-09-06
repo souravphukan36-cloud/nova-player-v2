@@ -65,7 +65,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen max-w-md mx-auto relative flex flex-col justify-between overflow-hidden shadow-2xl transition-colors duration-300"
+      className="h-[100dvh] h-screen max-w-md mx-auto relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300"
       style={{ backgroundColor: bgColor }}
     >
       {/* 1. Android / One UI Status Bar */}
@@ -79,7 +79,7 @@ const MainLayout: React.FC = () => {
       />
 
       {/* 3. Tab Content View Area */}
-      <main className="flex-1 overflow-y-auto no-scrollbar">
+      <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-36">
         {currentTab === 'home' && (
           <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
         )}

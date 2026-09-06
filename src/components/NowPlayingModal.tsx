@@ -17,7 +17,10 @@ import {
   FileText, 
   Info,
   Trash2,
-  GripVertical
+  GripVertical,
+  MoreVertical,
+  Music,
+  Plus
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { WaveformVisualizer } from './WaveformVisualizer';
@@ -90,43 +93,46 @@ export const NowPlayingModal: React.FC = () => {
         style={{ background: settings.accentColor }}
       />
 
-      {/* Top Bar */}
+      {/* Top Bar (Samsung Music Style) */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-4 pb-2">
         <button
           id="np-btn-collapse"
           onClick={() => setNowPlayingOpen(false)}
-          className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+          className="p-2.5 rounded-full hover:bg-white/10 text-white/90 hover:text-white transition-colors"
           title="Minimize"
         >
           <ChevronDown className="w-6 h-6" />
         </button>
 
-        <div className="text-center">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/50">
-            Playing From Library
-          </span>
-          <p className="text-xs font-medium text-white/80 truncate max-w-[200px]">
-            {queueIndex + 1} of {queue.length} in Queue
-          </p>
-        </div>
-
         <div className="flex items-center gap-1">
           <button
             id="np-btn-sleep"
             onClick={() => setSleepTimerOpen(true)}
-            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
-              sleepTimer.remainingSeconds !== null ? 'text-amber-400' : 'text-white/70 hover:text-white'
+            className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
+              sleepTimer.remainingSeconds !== null ? 'text-amber-400' : 'text-white/80 hover:text-white'
             }`}
             title="Sleep Timer"
           >
             <Moon className="w-5 h-5" />
           </button>
 
+          <button 
+            onClick={toggleMute}
+            className="p-2.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            title={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="w-5 h-5 text-rose-400" />
+            ) : (
+              <Volume2 className="w-5 h-5" />
+            )}
+          </button>
+
           <button
             id="np-btn-eq"
             onClick={() => setEqualizerOpen(true)}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-            title="NOVA Equalizer"
+            className="p-2.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            title="SoundAlive Equalizer"
           >
             <Sliders className="w-5 h-5" />
           </button>
@@ -134,10 +140,10 @@ export const NowPlayingModal: React.FC = () => {
           <button
             id="np-btn-info"
             onClick={() => setShowTrackDetails(!showTrackDetails)}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-            title="Track Details"
+            className="p-2.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            title="Menu & Details"
           >
-            <Info className="w-5 h-5" />
+            <MoreVertical className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -260,37 +266,36 @@ export const NowPlayingModal: React.FC = () => {
             </div>
           </div>
         ) : (
-          // Standard Artwork & Live Visualizer
-          <div className="flex flex-col items-center justify-center my-auto">
-            {/* Album Artwork Card */}
+          // Standard Samsung Music style Artwork + Centered Title & Singer Name
+          <div className="flex flex-col items-center justify-center my-auto w-full">
+            {/* Square Album Artwork Card with Subtle Rounded Corners */}
             <div className="relative group w-64 h-64 sm:w-72 sm:h-72 rounded-3xl shadow-2xl overflow-hidden border border-white/10 flex items-center justify-center transition-transform duration-300">
-              <div 
-                className="absolute inset-0"
-                style={{ background: currentTrack.coverArt }}
-              />
-
-              {/* Vinyl Groove Rings Simulation */}
-              <div className="absolute inset-0 rounded-3xl border-[8px] border-white/5 pointer-events-none" />
-              <div className="absolute inset-4 rounded-2xl border-[1px] border-white/10 pointer-events-none" />
-
-              {/* Center Vinyl Label */}
-              <div className="relative w-20 h-20 rounded-full bg-black/70 backdrop-blur-md border border-white/20 flex items-center justify-center text-center p-2 shadow-xl">
-                <div className="w-5 h-5 rounded-full bg-black border border-white/40 shadow-inner" />
-              </div>
+              {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
+                <img
+                  src={currentTrack.coverArt}
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover shadow-inner"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div 
+                  className="w-full h-full flex flex-col items-center justify-center p-6 text-center"
+                  style={{ background: currentTrack.coverArt || '#1e1e24' }}
+                >
+                  <Music className="w-16 h-16 text-white/40 mb-3" />
+                  <span className="text-sm font-bold text-white/80 line-clamp-1">{currentTrack.album}</span>
+                </div>
+              )}
             </div>
 
-            {/* Interactive Live Waveform Visualizer */}
-            <div className="w-full max-w-xs mt-6 px-2">
-              <div className="flex items-center justify-between mb-1 text-[10px] text-white/40 uppercase font-semibold">
-                <span>SoundAlive Spectrum</span>
-                <button
-                  onClick={() => setVisualizerMode(m => m === 'mirror' ? 'wave' : m === 'wave' ? 'bars' : 'mirror')}
-                  className="hover:text-white transition-colors"
-                >
-                  Mode: {visualizerMode}
-                </button>
-              </div>
-              <WaveformVisualizer mode={visualizerMode} className="w-full h-12 bg-white/5 p-1 border border-white/5" />
+            {/* Song Title & Singer/Artist Name Centered (Samsung Music Layout) */}
+            <div className="text-center mt-6 px-4 max-w-xs w-full">
+              <h2 className="text-2xl font-bold text-white tracking-tight truncate">
+                {currentTrack.title}
+              </h2>
+              <p className="text-sm font-medium text-white/60 mt-1 truncate">
+                {currentTrack.artist}
+              </p>
             </div>
           </div>
         )}
@@ -317,39 +322,44 @@ export const NowPlayingModal: React.FC = () => {
           </div>
         )}
 
-        {/* Title, Artist, and Favorite button */}
-        <div className="flex items-center justify-between mt-4">
-          <div className="min-w-0 flex-1 pr-3">
-            <h2 className="text-xl font-extrabold text-white truncate tracking-tight">
-              {currentTrack.title}
-            </h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-sm font-medium text-white/60 truncate">
-                {currentTrack.artist} • {currentTrack.album}
-              </p>
-              <span 
-                className="text-[10px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider text-black flex-shrink-0"
-                style={{ backgroundColor: settings.accentColor }}
-              >
-                {currentTrack.format}
-              </span>
-            </div>
-          </div>
+        {/* Action Row: Queue/Playlist, Favorite Heart, Add to Playlist (Samsung Music icons) */}
+        <div className="flex items-center justify-between mt-auto pt-6 px-6">
+          <button
+            onClick={() => {
+              setQueueOpen(!queueOpen);
+              setLyricsOpen(false);
+            }}
+            className="p-2.5 text-white/70 hover:text-white transition-colors"
+            title="Queue / Playlist"
+          >
+            <ListMusic className="w-6 h-6" />
+          </button>
 
           <button
             id="np-btn-favorite"
             onClick={() => toggleFavorite(currentTrack.id)}
-            className={`p-2.5 rounded-full hover:bg-white/10 transition-transform active:scale-125 ${
-              currentTrack.isFavorite ? 'text-rose-500' : 'text-white/60 hover:text-white'
+            className={`p-2.5 transition-transform active:scale-125 ${
+              currentTrack.isFavorite ? 'text-rose-500' : 'text-white/70 hover:text-white'
             }`}
             title="Toggle Favorite"
           >
             <Heart className={`w-6 h-6 ${currentTrack.isFavorite ? 'fill-current' : ''}`} />
           </button>
+
+          <button
+            onClick={() => {
+              setLyricsOpen(!lyricsOpen);
+              setQueueOpen(false);
+            }}
+            className="p-2.5 text-white/70 hover:text-white transition-colors"
+            title="Add to Playlist / Options"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
         </div>
 
-        {/* Seek Bar */}
-        <div className="mt-4">
+        {/* Seek Bar (Samsung Music Clean Slider) */}
+        <div className="mt-4 px-2">
           <div className="relative group">
             <input
               id="np-slider-seek"
@@ -359,18 +369,18 @@ export const NowPlayingModal: React.FC = () => {
               step="0.5"
               value={currentTime}
               onChange={(e) => seek(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer accent-white"
+              className="w-full h-1 bg-white/20 rounded-lg cursor-pointer accent-white"
             />
             {/* Custom filled track */}
             <div 
-              className="absolute top-0 left-0 h-1.5 rounded-lg pointer-events-none transition-all"
+              className="absolute top-0 left-0 h-1 rounded-lg pointer-events-none transition-all"
               style={{ 
                 width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
                 backgroundColor: settings.accentColor 
               }}
             />
           </div>
-          <div className="flex items-center justify-between mt-1 text-xs font-mono text-white/50">
+          <div className="flex items-center justify-between mt-1 text-xs font-medium text-white/50">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
