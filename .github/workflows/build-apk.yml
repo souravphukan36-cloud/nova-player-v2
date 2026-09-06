@@ -35,43 +35,7 @@ jobs:
           npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
           npx cap init "NOVA Player" "com.sourav.novaplayer" --web-dir dist
           npx cap add android
-          
-          # Inject Android 14/15/16 Notification & Audio permissions into AndroidManifest.xml
-          node -e '
-          const fs = require("fs");
-          const manifestPath = "android/app/src/main/AndroidManifest.xml";
-          if (fs.existsSync(manifestPath)) {
-            let xml = fs.readFileSync(manifestPath, "utf8");
-            const permissions = `
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-`;
-            if (!xml.includes("POST_NOTIFICATIONS")) {
-              xml = xml.replace("<application", permissions + "\n    <application");
-              xml = xml.replace("<application", "<application android:usesCleartextTraffic=\"true\"");
-              fs.writeFileSync(manifestPath, xml, "utf8");
-              console.log("Injected Android 14/15/16 permissions successfully");
-            }
-          }
-          '
-          
-          # Fix Kotlin Duplicate Class Conflict in Android Gradle
-          echo "
-          configurations.all {
-              resolutionStrategy {
-                  force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
-                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
-                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
-              }
-          }
-          " >> android/app/build.gradle
-
+          node scripts/prepare-android.cjs
           npx cap sync android
 
       - name: Build Debug APK with Gradle
