@@ -200,7 +200,7 @@ export const CustomizerModal: React.FC = () => {
                   shelves.cardStyle === 'square' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'
                 }`}
               >
-                Square Boxes (One UI)
+                Square Boxes (Proxy UI)
               </button>
               <button
                 onClick={() => setCardStyle('compact')}
@@ -263,7 +263,7 @@ export const CustomizerModal: React.FC = () => {
             <div className="grid grid-cols-3 gap-2 mb-3">
               {[
                 { id: 'immersive-backdrop', label: 'Immersive Backdrop', badge: 'Photo 2' },
-                { id: 'curved-card', label: 'Curved One UI Card', badge: 'Clean' },
+                { id: 'curved-card', label: 'Curved Proxy UI Card', badge: 'Clean' },
                 { id: 'vinyl-disc', label: '3D Vinyl Disc', badge: 'Retro' },
               ].map(opt => {
                 const isSelected = npConfig.layoutStyle === opt.id;

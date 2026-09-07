@@ -172,6 +172,9 @@ export const SearchTab: React.FC = () => {
           </p>
         </div>
       )}
+
+      {/* Bottom spacer for miniplayer and bottom navigation */}
+      <div className="h-28 w-full" aria-hidden="true" />
     </div>
   );
 };

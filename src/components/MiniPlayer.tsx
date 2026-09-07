@@ -21,11 +21,11 @@ export const MiniPlayer: React.FC = () => {
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="relative px-3 pb-2 select-none">
+    <div className="relative px-3 pb-2 select-none pointer-events-none">
       <div 
         id="mini-player-bar"
         onClick={() => setNowPlayingOpen(true)}
-        className="group relative flex items-center justify-between p-2 rounded-2xl bg-neutral-900/90 border border-white/10 backdrop-blur-xl shadow-2xl cursor-pointer hover:bg-neutral-800/90 transition-all overflow-hidden"
+        className="group relative flex items-center justify-between p-2 rounded-2xl bg-neutral-900/90 border border-white/10 backdrop-blur-xl shadow-2xl cursor-pointer hover:bg-neutral-800/90 transition-all overflow-hidden pointer-events-auto"
       >
         {/* Top Hairline Progress Bar */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/10">

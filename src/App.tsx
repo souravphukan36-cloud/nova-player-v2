@@ -66,13 +66,13 @@ const MainLayout: React.FC = () => {
 
   return (
     <div 
-      className="w-full h-full min-h-screen h-[100dvh] relative flex flex-col overflow-hidden transition-colors duration-300 select-none"
+      className="fixed inset-0 w-full h-full flex flex-col overflow-hidden transition-colors duration-300 select-none"
       style={{ backgroundColor: bgColor }}
     >
       {/* 1. Android / One UI Status Bar */}
       <StatusBar />
 
-      <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col min-h-0 relative">
+      <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col min-h-0 h-full relative overflow-hidden">
         {/* 2. Top Samsung One UI Header */}
         <OneUIHeader 
           title={getHeaderTitle()} 
@@ -83,7 +83,7 @@ const MainLayout: React.FC = () => {
         {/* 3. Tab Content View Area */}
         <main 
           id="main-scroll-view"
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-36 touch-pan-y"
+          className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden pb-44"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {currentTab === 'home' && (
@@ -102,7 +102,7 @@ const MainLayout: React.FC = () => {
       </div>
 
       {/* 4. Docked Mini Player bar directly above Bottom Navigation */}
-      <div className="fixed bottom-14 left-0 right-0 z-30 pointer-events-auto px-2 sm:px-4 max-w-4xl mx-auto">
+      <div className="fixed bottom-14 left-0 right-0 z-30 pointer-events-none px-2 sm:px-4 max-w-4xl mx-auto">
         <MiniPlayer />
       </div>
 

@@ -165,14 +165,14 @@ export const SettingsTab: React.FC = () => {
           </button>
         </div>
         <p className="text-xs text-white/50">
-          Personalize home carousels (Recently played, Quick picks, Rain Therapy ☘️🌧️, Artist spotlight) and player layouts (Immersive backdrop, One UI curved, 3D Vinyl disc).
+          Personalize home carousels (Recently played, Quick picks, Rain Therapy ☘️🌧️, Artist spotlight) and player layouts (Immersive backdrop, Proxy UI curved, 3D Vinyl disc).
         </p>
 
         {/* Quick layout selector */}
         <div className="grid grid-cols-3 gap-2 pt-1">
           {[
             { id: 'immersive-backdrop', label: 'Immersive Backdrop' },
-            { id: 'curved-card', label: 'Curved One UI' },
+            { id: 'curved-card', label: 'Curved Proxy UI' },
             { id: 'vinyl-disc', label: '3D Vinyl Disc' },
           ].map(opt => {
             const isSelected = settings.nowPlayingConfig.layoutStyle === opt.id;
@@ -857,7 +857,7 @@ export const SettingsTab: React.FC = () => {
 
           <div>
             <h3 className="text-lg font-black text-white tracking-tight">NOVA Player</h3>
-            <p className="text-xs text-white/50 mt-0.5">Samsung One UI High-Fidelity Audio Player</p>
+            <p className="text-xs text-white/50 mt-0.5">Proxy UI High-Fidelity Audio Player</p>
           </div>
 
           {/* Prominent Developed by Sourav Phukan Banner */}
@@ -890,7 +890,7 @@ export const SettingsTab: React.FC = () => {
             </div>
             <div>
               <span className="text-white/40 block text-[10px] uppercase font-bold">Design Language</span>
-              <span className="font-bold text-white">Samsung One UI</span>
+              <span className="font-bold text-white">Proxy UI</span>
             </div>
             <div className="pt-2 border-t border-white/10">
               <span className="text-white/40 block text-[10px] uppercase font-bold">App Version</span>
@@ -912,6 +912,9 @@ export const SettingsTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Bottom spacer for miniplayer and bottom navigation */}
+      <div className="h-28 w-full" aria-hidden="true" />
     </div>
   );
 };

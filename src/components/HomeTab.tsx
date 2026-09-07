@@ -542,6 +542,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
           </div>
         </div>
       )}
+
+      {/* Bottom spacer for miniplayer and bottom navigation */}
+      <div className="h-28 w-full" aria-hidden="true" />
     </div>
   );
 };
