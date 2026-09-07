@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Play, 
   Pause, 
-  Clock, 
-  Flame, 
-  FolderPlus, 
   Music, 
   Sparkles, 
   ChevronRight,
-  Heart
+  Heart,
+  Radio,
+  Disc3,
+  Sliders,
+  Flame,
+  CloudRain,
+  Compass,
+  Mic2,
+  Check
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
@@ -24,22 +29,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
     isPlaying,
     togglePlayPause,
     playTrack,
-    setScannerOpen,
     toggleFavorite,
     setNowPlayingOpen,
+    setCustomizerOpen,
     settings,
   } = usePlayer();
 
-  // Recently played tracks (sorted by lastPlayed or dateAdded)
-  const recentlyPlayed = [...tracks]
-    .filter(t => t.lastPlayed || t.playCount > 0)
-    .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0))
-    .slice(0, 6);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'lossless'>('all');
 
-  // Most played tracks
-  const mostPlayed = [...tracks]
-    .sort((a, b) => b.playCount - a.playCount)
-    .slice(0, 6);
+  const shelves = settings.homeShelves;
+  const isPortrait = shelves.cardStyle === 'portrait';
+  const isCompact = shelves.cardStyle === 'compact';
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -47,140 +47,174 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // Filtered tracks for the list below
+  const filteredTracks = tracks.filter(t => {
+    if (activeFilter === 'favorites') return t.isFavorite;
+    if (activeFilter === 'lossless') return t.format === 'flac' || t.format === 'wav';
+    return true;
+  });
+
+  // Recently played tracks (first 6)
+  const recentlyPlayed = [...tracks].sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0)).slice(0, 6);
+
+  // Quick picks
+  const quickPicks = tracks.slice(0, 8);
+
+  // Artist spotlight tracks (Thaikkudam Bridge or Atif Aslam)
+  const spotlightArtist = 'Thaikkudam Bridge';
+  const artistTracks = tracks.filter(t => t.artist.toLowerCase().includes('thaikkudam') || t.artist.toLowerCase().includes('atif'));
+
+  // Rain & Soundscape Mood tracks
+  const rainMoodTracks = tracks.filter(t => 
+    t.genre.toLowerCase().includes('ambient') || 
+    t.genre.toLowerCase().includes('lo-fi') || 
+    t.title.toLowerCase().includes('rain') ||
+    t.genre.toLowerCase().includes('acoustic')
+  );
+
+  // Unique albums
+  const albumMap = new Map<string, Track>();
+  tracks.forEach(t => {
+    if (!albumMap.has(t.album)) {
+      albumMap.set(t.album, t);
+    }
+  });
+  const uniqueAlbums = Array.from(albumMap.values());
+
   return (
-    <div className="space-y-6 pb-36 px-5 select-none animate-in fade-in duration-200">
-      {/* Featured / Resume Playback Hero Card */}
-      {currentTrack && settings.homeShowResumeCard !== false && (
-        <div 
-          onClick={() => setNowPlayingOpen(true)}
-          className="relative overflow-hidden rounded-3xl p-5 border border-white/10 shadow-2xl cursor-pointer group transition-all duration-300 hover:border-white/20"
-          style={{ 
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)' 
-          }}
-        >
-          {/* Accent glow in corner */}
-          <div 
-            className="absolute -right-12 -top-12 w-48 h-48 rounded-full blur-3xl opacity-30 pointer-events-none"
-            style={{ backgroundColor: settings.accentColor }}
-          />
+    <div className="space-y-7 pb-36 px-4 sm:px-6 select-none animate-in fade-in duration-300">
 
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-4 min-w-0 flex-1 pr-3">
-              <div 
-                className="w-16 h-16 rounded-2xl flex-shrink-0 shadow-xl overflow-hidden relative flex items-center justify-center text-white text-lg font-bold group-hover:scale-105 transition-transform"
-                style={{ background: currentTrack.coverArt }}
-              >
-                {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
-                  <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : null}
-                <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                  {isPlaying ? '▶' : '♫'}
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-white/50 flex items-center gap-1.5">
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  <span>Now Playing</span>
-                </span>
-                <h3 className="text-base font-extrabold text-white truncate tracking-tight mt-0.5">
-                  {currentTrack.title}
-                </h3>
-                <p className="text-xs text-white/60 truncate mt-0.5">
-                  {currentTrack.artist} • {currentTrack.album}
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                togglePlayPause();
-              }}
-              className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold shadow-xl transition-transform active:scale-95 flex-shrink-0"
-              style={{ backgroundColor: settings.accentColor }}
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? (
-                <Pause className="w-5 h-5 fill-current" />
-              ) : (
-                <Play className="w-5 h-5 fill-current ml-0.5" />
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Local Storage Scanner Banner */}
-      <div 
-        onClick={() => setScannerOpen(true)}
-        className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div 
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-black"
-            style={{ backgroundColor: settings.accentColor }}
+      {/* Top Customizer Action Bar & Category Chips */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <button
+            onClick={() => setActiveFilter('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              activeFilter === 'all' 
+                ? 'bg-white text-black shadow-md' 
+                : 'bg-white/10 text-white/70 hover:text-white'
+            }`}
           >
-            <FolderPlus className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-white">Scan Device Storage</h4>
-            <p className="text-xs text-white/50">Import MP3, WAV, FLAC, AAC files from phone</p>
-          </div>
+            All Tracks
+          </button>
+          <button
+            onClick={() => setActiveFilter('favorites')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              activeFilter === 'favorites' 
+                ? 'bg-white text-black shadow-md' 
+                : 'bg-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            Liked ({tracks.filter(t => t.isFavorite).length})
+          </button>
+          <button
+            onClick={() => setActiveFilter('lossless')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              activeFilter === 'lossless' 
+                ? 'bg-white text-black shadow-md' 
+                : 'bg-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            Hi-Res Lossless
+          </button>
         </div>
-        <ChevronRight className="w-5 h-5 text-white/40" />
+
+        {/* Prominent Customizer Button */}
+        <button
+          id="btn-customize-feed"
+          onClick={() => setCustomizerOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-all group active:scale-95"
+          style={{ borderColor: `${settings.accentColor}50` }}
+          title="Customize Home Feed & Player Style"
+        >
+          <Sliders className="w-3.5 h-3.5 transition-transform group-hover:rotate-45" style={{ color: settings.accentColor }} />
+          <span>Customize Feed</span>
+        </button>
       </div>
 
-      {/* Recently Played Section (Horizontal Carousel) */}
-      {settings.homeShowRecent !== false && (
+      {/* 1. RECENTLY PLAYED SHELF (Tall Cards from Photo 3 or Customizable) */}
+      {shelves.showRecentlyPlayed && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-white/70" />
-              <h3 className="text-sm font-bold tracking-tight text-white uppercase">Recently Played</h3>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                <span>Recently played</span>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: settings.accentColor }} />
+              </h2>
             </div>
             <button 
-              onClick={() => onNavigateToLibrary('songs')}
-              className="text-xs font-semibold hover:underline"
+              onClick={() => onNavigateToLibrary('playlists')}
+              className="text-xs font-semibold hover:underline flex items-center gap-0.5 transition-colors"
               style={{ color: settings.accentColor }}
             >
-              See All ({tracks.length})
+              <span>History</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
+          {/* Cards Carousel */}
+          <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-2 pt-0.5">
             {recentlyPlayed.map((track) => {
               const isCurrent = currentTrack?.id === track.id;
               return (
                 <div
-                  key={track.id}
-                  onClick={() => playTrack(track, recentlyPlayed)}
-                  className="w-36 flex-shrink-0 p-3 rounded-2xl bg-neutral-900/80 border border-white/10 hover:border-white/20 cursor-pointer transition-all hover:-translate-y-1 group"
+                  key={`recent-${track.id}`}
+                  onClick={() => playTrack(track, tracks)}
+                  className={`flex-shrink-0 group cursor-pointer transition-all duration-300 ${
+                    isPortrait ? 'w-44 sm:w-48' : isCompact ? 'w-36' : 'w-40 sm:w-44'
+                  }`}
                 >
+                  {/* Card Artwork Container */}
                   <div 
-                    className="w-full aspect-square rounded-xl mb-2.5 shadow-md relative overflow-hidden flex items-center justify-center text-white font-bold"
-                    style={{ background: track.coverArt }}
+                    className={`relative w-full rounded-3xl overflow-hidden shadow-xl border border-white/10 group-hover:border-white/30 transition-all duration-300 group-hover:-translate-y-1 ${
+                      isPortrait ? 'aspect-[3/4]' : 'aspect-square'
+                    }`}
                   >
-                    {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
-                      <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : null}
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <img 
+                      src={track.coverArt} 
+                      alt={track.title} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                      referrerPolicy="no-referrer" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
+
+                    {/* Playing badge */}
+                    {isCurrent && isPlaying ? (
                       <div 
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-black shadow-lg"
+                        className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-black text-[9px] font-extrabold tracking-wider animate-pulse shadow-lg"
                         style={{ backgroundColor: settings.accentColor }}
                       >
-                        <Play className="w-4 h-4 fill-current ml-0.5" />
-                      </div>
-                    </div>
-                    {isCurrent && isPlaying && (
-                      <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-emerald-400 font-bold">
                         PLAYING
                       </div>
-                    )}
-                  </div>
+                    ) : null}
 
-                  <h4 className="text-xs font-bold text-white truncate">{track.title}</h4>
-                  <p className="text-[11px] text-white/50 truncate mt-0.5">{track.artist}</p>
+                    {/* Format pill */}
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase bg-black/60 backdrop-blur-md text-white/90 border border-white/15">
+                        {track.format}
+                      </span>
+                    </div>
+
+                    {/* Play hover button */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 backdrop-blur-[2px]">
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold shadow-2xl transition-transform active:scale-90"
+                        style={{ backgroundColor: settings.accentColor }}
+                      >
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                      </div>
+                    </div>
+
+                    {/* Bottom Info text inside card */}
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <h3 className={`text-sm font-bold tracking-tight leading-snug line-clamp-2 ${isCurrent ? 'text-emerald-400' : 'text-white'}`}>
+                        {track.title}
+                      </h3>
+                      <p className="text-xs text-white/70 truncate mt-1 font-medium">
+                        {track.artist}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -188,72 +222,316 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
         </div>
       )}
 
-      {/* Most Played Tracks Section */}
-      {settings.homeShowMostPlayed !== false && (
+      {/* 2. QUICK PICKS (Grid/Row Carousel matching Photo 3) */}
+      {shelves.showQuickPicks && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Flame className="w-4 h-4 text-amber-400" />
-              <h3 className="text-sm font-bold tracking-tight text-white uppercase">Most Played</h3>
-            </div>
+            <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <span>Quick picks</span>
+            </h2>
             <button 
-              onClick={() => onNavigateToLibrary('playlists')}
-              className="text-xs font-semibold hover:underline"
+              onClick={() => onNavigateToLibrary('songs')}
+              className="text-xs font-semibold hover:underline flex items-center gap-0.5 transition-colors"
               style={{ color: settings.accentColor }}
             >
-              Playlists
+              <span>More</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="space-y-1.5">
-            {mostPlayed.map((track, idx) => {
+          <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar pb-2 pt-0.5">
+            {quickPicks.map((track) => {
               const isCurrent = currentTrack?.id === track.id;
               return (
                 <div
-                  key={track.id}
-                  onClick={() => playTrack(track, mostPlayed)}
-                  className={`flex items-center justify-between p-2.5 rounded-2xl cursor-pointer transition-colors ${
-                    isCurrent ? 'bg-white/10 border border-white/15' : 'hover:bg-white/5'
+                  key={`quick-${track.id}`}
+                  onClick={() => playTrack(track, tracks)}
+                  className="w-36 sm:w-40 flex-shrink-0 group cursor-pointer"
+                >
+                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/25 transition-all duration-300 group-hover:-translate-y-1">
+                    <img 
+                      src={track.coverArt} 
+                      alt={track.title} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                      referrerPolicy="no-referrer" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/25">
+                      <div 
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-black font-bold shadow-xl"
+                        style={{ backgroundColor: settings.accentColor }}
+                      >
+                        <Play className="w-4 h-4 fill-current ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 px-1">
+                    <h4 className={`text-xs font-bold truncate leading-tight ${isCurrent ? 'text-emerald-400' : 'text-white'}`}>
+                      {track.title}
+                    </h4>
+                    <p className="text-[11px] text-white/50 truncate mt-0.5">
+                      {track.artist}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 3. ARTIST SPOTLIGHT: Thaikkudam Bridge / Atif Aslam (Photo 1) */}
+      {shelves.showArtistSpotlight && artistTracks.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Mic2 className="w-4 h-4" style={{ color: settings.accentColor }} />
+              <h2 className="text-xl font-bold tracking-tight text-white">
+                {spotlightArtist} & Legends
+              </h2>
+            </div>
+            <button 
+              onClick={() => onNavigateToLibrary('artists')}
+              className="text-xs font-semibold hover:underline flex items-center gap-0.5 transition-colors"
+              style={{ color: settings.accentColor }}
+            >
+              <span>View All</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar pb-2 pt-0.5">
+            {artistTracks.map((track) => (
+              <div
+                key={`artist-${track.id}`}
+                onClick={() => playTrack(track, tracks)}
+                className="w-36 sm:w-40 flex-shrink-0 group cursor-pointer"
+              >
+                <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/30 transition-all duration-300">
+                  <img 
+                    src={track.coverArt} 
+                    alt={track.title} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    referrerPolicy="no-referrer" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                      {track.album}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 px-1">
+                  <h4 className="text-xs font-bold text-white truncate">{track.title}</h4>
+                  <p className="text-[11px] text-white/50 truncate mt-0.5">{track.artist}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 4. ALBUMS & SINGLES (Photo 1) */}
+      {shelves.showAlbumsSingles && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <span>Albums & singles</span>
+            </h2>
+            <button 
+              onClick={() => onNavigateToLibrary('albums')}
+              className="text-xs font-semibold hover:underline flex items-center gap-0.5 transition-colors"
+              style={{ color: settings.accentColor }}
+            >
+              <span>Library</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar pb-2 pt-0.5">
+            {uniqueAlbums.map((track) => (
+              <div
+                key={`album-${track.album}`}
+                onClick={() => playTrack(track, tracks)}
+                className="w-36 sm:w-40 flex-shrink-0 group cursor-pointer"
+              >
+                <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/30 transition-all duration-300">
+                  <img 
+                    src={track.coverArt} 
+                    alt={track.album} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    referrerPolicy="no-referrer" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+                  <div className="absolute top-2.5 right-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-black/60 backdrop-blur-md text-white border border-white/15">
+                      Album
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 px-1">
+                  <h4 className="text-xs font-bold text-white truncate">{track.album}</h4>
+                  <p className="text-[11px] text-white/50 truncate mt-0.5">{track.artist}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 5. RAIN THERAPY ☘️🌧️ (FOR COZY DAYS AND ENDLESS CUPS OF TEA) (Photo 1) */}
+      {shelves.showMoodTherapy && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-neutral-900/60 to-cyan-950/30 border border-emerald-500/20 shadow-xl">
+          <div className="flex items-center justify-between mb-3.5">
+            <div>
+              <div className="flex items-center gap-2">
+                <CloudRain className="w-5 h-5 text-emerald-400 animate-bounce" style={{ animationDuration: '2s' }} />
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+                  Rain Therapy ☘️🌧️
+                </h2>
+              </div>
+              <p className="text-[11px] font-bold tracking-widest text-emerald-400/80 uppercase mt-0.5">
+                FOR COZY DAYS AND ENDLESS CUPS OF TEA
+              </p>
+            </div>
+            <button 
+              onClick={() => onNavigateToLibrary('genres')}
+              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              Soundscapes
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar pb-1">
+            {rainMoodTracks.map((track) => (
+              <div
+                key={`rain-${track.id}`}
+                onClick={() => playTrack(track, tracks)}
+                className="w-40 sm:w-44 flex-shrink-0 group cursor-pointer"
+              >
+                <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-emerald-400/40 transition-all duration-300 group-hover:-translate-y-1">
+                  <img 
+                    src={track.coverArt} 
+                    alt={track.title} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    referrerPolicy="no-referrer" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                  
+                  <div className="absolute inset-0 flex items-center justify-center p-3 text-center">
+                    <span className="text-sm font-extrabold text-white drop-shadow-md">
+                      {track.title}
+                    </span>
+                  </div>
+
+                  <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] text-white/70 font-medium">
+                    <span>{track.genre}</span>
+                    <span>8D Audio</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 6. ALL TRACKS LIST (Vertical rows) */}
+      {shelves.showAllTracks && (
+        <div className="pt-2">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="flex items-center gap-2">
+              <Music className="w-4 h-4" style={{ color: settings.accentColor }} />
+              <h3 className="text-sm font-extrabold tracking-wide text-white uppercase font-sans">
+                All Tracks
+              </h3>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70 font-mono font-semibold">
+                {filteredTracks.length}
+              </span>
+            </div>
+          </div>
+
+          {/* Vertical Rows of Songs */}
+          <div className="space-y-1.5">
+            {filteredTracks.map((track, idx) => {
+              const isCurrent = currentTrack?.id === track.id;
+              return (
+                <div
+                  key={`row-${track.id}`}
+                  onClick={() => playTrack(track, filteredTracks)}
+                  className={`group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 border ${
+                    isCurrent 
+                      ? 'bg-emerald-950/30 border-emerald-500/40 shadow-md' 
+                      : 'bg-neutral-900/50 hover:bg-neutral-800/80 border-white/5 hover:border-white/15'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                    <span className="w-4 text-center text-xs font-mono font-bold text-white/40">
-                      {idx + 1}
+                  {/* Left: Thumbnail & Song Info */}
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-3">
+                    <span className="w-5 text-center text-xs font-mono font-bold text-white/40 group-hover:text-white/70">
+                      {isCurrent && isPlaying ? (
+                        <span className="text-emerald-400 animate-pulse font-bold">▶</span>
+                      ) : (
+                        idx + 1
+                      )}
                     </span>
+
                     <div 
-                      className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md overflow-hidden relative flex items-center justify-center text-xs font-bold text-white"
+                      className="w-12 h-12 rounded-xl flex-shrink-0 shadow-md overflow-hidden relative flex items-center justify-center text-xs font-bold text-white group-hover:scale-105 transition-transform"
                       style={{ background: track.coverArt }}
                     >
                       {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
-                        <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      ) : null}
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                        {isCurrent && isPlaying ? '▶' : '♫'}
-                      </div>
+                        <img 
+                          src={track.coverArt} 
+                          alt={track.title} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer" 
+                        />
+                      ) : (
+                        <Music className="w-5 h-5 text-white/60" />
+                      )}
+
+                      {isCurrent && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-lg animate-ping" />
+                        </div>
+                      )}
                     </div>
+
                     <div className="min-w-0 flex-1">
                       <h4 
-                        className={`text-xs font-bold truncate ${isCurrent ? 'text-white' : 'text-white/90'}`}
-                        style={{ color: isCurrent ? settings.accentColor : undefined }}
+                        className={`text-xs sm:text-sm font-bold truncate tracking-tight ${
+                          isCurrent ? 'text-emerald-400' : 'text-white'
+                        }`}
                       >
                         {track.title}
                       </h4>
-                      <p className="text-[11px] text-white/50 truncate">
-                        {track.artist} • <span className="text-amber-400/80">{track.playCount} plays</span>
+                      <p className="text-[11px] text-white/50 truncate mt-0.5">
+                        {track.artist} <span className="text-white/20">•</span> {track.album}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono text-white/40">{formatTime(track.duration)}</span>
+                  {/* Right: Audio Tag, Duration & Actions */}
+                  <div className="flex items-center gap-2.5">
+                    <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-white/5 text-white/60 border border-white/10">
+                      {track.format}
+                    </span>
+
+                    <span className="text-xs font-mono text-white/50">
+                      {formatTime(track.duration)}
+                    </span>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleFavorite(track.id);
                       }}
-                      className={`p-1.5 rounded-full hover:bg-white/10 ${
-                        track.isFavorite ? 'text-rose-500' : 'text-white/40 hover:text-white'
+                      className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
+                        track.isFavorite ? 'text-rose-500' : 'text-white/30 hover:text-white'
                       }`}
+                      title={track.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
                       <Heart className={`w-4 h-4 ${track.isFavorite ? 'fill-current' : ''}`} />
                     </button>

@@ -49,6 +49,8 @@ interface PlayerContextType {
   setScannerOpen: (open: boolean) => void;
   playlistModalOpen: boolean;
   setPlaylistModalOpen: (open: boolean) => void;
+  customizerOpen: boolean;
+  setCustomizerOpen: (open: boolean) => void;
 
   // Actions
   playTrack: (track: Track, newQueue?: Track[]) => void;
@@ -70,10 +72,12 @@ interface PlayerContextType {
   // Equalizer
   setEQPreset: (preset: EQPreset) => void;
   setEQBand: (bandIndex: number, gain: number) => void;
+  setEQBandMode: (mode: '5-band' | '10-band') => void;
   setBassBoost: (val: number) => void;
   setReverb: (val: number) => void;
   setStereoWidening: (val: number) => void;
   toggleDolbyAtmos: () => void;
+  toggleEightDAudio: () => void;
   toggleEQEnabled: () => void;
 
   // Sleep Timer
@@ -98,7 +102,7 @@ interface PlayerContextType {
   updateSettings: (partial: Partial<SettingsState>) => void;
 }
 
-const EQ_PRESETS: Record<EQPreset, [number, number, number, number, number]> = {
+const EQ_PRESETS_5: Record<EQPreset, number[]> = {
   'Normal': [0, 0, 0, 0, 0],
   'Bass Boost': [6, 4, 1, 0, 0],
   'Rock': [5, 3, -1, 3, 5],
@@ -110,16 +114,28 @@ const EQ_PRESETS: Record<EQPreset, [number, number, number, number, number]> = {
   'Custom': [0, 0, 0, 0, 0],
 };
 
+const EQ_PRESETS_10: Record<EQPreset, number[]> = {
+  'Normal': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  'Bass Boost': [8, 7, 5, 3, 1, 0, 0, 1, 2, 2],
+  'Rock': [5, 4, 3, -1, -2, 1, 3, 4, 5, 5],
+  'Pop': [-1, 1, 2, 4, 5, 3, 2, 0, -1, -2],
+  'Jazz': [4, 3, 2, 1, -1, -1, 1, 2, 3, 4],
+  'Classical': [5, 4, 3, 1, -1, 1, 2, 3, 4, 4],
+  'EDM': [8, 7, 5, 1, -1, 2, 4, 5, 6, 6],
+  'Vocal': [-3, -2, 0, 2, 5, 5, 4, 3, 1, 0],
+  'Custom': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+};
+
 const DEFAULT_SETTINGS: SettingsState = {
   theme: 'amoled',
-  accentColor: '#7C6EFF',
+  accentColor: '#10B981', // Emerald Nature Accent
   crossfadeSecs: 2,
   gapless: true,
   highQuality: true,
   supportedFormats: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'],
   scanFolders: ['/Storage/emulated/0/Music', '/Storage/emulated/0/Download'],
   autoScanOnStartup: true,
-  soundAliveSpectrum: false, // Turned OFF by default as requested
+  soundAliveSpectrum: false,
   showTopStatusBar: true,
   topBarRedAccent: true,
   homeShowResumeCard: true,
@@ -129,18 +145,35 @@ const DEFAULT_SETTINGS: SettingsState = {
   libraryViewMode: 'list',
   searchInstantFilter: true,
   systemNotificationsEnabled: true,
-  transitionDelaySecs: 0, // 0s Instant / Gapless transition by default
-  autoAdvanceLoop: true, // Seamless continuous auto-advance
+  transitionDelaySecs: 0,
+  autoAdvanceLoop: true,
+  homeShelves: {
+    showRecentlyPlayed: true,
+    showQuickPicks: true,
+    showMoodTherapy: true,
+    showArtistSpotlight: true,
+    showAlbumsSingles: true,
+    showAllTracks: true,
+    cardStyle: 'portrait',
+  },
+  nowPlayingConfig: {
+    layoutStyle: 'immersive-backdrop',
+    showLyricsLine: true,
+    showVolumeBar: true,
+    infiniteAutoplay: true,
+  },
 };
 
 const DEFAULT_EQ: EqualizerState = {
   enabled: true,
   preset: 'Bass Boost',
-  bands: [6, 4, 1, 0, 0],
-  bassBoost: 60,
+  bandMode: '10-band',
+  bands: [8, 7, 5, 3, 1, 0, 0, 1, 2, 2],
+  bassBoost: 65,
   reverb: 20,
   stereoWidening: 45,
   dolbyAtmos: true,
+  eightDAudio: false,
 };
 
 const PlayerContext = createContext<PlayerContextType | null>(null);
@@ -152,7 +185,17 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const saved = localStorage.getItem('nova_tracks');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Check if newly introduced default tracks are missing and prepend them
+          const existingIds = new Set(parsed.map((t: Track) => t.id));
+          const missingDefaults = DEFAULT_TRACKS.filter(dt => !existingIds.has(dt.id));
+          if (missingDefaults.length > 0) {
+            const combined = [...missingDefaults, ...parsed];
+            localStorage.setItem('nova_tracks', JSON.stringify(combined));
+            return combined;
+          }
+          return parsed;
+        }
       }
     } catch {
       // fallback
@@ -176,7 +219,21 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [settings, setSettings] = useState<SettingsState>(() => {
     try {
       const saved = localStorage.getItem('nova_settings');
-      if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          homeShelves: {
+            ...DEFAULT_SETTINGS.homeShelves,
+            ...(parsed.homeShelves || {})
+          },
+          nowPlayingConfig: {
+            ...DEFAULT_SETTINGS.nowPlayingConfig,
+            ...(parsed.nowPlayingConfig || {})
+          }
+        };
+      }
     } catch {
       // fallback
     }
@@ -226,6 +283,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [sleepTimerOpen, setSleepTimerOpen] = useState<boolean>(false);
   const [scannerOpen, setScannerOpen] = useState<boolean>(false);
   const [playlistModalOpen, setPlaylistModalOpen] = useState<boolean>(false);
+  const [customizerOpen, setCustomizerOpen] = useState<boolean>(false);
 
   // References for event loops and timer management
   const autoAdvanceTimerRef = useRef<number | null>(null);
@@ -395,21 +453,23 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     // Determine effective queue
-    let effectiveQueue = queue;
-    let nextIdx = queueIndex + 1;
+    let effectiveQueue = queue.length > 0 ? queue : tracks;
 
     // If current queue only had 1 song or is empty, seamlessly fall back to full library tracks
     if (effectiveQueue.length <= 1 && tracks.length > 1) {
       effectiveQueue = tracks;
-      const curId = stateRef.current.currentTrack?.id;
-      const foundIdx = effectiveQueue.findIndex(t => t.id === curId);
-      nextIdx = foundIdx !== -1 ? foundIdx + 1 : 0;
     }
+
+    const curId = stateRef.current.currentTrack?.id;
+    const curIdx = curId ? effectiveQueue.findIndex(t => t.id === curId) : queueIndex;
+    const baseIdx = curIdx !== -1 ? curIdx : queueIndex;
+
+    let nextIdx = baseIdx + 1;
 
     if (stateRef.current.shuffle === 'all' && effectiveQueue.length > 1) {
       do {
         nextIdx = Math.floor(Math.random() * effectiveQueue.length);
-      } while (nextIdx === queueIndex && effectiveQueue.length > 1);
+      } while (nextIdx === baseIdx && effectiveQueue.length > 1);
     } else if (nextIdx >= effectiveQueue.length) {
       // Loop back to start if repeat is 'all' or autoAdvanceLoop is enabled (default true)
       if (repeat === 'all' || currentSettings.autoAdvanceLoop !== false) {
@@ -536,20 +596,25 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       autoAdvanceTimerRef.current = null;
     }
 
-    const { queue, queueIndex, shuffle, tracks } = stateRef.current;
-    let effectiveQueue = queue;
+    const { queue, queueIndex, shuffle, tracks, currentTrack } = stateRef.current;
+    let effectiveQueue = queue.length > 0 ? queue : tracks;
     if (effectiveQueue.length <= 1 && tracks.length > 1) {
       effectiveQueue = tracks;
     }
     if (effectiveQueue.length === 0) return;
 
-    let nextIdx = queueIndex + 1;
+    // Find real position of current track in effectiveQueue
+    const curIdx = currentTrack ? effectiveQueue.findIndex(t => t.id === currentTrack.id) : queueIndex;
+    const baseIdx = curIdx !== -1 ? curIdx : queueIndex;
+
+    let nextIdx = baseIdx + 1;
     if (shuffle === 'all' && effectiveQueue.length > 1) {
       do {
         nextIdx = Math.floor(Math.random() * effectiveQueue.length);
-      } while (nextIdx === queueIndex && effectiveQueue.length > 1);
+      } while (nextIdx === baseIdx && effectiveQueue.length > 1);
     } else if (nextIdx >= effectiveQueue.length) {
-      nextIdx = 0; // Wrap around smoothly
+      // Reached the last track: strictly wrap around to index 0 (the FIRST song)!
+      nextIdx = 0;
     }
 
     const nextTr = effectiveQueue[nextIdx];
@@ -571,8 +636,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       autoAdvanceTimerRef.current = null;
     }
 
-    const { queue, queueIndex, tracks } = stateRef.current;
-    let effectiveQueue = queue;
+    const { queue, queueIndex, tracks, currentTrack } = stateRef.current;
+    let effectiveQueue = queue.length > 0 ? queue : tracks;
     if (effectiveQueue.length <= 1 && tracks.length > 1) {
       effectiveQueue = tracks;
     }
@@ -584,7 +649,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    let prevIdx = queueIndex - 1;
+    const curIdx = currentTrack ? effectiveQueue.findIndex(t => t.id === currentTrack.id) : queueIndex;
+    const baseIdx = curIdx !== -1 ? curIdx : queueIndex;
+
+    let prevIdx = baseIdx - 1;
     if (prevIdx < 0) {
       prevIdx = effectiveQueue.length - 1;
     }
@@ -686,22 +754,40 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Equalizer actions
   const setEQPreset = (preset: EQPreset) => {
-    const presetBands = EQ_PRESETS[preset] || [0, 0, 0, 0, 0];
-    setEqualizer(prev => ({
-      ...prev,
-      preset,
-      bands: [...presetBands] as [number, number, number, number, number],
-    }));
+    setEqualizer(prev => {
+      const mode = prev.bandMode || '10-band';
+      const presetBands = mode === '10-band' 
+        ? (EQ_PRESETS_10[preset] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        : (EQ_PRESETS_5[preset] || [0, 0, 0, 0, 0]);
+      return {
+        ...prev,
+        preset,
+        bands: [...presetBands],
+      };
+    });
   };
 
   const setEQBand = (bandIndex: number, gain: number) => {
     setEqualizer(prev => {
-      const newBands = [...prev.bands] as [number, number, number, number, number];
+      const newBands = [...prev.bands];
       newBands[bandIndex] = gain;
       return {
         ...prev,
         preset: 'Custom',
         bands: newBands,
+      };
+    });
+  };
+
+  const setEQBandMode = (bandMode: '5-band' | '10-band') => {
+    setEqualizer(prev => {
+      const presetBands = bandMode === '10-band'
+        ? (EQ_PRESETS_10[prev.preset] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        : (EQ_PRESETS_5[prev.preset] || [0, 0, 0, 0, 0]);
+      return {
+        ...prev,
+        bandMode,
+        bands: [...presetBands],
       };
     });
   };
@@ -720,6 +806,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const toggleDolbyAtmos = () => {
     setEqualizer(prev => ({ ...prev, dolbyAtmos: !prev.dolbyAtmos }));
+  };
+
+  const toggleEightDAudio = () => {
+    setEqualizer(prev => ({ ...prev, eightDAudio: !prev.eightDAudio }));
   };
 
   const toggleEQEnabled = () => {
@@ -877,6 +967,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setScannerOpen,
         playlistModalOpen,
         setPlaylistModalOpen,
+        customizerOpen,
+        setCustomizerOpen,
 
         playTrack,
         togglePlayPause,
@@ -896,10 +988,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         setEQPreset,
         setEQBand,
+        setEQBandMode,
         setBassBoost,
         setReverb,
         setStereoWidening,
         toggleDolbyAtmos,
+        toggleEightDAudio,
         toggleEQEnabled,
 
         startSleepTimer,

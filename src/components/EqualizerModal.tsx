@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Sliders, Volume2, Sparkles, Check } from 'lucide-react';
+import { ChevronDown, Sliders, Volume2, Sparkles, Check, Headphones, Radio } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { EQPreset } from '../types';
 
@@ -15,12 +15,25 @@ const PRESETS: EQPreset[] = [
   'Custom',
 ];
 
-const FREQUENCIES = [
+const FREQUENCIES_5 = [
   { label: '60Hz', desc: 'Sub-bass' },
   { label: '230Hz', desc: 'Bass' },
   { label: '910Hz', desc: 'Mid' },
   { label: '3.6kHz', desc: 'Presence' },
   { label: '14kHz', desc: 'Treble' },
+];
+
+const FREQUENCIES_10 = [
+  { label: '31Hz', desc: 'Sub-low' },
+  { label: '62Hz', desc: 'Sub-bass' },
+  { label: '125Hz', desc: 'Bass' },
+  { label: '250Hz', desc: 'Low-mid' },
+  { label: '500Hz', desc: 'Mid' },
+  { label: '1kHz', desc: 'Center' },
+  { label: '2kHz', desc: 'Upper-mid' },
+  { label: '4kHz', desc: 'Presence' },
+  { label: '8kHz', desc: 'Brilliance' },
+  { label: '16kHz', desc: 'Air' },
 ];
 
 export const EqualizerModal: React.FC = () => {
@@ -30,15 +43,20 @@ export const EqualizerModal: React.FC = () => {
     setEqualizerOpen,
     setEQPreset,
     setEQBand,
+    setEQBandMode,
     setBassBoost,
     setReverb,
     setStereoWidening,
     toggleDolbyAtmos,
+    toggleEightDAudio,
     toggleEQEnabled,
     settings,
   } = usePlayer();
 
   if (!equalizerOpen) return null;
+
+  const is10Band = (equalizer.bandMode || '10-band') === '10-band';
+  const frequencies = is10Band ? FREQUENCIES_10 : FREQUENCIES_5;
 
   return (
     <div 
@@ -57,12 +75,12 @@ export const EqualizerModal: React.FC = () => {
           </button>
           <div>
             <h2 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              <span>NOVA Equalizer</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/70 uppercase font-mono">
-                5-Band DSP
+              <span>NOVA SoundAlive</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold border border-emerald-500/30">
+                {is10Band ? '10-Band Pro' : '5-Band Standard'}
               </span>
             </h2>
-            <p className="text-xs text-white/50">Custom 5-Band DSP & Spatial Audio</p>
+            <p className="text-xs text-white/50">Studio Equalizer & 8D Spatial Audio</p>
           </div>
         </div>
 
@@ -82,12 +100,33 @@ export const EqualizerModal: React.FC = () => {
         </label>
       </div>
 
-      <div className={`p-6 max-w-lg mx-auto w-full space-y-6 ${!equalizer.enabled ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className={`p-5 sm:p-6 max-w-lg mx-auto w-full space-y-5 ${!equalizer.enabled ? 'opacity-40 pointer-events-none' : ''}`}>
+        
+        {/* Band Mode Switcher: 10-Band vs 5-Band */}
+        <div className="flex items-center justify-between bg-neutral-900/90 p-1 rounded-2xl border border-white/10">
+          <button
+            onClick={() => setEQBandMode('10-band')}
+            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+              is10Band ? 'bg-emerald-500 text-black shadow-lg' : 'text-white/60 hover:text-white'
+            }`}
+          >
+            10-Band Studio DSP (SoundAlive)
+          </button>
+          <button
+            onClick={() => setEQBandMode('5-band')}
+            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+              !is10Band ? 'bg-emerald-500 text-black shadow-lg' : 'text-white/60 hover:text-white'
+            }`}
+          >
+            5-Band Simple
+          </button>
+        </div>
+
         {/* Presets Horizontal Scroll Pills */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-white/60">Presets</span>
-            <span className="text-xs font-medium text-white/40">Active: {equalizer.preset}</span>
+            <span className="text-xs font-medium text-emerald-400">Preset: {equalizer.preset}</span>
           </div>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
             {PRESETS.map((p) => {
@@ -111,53 +150,92 @@ export const EqualizerModal: React.FC = () => {
           </div>
         </div>
 
-        {/* 5-Band Vertical Graphical Equalizer */}
-        <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl">
+        {/* Vertical Graphical Equalizer Sliders */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-white/60">5-Band Equalizer</span>
-            <span className="text-[11px] font-mono text-white/40">Scale: -12dB to +12dB</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-white/60">
+              {is10Band ? '10-Band Pro Frequency Curve' : '5-Band Frequency Sliders'}
+            </span>
+            <span className="text-[11px] font-mono text-white/40">Range: -12dB to +12dB</span>
           </div>
 
-          <div className="grid grid-cols-5 gap-2 h-44 items-center justify-items-center">
-            {equalizer.bands.map((gain, idx) => (
-              <div key={idx} className="flex flex-col items-center justify-between h-full w-full">
-                {/* Current dB readout */}
-                <span className="text-[11px] font-mono font-semibold" style={{ color: gain !== 0 ? settings.accentColor : '#9ca3af' }}>
-                  {gain > 0 ? `+${gain}` : gain}dB
-                </span>
+          <div className={`grid ${is10Band ? 'grid-cols-10 gap-1' : 'grid-cols-5 gap-2'} h-48 items-center justify-items-center`}>
+            {frequencies.map((freq, idx) => {
+              const gain = equalizer.bands[idx] ?? 0;
+              return (
+                <div key={idx} className="flex flex-col items-center justify-between h-full w-full">
+                  {/* Current dB readout */}
+                  <span 
+                    className="text-[10px] font-mono font-bold" 
+                    style={{ color: gain !== 0 ? settings.accentColor : '#9ca3af' }}
+                  >
+                    {gain > 0 ? `+${gain}` : gain}
+                  </span>
 
-                {/* Vertical Slider */}
-                <div className="relative flex items-center justify-center h-28 my-1">
-                  {/* Zero dB center marker */}
-                  <div className="absolute w-6 h-[1px] bg-white/20 z-0 pointer-events-none" />
-                  <input
-                    type="range"
-                    min="-12"
-                    max="12"
-                    step="1"
-                    value={gain}
-                    onChange={(e) => setEQBand(idx, parseInt(e.target.value))}
-                    className="w-24 h-1.5 bg-white/20 rounded-lg cursor-pointer appearance-none -rotate-90 origin-center"
-                    style={{ accentColor: settings.accentColor }}
-                  />
-                </div>
+                  {/* Vertical Slider */}
+                  <div className="relative flex items-center justify-center h-28 my-1">
+                    {/* Zero dB center marker */}
+                    <div className="absolute w-5 h-[1px] bg-white/20 z-0 pointer-events-none" />
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      step="1"
+                      value={gain}
+                      onChange={(e) => setEQBand(idx, parseInt(e.target.value))}
+                      className="w-24 h-1.5 bg-white/20 rounded-lg cursor-pointer appearance-none -rotate-90 origin-center"
+                      style={{ accentColor: settings.accentColor }}
+                    />
+                  </div>
 
-                {/* Frequency label */}
-                <div className="text-center">
-                  <p className="text-xs font-bold text-white tracking-tight">{FREQUENCIES[idx].label}</p>
-                  <p className="text-[9px] text-white/40">{FREQUENCIES[idx].desc}</p>
+                  {/* Frequency label */}
+                  <div className="text-center">
+                    <p className="text-[10px] sm:text-xs font-bold text-white tracking-tight">{freq.label}</p>
+                    <p className="text-[8px] text-white/40 leading-none">{freq.desc}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* NOVA Advanced Effects: Bass Boost & Reverb & Stereo Widening */}
+        {/* 8D Spatial Audio Feature Card */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-neutral-900/90 border border-purple-500/30 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
+                <Headphones className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">8D Spatial Orbit Audio</h4>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono">
+                    Surround LFO
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/60">360° Circular motion around your head (Best with headphones)</p>
+              </div>
+            </div>
+
+            <button
+              onClick={toggleEightDAudio}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${
+                equalizer.eightDAudio 
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' 
+                  : 'bg-white/10 text-white/60 hover:text-white'
+              }`}
+            >
+              {equalizer.eightDAudio ? 'ACTIVE' : 'OFF'}
+            </button>
+          </div>
+        </div>
+
+        {/* NOVA Advanced Effects: Bass Boost, Reverb, Stereo Widening, Dolby Atmos */}
         <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-white/60 flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5" />
-              <span>NOVA Audio Enhancements</span>
+              <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Acoustic Engine Enhancements</span>
             </span>
           </div>
 
@@ -166,9 +244,9 @@ export const EqualizerModal: React.FC = () => {
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-white/80 flex items-center gap-1.5">
                 <Volume2 className="w-3.5 h-3.5 text-blue-400" />
-                <span>Bass Boost (Dynamic Low-end)</span>
+                <span>Deep Sub-Bass Boost</span>
               </span>
-              <span className="font-mono text-white/60">{equalizer.bassBoost}%</span>
+              <span className="font-mono text-emerald-400 font-bold">{equalizer.bassBoost}%</span>
             </div>
             <input
               type="range"
@@ -176,8 +254,7 @@ export const EqualizerModal: React.FC = () => {
               max="100"
               value={equalizer.bassBoost}
               onChange={(e) => setBassBoost(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer"
-              style={{ accentColor: settings.accentColor }}
+              className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer accent-emerald-400"
             />
           </div>
 
@@ -186,9 +263,9 @@ export const EqualizerModal: React.FC = () => {
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-white/80 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Concert Hall & Reverb Ambience</span>
+                <span>Concert Hall & Stage Reverb</span>
               </span>
-              <span className="font-mono text-white/60">{equalizer.reverb}%</span>
+              <span className="font-mono text-amber-400 font-bold">{equalizer.reverb}%</span>
             </div>
             <input
               type="range"
@@ -196,8 +273,7 @@ export const EqualizerModal: React.FC = () => {
               max="100"
               value={equalizer.reverb}
               onChange={(e) => setReverb(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer"
-              style={{ accentColor: settings.accentColor }}
+              className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer accent-amber-400"
             />
           </div>
 
@@ -205,10 +281,10 @@ export const EqualizerModal: React.FC = () => {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-white/80 flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-purple-400" />
-                <span>Stereo Widening & 3D Stage</span>
+                <Radio className="w-3.5 h-3.5 text-purple-400" />
+                <span>Stereo Widening (Panoramic)</span>
               </span>
-              <span className="font-mono text-white/60">{equalizer.stereoWidening}%</span>
+              <span className="font-mono text-purple-400 font-bold">{equalizer.stereoWidening}%</span>
             </div>
             <input
               type="range"
@@ -216,8 +292,7 @@ export const EqualizerModal: React.FC = () => {
               max="100"
               value={equalizer.stereoWidening}
               onChange={(e) => setStereoWidening(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer"
-              style={{ accentColor: settings.accentColor }}
+              className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer accent-purple-400"
             />
           </div>
 
@@ -225,16 +300,15 @@ export const EqualizerModal: React.FC = () => {
           <div className="flex items-center justify-between pt-3 border-t border-white/10">
             <div>
               <p className="text-xs font-semibold text-white">Dolby Atmos Simulation</p>
-              <p className="text-[11px] text-white/50">Immersive panoramic soundfield</p>
+              <p className="text-[11px] text-white/50">Cinema multi-channel simulation</p>
             </div>
             <button
               onClick={toggleDolbyAtmos}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                 equalizer.dolbyAtmos
-                  ? 'text-black shadow-md'
+                  ? 'bg-cyan-500 text-black shadow-md'
                   : 'bg-white/10 text-white/50'
               }`}
-              style={{ backgroundColor: equalizer.dolbyAtmos ? settings.accentColor : undefined }}
             >
               {equalizer.dolbyAtmos ? 'ON' : 'OFF'}
             </button>
@@ -245,19 +319,19 @@ export const EqualizerModal: React.FC = () => {
         <div className="flex items-center gap-3 pt-2">
           <button
             onClick={() => setEQPreset('Normal')}
-            className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors"
+            className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors active:scale-95"
           >
             Reset to Flat
           </button>
           <button
             onClick={() => setEqualizerOpen(false)}
-            className="flex-1 py-3 rounded-2xl text-xs font-bold text-black shadow-xl transition-transform active:scale-95"
-            style={{ backgroundColor: settings.accentColor }}
+            className="flex-1 py-3 rounded-2xl text-xs font-bold text-black shadow-xl transition-transform active:scale-95 bg-emerald-400 hover:bg-emerald-300"
           >
-            Done
+            Apply & Close
           </button>
         </div>
       </div>
     </div>
   );
 };
+

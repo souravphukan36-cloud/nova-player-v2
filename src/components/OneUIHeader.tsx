@@ -1,6 +1,7 @@
 import React from 'react';
-import { Sliders, Moon, FolderPlus, Music } from 'lucide-react';
+import { Sliders, Moon, FolderPlus } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { NatureMusicLogo } from './NatureMusicLogo';
 
 interface OneUIHeaderProps {
   title: string;
@@ -26,13 +27,11 @@ export const OneUIHeader: React.FC<OneUIHeaderProps> = ({
       {/* Action Toolbar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div 
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-lg"
-            style={{ backgroundColor: settings.accentColor }}
-          >
-            <Music className="w-4 h-4" />
+          <NatureMusicLogo size={28} showText={false} />
+          <div className="flex flex-col leading-none">
+            <span className="text-xs font-bold tracking-wider text-white uppercase">NOVA</span>
+            <span className="text-[9px] font-semibold text-emerald-400 tracking-wider uppercase">Nature Audio</span>
           </div>
-          <span className="text-xs font-semibold tracking-wider text-white/50 uppercase">NOVA Player</span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -70,12 +69,14 @@ export const OneUIHeader: React.FC<OneUIHeaderProps> = ({
       </div>
 
       {/* Prominent One UI Title */}
-      <div className="mt-2">
-        <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
-        {subtitle && (
-          <p className="text-xs text-white/50 font-medium mt-0.5">{subtitle}</p>
-        )}
-      </div>
+      {title ? (
+        <div className="mt-2">
+          <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
+          {subtitle && (
+            <p className="text-xs text-white/50 font-medium mt-0.5">{subtitle}</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 };

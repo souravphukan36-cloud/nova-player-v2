@@ -52,11 +52,13 @@ export type EQPreset =
 export interface EqualizerState {
   enabled: boolean;
   preset: EQPreset;
-  bands: [number, number, number, number, number]; // 60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz (-12dB to +12dB)
+  bands: number[]; // 5 or 10 band gains (-12dB to +12dB)
+  bandMode: '5-band' | '10-band';
   bassBoost: number; // 0 to 100
   reverb: number; // 0 to 100
   stereoWidening: number; // 0 to 100
   dolbyAtmos: boolean;
+  eightDAudio: boolean; // Dynamic 8D spatial binaural audio effect
 }
 
 export type ShuffleMode = 'off' | 'all';
@@ -89,4 +91,21 @@ export interface SettingsState {
   systemNotificationsEnabled: boolean; // System Notification & media session
   transitionDelaySecs: number; // Delay between songs in seconds (0 = instant, 0.5s, 1s, 2s, 3s, etc.)
   autoAdvanceLoop: boolean; // Loop back to start when queue finishes so playback never stops
+
+  // BitChord-Inspired & Customizable Shelves
+  homeShelves: {
+    showRecentlyPlayed: boolean;
+    showQuickPicks: boolean;
+    showMoodTherapy: boolean;
+    showArtistSpotlight: boolean;
+    showAlbumsSingles: boolean;
+    showAllTracks: boolean;
+    cardStyle: 'portrait' | 'square' | 'compact';
+  };
+  nowPlayingConfig: {
+    layoutStyle: 'immersive-backdrop' | 'curved-card' | 'vinyl-disc';
+    showLyricsLine: boolean;
+    showVolumeBar: boolean;
+    infiniteAutoplay: boolean;
+  };
 }

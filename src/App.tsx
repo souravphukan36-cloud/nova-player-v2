@@ -14,6 +14,7 @@ import { LockScreenModal } from './components/LockScreenModal';
 import { NotificationShadeModal } from './components/NotificationShadeModal';
 import { SleepTimerModal } from './components/SleepTimerModal';
 import { FileScannerModal } from './components/FileScannerModal';
+import { CustomizerModal } from './components/CustomizerModal';
 import { MainTab, LibrarySubTab } from './types';
 
 const MainLayout: React.FC = () => {
@@ -31,7 +32,7 @@ const MainLayout: React.FC = () => {
   const getHeaderTitle = () => {
     switch (currentTab) {
       case 'home':
-        return 'NOVA Player';
+        return '';
       case 'library':
         return 'Music Library';
       case 'search':
@@ -44,7 +45,7 @@ const MainLayout: React.FC = () => {
   const getHeaderSubtitle = () => {
     switch (currentTab) {
       case 'home':
-        return 'High Fidelity Audio Player';
+        return '';
       case 'library':
         return 'Tracks, Albums, Playlists & Folders';
       case 'search':
@@ -65,42 +66,52 @@ const MainLayout: React.FC = () => {
 
   return (
     <div 
-      className="h-[100dvh] h-screen max-w-md mx-auto relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300"
+      className="w-full h-full min-h-screen h-[100dvh] relative flex flex-col overflow-hidden transition-colors duration-300 select-none"
       style={{ backgroundColor: bgColor }}
     >
       {/* 1. Android / One UI Status Bar */}
       <StatusBar />
 
-      {/* 2. Top Samsung One UI Header */}
-      <OneUIHeader 
-        title={getHeaderTitle()} 
-        subtitle={getHeaderSubtitle()}
-        showScanner={currentTab !== 'settings'}
-      />
+      <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col min-h-0 relative">
+        {/* 2. Top Samsung One UI Header */}
+        <OneUIHeader 
+          title={getHeaderTitle()} 
+          subtitle={getHeaderSubtitle()}
+          showScanner={currentTab !== 'settings'}
+        />
 
-      {/* 3. Tab Content View Area */}
-      <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-36">
-        {currentTab === 'home' && (
-          <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
-        )}
-        {currentTab === 'library' && (
-          <LibraryTab initialSubTab={librarySubTab} />
-        )}
-        {currentTab === 'search' && (
-          <SearchTab />
-        )}
-        {currentTab === 'settings' && (
-          <SettingsTab />
-        )}
-      </main>
+        {/* 3. Tab Content View Area */}
+        <main 
+          id="main-scroll-view"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-36 touch-pan-y"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {currentTab === 'home' && (
+            <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
+          )}
+          {currentTab === 'library' && (
+            <LibraryTab initialSubTab={librarySubTab} />
+          )}
+          {currentTab === 'search' && (
+            <SearchTab />
+          )}
+          {currentTab === 'settings' && (
+            <SettingsTab />
+          )}
+        </main>
+      </div>
 
       {/* 4. Docked Mini Player bar directly above Bottom Navigation */}
-      <div className="fixed bottom-14 left-0 right-0 max-w-md mx-auto z-30 pointer-events-auto">
+      <div className="fixed bottom-14 left-0 right-0 z-30 pointer-events-auto px-2 sm:px-4 max-w-4xl mx-auto">
         <MiniPlayer />
       </div>
 
       {/* 5. Bottom Navigation Bar */}
-      <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
+      <div className="w-full">
+        <div className="max-w-4xl mx-auto">
+          <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
+        </div>
+      </div>
 
       {/* 6. Modals & Drawers */}
       <NowPlayingModal />
@@ -109,6 +120,7 @@ const MainLayout: React.FC = () => {
       <NotificationShadeModal />
       <SleepTimerModal />
       <FileScannerModal />
+      <CustomizerModal />
     </div>
   );
 };

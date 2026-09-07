@@ -66,6 +66,7 @@ export const SettingsTab: React.FC = () => {
     clearCache,
     setScannerOpen,
     setEqualizerOpen,
+    setCustomizerOpen,
     tracks,
   } = usePlayer();
 
@@ -145,6 +146,59 @@ export const SettingsTab: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-36 px-5 select-none animate-in fade-in duration-200">
+      {/* 0. Home Feed & Player Customization (BitChord-inspired & Customizable) */}
+      <div 
+        className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4"
+        style={{ borderColor: `${settings.accentColor}30` }}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <Sliders className="w-4 h-4" style={{ color: settings.accentColor }} />
+            <span>Home Shelves & Now Playing Customizer</span>
+          </div>
+          <button
+            onClick={() => setCustomizerOpen(true)}
+            className="text-xs font-extrabold px-3 py-1.5 rounded-full text-black flex items-center gap-1.5 shadow-lg active:scale-95 transition-transform"
+            style={{ backgroundColor: settings.accentColor }}
+          >
+            <span>Customize</span>
+          </button>
+        </div>
+        <p className="text-xs text-white/50">
+          Personalize home carousels (Recently played, Quick picks, Rain Therapy ☘️🌧️, Artist spotlight) and player layouts (Immersive backdrop, One UI curved, 3D Vinyl disc).
+        </p>
+
+        {/* Quick layout selector */}
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          {[
+            { id: 'immersive-backdrop', label: 'Immersive Backdrop' },
+            { id: 'curved-card', label: 'Curved One UI' },
+            { id: 'vinyl-disc', label: '3D Vinyl Disc' },
+          ].map(opt => {
+            const isSelected = settings.nowPlayingConfig.layoutStyle === opt.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => updateSettings({
+                  nowPlayingConfig: {
+                    ...settings.nowPlayingConfig,
+                    layoutStyle: opt.id as any
+                  }
+                })}
+                className="p-2.5 rounded-2xl border text-center text-xs font-bold transition-all"
+                style={{
+                  borderColor: isSelected ? settings.accentColor : 'rgba(255,255,255,0.1)',
+                  backgroundColor: isSelected ? `${settings.accentColor}20` : 'rgba(255,255,255,0.03)',
+                  color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)'
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* 1. Top Status Bar Customization (User Request 7) */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
         <div className="flex items-center gap-2 text-white font-bold text-sm">

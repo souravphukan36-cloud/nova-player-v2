@@ -36,6 +36,9 @@ class AudioEngine {
     // Audio context will be initialized on first user interaction to comply with browser autoplay policies
   }
 
+  private eightDInterval: number | null = null;
+  private eightDAngle: number = 0;
+
   public init() {
     if (this.ctx) return;
     try {
@@ -51,8 +54,8 @@ class AudioEngine {
       this.analyser.fftSize = 256;
       this.analyser.smoothingTimeConstant = 0.82;
 
-      // 5-band EQ frequencies: 60Hz, 230Hz, 910Hz, 3600Hz, 14000Hz
-      const frequencies = [60, 230, 910, 3600, 14000];
+      // 10-band Audiophile EQ frequencies: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz
+      const frequencies = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
       this.eqFilters = frequencies.map((freq, idx) => {
         const filter = this.ctx!.createBiquadFilter();
         if (idx === 0) {
@@ -124,11 +127,15 @@ class AudioEngine {
       this.audioElement.crossOrigin = 'anonymous';
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
-          this.onTimeUpdateCallback(this.audioElement.currentTime);
+          const cur = this.audioElement.currentTime;
+          this.onTimeUpdateCallback(cur);
+          this.updateMediaSessionPosition(cur, this.audioElement.duration || this.currentTrack?.duration || 0);
+
           // Android & WebView fallback: If track reached end without firing native 'ended' event
           if (
+            !this.audioElement.src.startsWith('data:audio/wav') &&
             this.audioElement.duration > 0 &&
-            this.audioElement.currentTime >= this.audioElement.duration - 0.25 &&
+            cur >= this.audioElement.duration - 0.25 &&
             !this.hasTriggeredEnded
           ) {
             this.hasTriggeredEnded = true;
@@ -139,7 +146,9 @@ class AudioEngine {
         }
       });
       this.audioElement.addEventListener('ended', () => {
-        if (!this.hasTriggeredEnded) {
+        // Never trigger on synthetic carrier wave audio or when synth is playing
+        if (this.audioElement?.src?.startsWith('data:audio/wav')) return;
+        if (!this.isSynthPlaying && !this.hasTriggeredEnded) {
           this.hasTriggeredEnded = true;
           if (this.onEndedCallback) {
             this.onEndedCallback();
@@ -313,6 +322,9 @@ class AudioEngine {
     if (this.onTimeUpdateCallback) {
       this.onTimeUpdateCallback(seconds);
     }
+    if (this.currentTrack) {
+      this.updateMediaSessionPosition(seconds, this.currentTrack.duration);
+    }
   }
 
   public setVolume(vol: number) {
@@ -340,31 +352,69 @@ class AudioEngine {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
-    // Apply 5 bands
-    eq.bands.forEach((val, idx) => {
-      if (this.eqFilters[idx]) {
-        const gain = eq.enabled ? val : 0;
-        this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
-      }
-    });
+    // Apply bands: if 10 bands provided, map directly. If 5 bands provided, interpolate across the 10 filters.
+    if (eq.bands.length === 10) {
+      eq.bands.forEach((val, idx) => {
+        if (this.eqFilters[idx]) {
+          const gain = eq.enabled ? val : 0;
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
+        }
+      });
+    } else {
+      // 5-band interpolation across 10 filters
+      const band5 = eq.bands;
+      const mappedGains = [
+        band5[0] || 0, // 31Hz
+        band5[0] || 0, // 63Hz
+        band5[1] || 0, // 125Hz
+        band5[1] || 0, // 250Hz
+        band5[2] || 0, // 500Hz
+        band5[2] || 0, // 1kHz
+        band5[3] || 0, // 2kHz
+        band5[3] || 0, // 4kHz
+        band5[4] || 0, // 8kHz
+        band5[4] || 0, // 16kHz
+      ];
+      mappedGains.forEach((gainVal, idx) => {
+        if (this.eqFilters[idx]) {
+          const gain = eq.enabled ? gainVal : 0;
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
+        }
+      });
+    }
 
-    // Bass boost
+    // Bass boost (deep sub-bass enhancement)
     if (this.bassBoostFilter) {
-      const bassGain = eq.enabled ? (eq.bassBoost / 100) * 12 : 0;
+      const bassGain = eq.enabled ? (eq.bassBoost / 100) * 14 : 0;
       this.bassBoostFilter.gain.setTargetAtTime(bassGain, now, 0.05);
     }
 
-    // Reverb
+    // Reverb / Acoustic Space
     if (this.reverbGain) {
-      const revGain = eq.enabled ? (eq.reverb / 100) * 0.45 : 0;
+      const revGain = eq.enabled ? (eq.reverb / 100) * 0.48 : 0;
       this.reverbGain.gain.setTargetAtTime(revGain, now, 0.05);
     }
 
-    // Stereo Widening
+    // 8D Audio Dynamic Spatial Panning or Stereo Widening
+    if (this.eightDInterval) {
+      clearInterval(this.eightDInterval);
+      this.eightDInterval = null;
+    }
+
     if (this.stereoPanner) {
-      // Subtle pan movement or widening simulated
-      const panAmount = eq.enabled ? (eq.stereoWidening / 100) * 0.2 : 0;
-      this.stereoPanner.pan.setTargetAtTime(panAmount, now, 0.05);
+      if (eq.enabled && eq.eightDAudio) {
+        // Active 8D dynamic binaural spatial panning
+        this.eightDInterval = window.setInterval(() => {
+          if (!this.stereoPanner || !this.ctx) return;
+          this.eightDAngle += 0.08;
+          // Smooth sinusoidal 8D spatial motion around the listener's head
+          const pan = Math.sin(this.eightDAngle) * 0.85;
+          this.stereoPanner.pan.setTargetAtTime(pan, this.ctx.currentTime, 0.04);
+        }, 50);
+      } else {
+        const panAmount = eq.enabled ? (eq.stereoWidening / 100) * 0.25 : 0;
+        this.stereoPanner.pan.setTargetAtTime(panAmount, now, 0.05);
+      }
     }
   }
 
@@ -421,6 +471,10 @@ class AudioEngine {
 
       if (this.onTimeUpdateCallback) {
         this.onTimeUpdateCallback(this.synthTime);
+      }
+      // Update system media notification scrubber position periodically
+      if (Math.floor(this.synthTime * 10) % 10 === 0) {
+        this.updateMediaSessionPosition(this.synthTime, track.duration);
       }
 
       if (this.synthTime >= track.duration) {
@@ -553,23 +607,42 @@ class AudioEngine {
     }
   }
 
+  public updateMediaSessionPosition(position: number, duration: number) {
+    if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+      if (duration > 0 && position >= 0 && Number.isFinite(position) && Number.isFinite(duration)) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: Math.max(1, duration),
+            playbackRate: 1,
+            position: Math.min(duration, Math.max(0, position)),
+          });
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
   private updateMediaSession(track: Track) {
     if ('mediaSession' in navigator) {
       try {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const artworkUrl = (track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')))
           ? track.coverArt
-          : '/assets/aistudio/logo.png';
+          : `${origin}/icon-512.png`;
 
         navigator.mediaSession.metadata = new MediaMetadata({
           title: track.title,
           artist: track.artist,
-          album: track.album,
+          album: track.album || 'NOVA Player',
           artwork: [
-            { src: artworkUrl, sizes: '512x512', type: 'image/png' }
+            { src: artworkUrl, sizes: '512x512', type: 'image/png' },
+            { src: `${origin}/icon-192.png`, sizes: '192x192', type: 'image/png' },
           ]
         });
 
         navigator.mediaSession.playbackState = 'playing';
+        this.updateMediaSessionPosition(0, track.duration);
 
         navigator.mediaSession.setActionHandler('play', () => {
           this.resume();
