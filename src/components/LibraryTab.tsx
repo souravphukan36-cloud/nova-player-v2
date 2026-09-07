@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track, Playlist, LibrarySubTab, SortOption, SortDirection } from '../types';
+import { sanitizeText } from '../utils/security';
 
 interface LibraryTabProps {
   initialSubTab?: LibrarySubTab;
@@ -48,18 +49,107 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
   const [sortOption, setSortOption] = useState<SortOption>('title');
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
   
-  // Selected detail states
+  // Detail drilldowns
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
 
   // Modals
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [addToPlaylistTrack, setAddToPlaylistTrack] = useState<Track | null>(null);
   const [trackMenuId, setTrackMenuId] = useState<string | null>(null);
+
+  // Music Characters (Vibes & Moods)
+  const musicCharacters = [
+    {
+      id: 'energy',
+      name: 'High Energy',
+      tagline: 'Driving & Upbeat',
+      emoji: '⚡',
+      gradient: 'from-amber-600 via-orange-600 to-rose-700',
+      matches: (t: Track) => {
+        const g = (t.genre || '').toLowerCase();
+        const title = (t.title || '').toLowerCase();
+        return g.includes('rock') || g.includes('edm') || g.includes('pop') || g.includes('dance') || title.includes('cyber') || title.includes('fast');
+      }
+    },
+    {
+      id: 'latenight',
+      name: 'Late Night',
+      tagline: 'Soul & Melodic',
+      emoji: '🌙',
+      gradient: 'from-indigo-900 via-purple-900 to-slate-950',
+      matches: (t: Track) => {
+        const g = (t.genre || '').toLowerCase();
+        const title = (t.title || '').toLowerCase();
+        return g.includes('lo-fi') || g.includes('ambient') || g.includes('soul') || title.includes('night') || title.includes('drift') || title.includes('dream');
+      }
+    },
+    {
+      id: 'acoustic',
+      name: 'Acoustic Strings',
+      tagline: 'Pure & Organic',
+      emoji: '🎸',
+      gradient: 'from-emerald-800 via-teal-900 to-neutral-950',
+      matches: (t: Track) => {
+        const g = (t.genre || '').toLowerCase();
+        const title = (t.title || '').toLowerCase();
+        return g.includes('acoustic') || g.includes('folk') || g.includes('classical') || title.includes('unplugged') || title.includes('guitar');
+      }
+    },
+    {
+      id: 'rain',
+      name: 'Rain & Lo-Fi',
+      tagline: 'Atmospheric Chill',
+      emoji: '🌧️',
+      gradient: 'from-cyan-900 via-blue-950 to-neutral-950',
+      matches: (t: Track) => {
+        const g = (t.genre || '').toLowerCase();
+        const title = (t.title || '').toLowerCase();
+        return g.includes('chill') || g.includes('ambient') || title.includes('rain') || title.includes('cloud') || title.includes('mist');
+      }
+    },
+    {
+      id: 'bass',
+      name: '8D Sub-Bass',
+      tagline: 'Club & Drops',
+      emoji: '💥',
+      gradient: 'from-fuchsia-900 via-purple-950 to-black',
+      matches: (t: Track) => {
+        const g = (t.genre || '').toLowerCase();
+        const title = (t.title || '').toLowerCase();
+        return g.includes('bass') || g.includes('electronic') || title.includes('cyber') || title.includes('orbit') || title.includes('drop');
+      }
+    },
+    {
+      id: 'zen',
+      name: 'Zen Healing',
+      tagline: 'Peace & Serenity',
+      emoji: '🧘',
+      gradient: 'from-teal-900 via-emerald-950 to-black',
+      matches: (t: Track) => {
+        const g = (t.genre || '').toLowerCase();
+        const title = (t.title || '').toLowerCase();
+        return g.includes('healing') || g.includes('ambient') || title.includes('peace') || title.includes('zen') || title.includes('forest');
+      }
+    },
+    {
+      id: 'folk',
+      name: 'Heritage Folk',
+      tagline: 'Regional & Assamese',
+      emoji: '🥁',
+      gradient: 'from-rose-900 via-red-950 to-black',
+      matches: (t: Track) => {
+        const a = (t.artist || '').toLowerCase();
+        const g = (t.genre || '').toLowerCase();
+        return a.includes('sourav') || a.includes('zubeen') || a.includes('phukan') || g.includes('folk') || g.includes('bihu');
+      }
+    },
+  ];
 
   const subTabs: { id: LibrarySubTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'songs', label: 'Songs', icon: Music },
@@ -84,6 +174,11 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
     }
     return sortDir === 'asc' ? cmp : -cmp;
   });
+
+  const activeCharObj = musicCharacters.find(c => c.id === selectedCharacter);
+  const displayedTracks = selectedCharacter && activeCharObj 
+    ? sortedTracks.filter(activeCharObj.matches)
+    : sortedTracks;
 
   // Groupings
   const albums = (Array.from(new Set(tracks.map(t => t.album))) as string[]).map(albumName => {
@@ -133,8 +228,9 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
 
   const handleCreatePlaylist = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPlaylistName.trim()) {
-      createPlaylist(newPlaylistName.trim());
+    const cleanName = sanitizeText(newPlaylistName, 50);
+    if (cleanName) {
+      createPlaylist(cleanName);
       setNewPlaylistName('');
       setShowCreateModal(false);
     }
@@ -170,10 +266,90 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
         })}
       </div>
 
+      {/* First Row: Characters of Music (Vibes & Moods Square Boxes) */}
+      {settings.libraryShowCharacterGrid !== false && !selectedAlbum && !selectedArtist && !selectedGenre && !selectedFolder && !selectedPlaylist && (
+        <div className="space-y-2.5 pt-1">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+              <span>Characters of Music</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-white/60 font-normal">Vibes</span>
+            </h3>
+            {selectedCharacter && (
+              <button
+                onClick={() => setSelectedCharacter(null)}
+                className="text-[11px] text-rose-400 hover:text-rose-300 font-bold"
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1.5 -mx-5 px-5">
+            {musicCharacters.map((char) => {
+              const isSelected = selectedCharacter === char.id;
+              const matchingCount = tracks.filter(char.matches).length;
+              return (
+                <div
+                  key={char.id}
+                  onClick={() => {
+                    setSelectedCharacter(isSelected ? null : char.id);
+                  }}
+                  className={`flex-shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-2xl p-3 flex flex-col justify-between cursor-pointer border transition-all ${
+                    isSelected
+                      ? 'ring-2 ring-emerald-400 scale-105 shadow-xl'
+                      : 'border-white/10 hover:border-white/25 active:scale-95'
+                  } bg-gradient-to-br ${char.gradient}`}
+                >
+                  {/* Top row: Emoji & Count */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl">{char.emoji}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/40 text-white/90 font-mono font-bold">
+                      {matchingCount}
+                    </span>
+                  </div>
+
+                  {/* Bottom info */}
+                  <div>
+                    <h4 className="text-xs font-bold text-white leading-tight drop-shadow-md">{char.name}</h4>
+                    <p className="text-[9px] text-white/70 line-clamp-1 leading-tight mt-0.5">{char.tagline}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Active Character Filter Banner */}
+          {selectedCharacter && activeCharObj && (
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-base">{activeCharObj.emoji}</span>
+                <span className="font-bold">{activeCharObj.name} ({displayedTracks.length} tracks)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {displayedTracks.length > 0 && (
+                  <button
+                    onClick={() => playTrack(displayedTracks[0], displayedTracks)}
+                    className="px-2.5 py-1 rounded-full bg-emerald-500 text-black font-extrabold text-[10px] active:scale-95 shadow"
+                  >
+                    Play All
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedCharacter(null)}
+                  className="p-1 text-white/60 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Sort & Count Header Bar */}
       <div className="flex items-center justify-between py-1 text-xs text-white/60">
         <span>
-          {activeSubTab === 'songs' && `${sortedTracks.length} Songs`}
+          {activeSubTab === 'songs' && `${displayedTracks.length} Songs${selectedCharacter ? ' (Filtered)' : ''}`}
           {activeSubTab === 'albums' && `${albums.length} Albums`}
           {activeSubTab === 'artists' && `${artists.length} Artists`}
           {activeSubTab === 'genres' && `${genres.length} Genres`}
@@ -242,7 +418,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
       {/* 1. SONGS SUBTAB */}
       {activeSubTab === 'songs' && (
         <div className="space-y-1">
-          {sortedTracks.map((track, idx) => {
+          {displayedTracks.map((track, idx) => {
             const isCurrent = currentTrack?.id === track.id;
             return (
               <div
@@ -252,7 +428,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                 }`}
               >
                 <div
-                  onClick={() => playTrack(track, sortedTracks)}
+                  onClick={() => playTrack(track, displayedTracks)}
                   className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer pr-2"
                 >
                   <div 
@@ -583,9 +759,10 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
             <input
               type="text"
               autoFocus
+              maxLength={50}
               placeholder="Playlist Name"
               value={newPlaylistName}
-              onChange={(e) => setNewPlaylistName(e.target.value)}
+              onChange={(e) => setNewPlaylistName(e.target.value.slice(0, 50))}
               className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/30"
             />
             <div className="flex items-center gap-2 pt-2">

@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Security Hardening: Anti-Clickjacking, Anti-MIME-sniffing, Referrer Policy & CSP -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' blob: data: https:; object-src 'none'; base-uri 'self';" />
     <title>NOVA Player</title>
     <meta name="description" content="Native Android high fidelity music player with AMOLED dark theme, 5-band DSP equalizer, local file scanner, playlists, lock screen and notification controls. Developed by Sourav Phukan." />
     <meta property="og:title" content="NOVA Player" />

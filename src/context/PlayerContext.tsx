@@ -51,6 +51,8 @@ interface PlayerContextType {
   setPlaylistModalOpen: (open: boolean) => void;
   customizerOpen: boolean;
   setCustomizerOpen: (open: boolean) => void;
+  carModeOpen: boolean;
+  setCarModeOpen: (open: boolean) => void;
 
   // Actions
   playTrack: (track: Track, newQueue?: Track[]) => void;
@@ -143,7 +145,9 @@ const DEFAULT_SETTINGS: SettingsState = {
   homeShowMostPlayed: true,
   libraryDefaultSubTab: 'songs',
   libraryViewMode: 'list',
+  libraryShowCharacterGrid: true,
   searchInstantFilter: true,
+  searchShowUnheardShelf: true,
   systemNotificationsEnabled: true,
   transitionDelaySecs: 0,
   autoAdvanceLoop: true,
@@ -284,6 +288,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [scannerOpen, setScannerOpen] = useState<boolean>(false);
   const [playlistModalOpen, setPlaylistModalOpen] = useState<boolean>(false);
   const [customizerOpen, setCustomizerOpen] = useState<boolean>(false);
+  const [carModeOpen, setCarModeOpen] = useState<boolean>(false);
 
   // References for event loops and timer management
   const autoAdvanceTimerRef = useRef<number | null>(null);
@@ -969,6 +974,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setPlaylistModalOpen,
         customizerOpen,
         setCustomizerOpen,
+        carModeOpen,
+        setCarModeOpen,
 
         playTrack,
         togglePlayPause,

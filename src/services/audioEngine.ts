@@ -432,7 +432,48 @@ class AudioEngine {
     return data;
   }
 
-  private silentAudioCarrier: string = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAP8A';
+  private silentBlobUrl: string | null = null;
+
+  private getSilentAudioCarrier(): string {
+    if (this.silentBlobUrl) return this.silentBlobUrl;
+    try {
+      const sampleRate = 44100;
+      const numChannels = 2;
+      const durationSecs = 3;
+      const numSamples = sampleRate * durationSecs;
+      const blockAlign = numChannels * 2;
+      const byteRate = sampleRate * blockAlign;
+      const dataSize = numSamples * blockAlign;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      const writeString = (offset: number, str: string) => {
+        for (let i = 0; i < str.length; i++) {
+          view.setUint8(offset + i, str.charCodeAt(i));
+        }
+      };
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, byteRate, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true); // 16-bit
+      writeString(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      const blob = new Blob([buffer], { type: 'audio/wav' });
+      this.silentBlobUrl = URL.createObjectURL(blob);
+      return this.silentBlobUrl;
+    } catch {
+      return 'data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRAAAAAAAAAAAAAAAAAAAAAAAAAA';
+    }
+  }
 
   // Real-time Procedural Musical Synthesizer for default tracks
   private startSynth(track: Track, startTime: number) {
@@ -441,10 +482,10 @@ class AudioEngine {
     this.synthTime = startTime;
     this.hasTriggeredEnded = false;
 
-    // Keep Android 14/15/16 OS Media Notification alive by playing silent audio loop
+    // Keep Android OS Native Media Notification alive by playing continuous valid audio loop
     if (this.audioElement) {
       try {
-        this.audioElement.src = this.silentAudioCarrier;
+        this.audioElement.src = this.getSilentAudioCarrier();
         this.audioElement.loop = true;
         this.audioElement.play().catch(() => {});
       } catch {
@@ -598,7 +639,7 @@ class AudioEngine {
       clearInterval(this.synthInterval);
       this.synthInterval = null;
     }
-    if (this.audioElement && this.audioElement.src.startsWith('data:audio/wav')) {
+    if (this.audioElement) {
       try {
         this.audioElement.pause();
       } catch {
@@ -627,18 +668,19 @@ class AudioEngine {
     if ('mediaSession' in navigator) {
       try {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const artworkUrl = (track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')))
-          ? track.coverArt
-          : `${origin}/icon-512.png`;
+        const artwork = [
+          { src: `${origin}/icon-512.png`, sizes: '512x512', type: 'image/png' },
+          { src: `${origin}/icon-192.png`, sizes: '192x192', type: 'image/png' },
+        ];
+        if (track.coverArt && track.coverArt.startsWith('http')) {
+          artwork.unshift({ src: track.coverArt, sizes: '512x512', type: 'image/jpeg' });
+        }
 
         navigator.mediaSession.metadata = new MediaMetadata({
           title: track.title,
           artist: track.artist,
           album: track.album || 'NOVA Player',
-          artwork: [
-            { src: artworkUrl, sizes: '512x512', type: 'image/png' },
-            { src: `${origin}/icon-192.png`, sizes: '192x192', type: 'image/png' },
-          ]
+          artwork: artwork,
         });
 
         navigator.mediaSession.playbackState = 'playing';

@@ -11,9 +11,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Smartphone,
-  Download,
   Share2,
-  Copy,
   Bell,
   Eye,
   SlidersHorizontal,
@@ -24,7 +22,9 @@ import {
   CheckCircle2,
   AlertCircle,
   FastForward,
-  Zap
+  Zap,
+  LayoutGrid,
+  Car
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { notificationService } from '../services/notificationService';
@@ -67,33 +67,17 @@ export const SettingsTab: React.FC = () => {
     setScannerOpen,
     setEqualizerOpen,
     setCustomizerOpen,
+    setCarModeOpen,
     tracks,
   } = usePlayer();
 
   const [cacheCleared, setCacheCleared] = useState(false);
   const [customHex, setCustomHex] = useState(settings.accentColor);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
 
   useEffect(() => {
     // Check notification permission
     setNotifPermission(notificationService.getPermissionStatus());
-
-    // Check if already in standalone PWA mode
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
-
-    const handleBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
   const handleRequestNotificationPermission = async () => {
@@ -109,26 +93,6 @@ export const SettingsTab: React.FC = () => {
     } else if (!granted) {
       alert("Notification was not enabled by Android.\n\nTo enable on Samsung:\n1. Long-press NOVA Player icon on home screen > App info (i)\n2. Tap Notifications > Turn ON 'Allow notifications'.");
     }
-  };
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
-      }
-      setDeferredPrompt(null);
-    } else {
-      alert("To install NOVA Player on your phone:\n\n1. Open this page in Chrome or Samsung Internet\n2. Tap the 3 dots (⋮) menu in top right\n3. Tap 'Install app' or 'Add to Home screen'\n\nNOVA Player will be installed to your phone's app drawer!");
-    }
-  };
-
-  const handleCopyUrl = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 3000);
   };
 
   const handleClearCache = () => {
@@ -252,16 +216,71 @@ export const SettingsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Audio & SoundAlive Spectrum (User Request 3) */}
+      {/* Library & Search Shelves Customization (User Request: Library & Search customization with square box shelves) */}
+      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-white font-bold text-sm">
+          <LayoutGrid className="w-4 h-4 text-emerald-400" />
+          <span>Library & Search Customization</span>
+        </div>
+        <p className="text-xs text-white/50">
+          Customize square shelves across your music collection and discovery tabs.
+        </p>
+
+        {/* Library Characters Grid */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Library: Music Character Boxes</span>
+            <span className="text-[11px] text-white/50">
+              Shows top row of square boxes for each music vibe (High Energy, Late Night, Lo-Fi, 8D Bass, Folk)
+            </span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ libraryShowCharacterGrid: settings.libraryShowCharacterGrid === false })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.libraryShowCharacterGrid !== false ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.libraryShowCharacterGrid !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Search Never Heard Shelf */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
+          <div>
+            <span className="text-xs font-semibold text-white block">Search: 'Never Heard Before' Shelf</span>
+            <span className="text-[11px] text-white/50">
+              Shows row of square cards below search bar with cover art & titles of unplayed gems
+            </span>
+          </div>
+          <button
+            onClick={() => updateSettings?.({ searchShowUnheardShelf: settings.searchShowUnheardShelf === false })}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              settings.searchShowUnheardShelf !== false ? 'bg-emerald-500' : 'bg-white/20'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                settings.searchShowUnheardShelf !== false ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Studio Audio & Equalizer */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Activity className="w-4 h-4" style={{ color: settings.accentColor }} />
-            <span>Audio & SoundAlive Visualizer</span>
+            <Sliders className="w-4 h-4" style={{ color: settings.accentColor }} />
+            <span>Studio Audio & Equalizer</span>
           </div>
           <button
             onClick={() => setEqualizerOpen(true)}
-            className="text-xs font-bold px-3 py-1 rounded-full text-black flex items-center gap-1.5"
+            className="text-xs font-bold px-3 py-1.5 rounded-full text-black flex items-center gap-1.5 shadow active:scale-95 transition-transform"
             style={{ backgroundColor: settings.accentColor }}
           >
             <Sliders className="w-3.5 h-3.5" />
@@ -269,25 +288,24 @@ export const SettingsTab: React.FC = () => {
           </button>
         </div>
 
-        {/* SoundAlive Visualizer Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">SoundAlive Spectrum Visualizer</span>
-            <span className="text-[11px] text-white/50">
-              Live spectrum frequency bars (Off by default for cleaner screen)
-            </span>
+        {/* Dedicated Car / Driving Mode */}
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400">
+              <Car className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-white block">Car / Driving Mode</span>
+              <span className="text-[11px] text-white/50">
+                Large, distraction-free controls for safe listening on the road
+              </span>
+            </div>
           </div>
           <button
-            onClick={() => updateSettings?.({ soundAliveSpectrum: !settings.soundAliveSpectrum })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.soundAliveSpectrum ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
+            onClick={() => setCarModeOpen(true)}
+            className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-400 text-black shadow active:scale-95 transition-transform"
           >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.soundAliveSpectrum ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
+            Launch
           </button>
         </div>
 
@@ -754,65 +772,7 @@ export const SettingsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 9. Install App on Phone (PWA) */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Download className="w-4 h-4" style={{ color: settings.accentColor }} />
-            <span>Install on Android Phone</span>
-          </div>
-          {isInstalled && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              INSTALLED
-            </span>
-          )}
-        </div>
-
-        <p className="text-xs text-white/60">
-          NOVA Player ko apne phone ke home screen aur app drawer me native app ki tarah install karein.
-        </p>
-
-        {/* Action Buttons: Direct Install or Copy Link */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={handleInstallClick}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs font-bold text-black shadow-lg transition-transform active:scale-95"
-            style={{ backgroundColor: settings.accentColor }}
-          >
-            <Download className="w-4 h-4" />
-            <span>{isInstalled ? 'Open / Reinstall' : 'Install App'}</span>
-          </button>
-
-          <button
-            onClick={handleCopyUrl}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors"
-          >
-            {copiedUrl ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-            <span>{copiedUrl ? 'Copied Link!' : 'Copy Link'}</span>
-          </button>
-        </div>
-
-        {/* 3 Easy Steps Guide */}
-        <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5 space-y-2 text-xs text-white/70">
-          <span className="font-bold text-white text-[11px] uppercase tracking-wider block">
-            Phone me install karne ka tarika:
-          </span>
-          <div className="flex items-start gap-2">
-            <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold flex-shrink-0 text-white">1</span>
-            <span>Apne phone ke <b>Chrome</b> ya <b>Samsung Internet</b> browser me ye link kholein.</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold flex-shrink-0 text-white">2</span>
-            <span>Upar daayein kone me <b>3 dots (⋮)</b> menu par tap karein.</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold flex-shrink-0 text-white">3</span>
-            <span><b>"Install app"</b> ya <b>"Add to Home screen"</b> (होम स्क्रीन पर जोड़ें) dabayein.</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 10. Cache & Storage Management */}
+      {/* 9. Cache & Storage Management */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-3">
         <div className="flex items-center gap-2 text-white font-bold text-sm">
           <HardDrive className="w-4 h-4 text-rose-400" />

@@ -1,6 +1,7 @@
 import { Track, AudioFormat } from '../types';
 import { extractId3Metadata } from './id3Parser';
 import { saveTrackWithAudio } from './storageDb';
+import { sanitizeText, sanitizeFilePath, sanitizeMediaUrl } from '../utils/security';
 
 export const SUPPORTED_EXTENSIONS: Record<string, AudioFormat> = {
   mp3: 'mp3',
@@ -41,20 +42,21 @@ export async function parseAudioFile(file: File, folderPath: string = '/Storage/
   const duration = await getAudioDuration(file);
 
   // If no embedded picture, generate an artistic album cover or music poster
-  const coverArt = extractedCover || generateGradientFromName(title + artist);
+  const rawCoverArt = extractedCover || generateGradientFromName(title + artist);
+  const coverArt = sanitizeMediaUrl(rawCoverArt) || rawCoverArt;
 
   const newTrack: Track = {
     id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-    title,
-    artist,
-    album,
+    title: sanitizeText(title, 120) || 'Untitled Track',
+    artist: sanitizeText(artist, 80) || 'Unknown Artist',
+    album: sanitizeText(album, 80) || 'Local Music',
     duration: Math.round(duration) || 180,
     format,
     coverArt,
     file,
-    folder: folderPath,
-    genre,
-    year,
+    folder: sanitizeFilePath(folderPath),
+    genre: sanitizeText(genre, 50) || 'Local Audio',
+    year: Number.isFinite(year) && year > 1900 && year < 2100 ? year : new Date().getFullYear(),
     bitRate: `${Math.round(file.size / (duration || 180) / 128 * 8)} kbps (${format.toUpperCase()})`,
     playCount: 0,
     isFavorite: false,

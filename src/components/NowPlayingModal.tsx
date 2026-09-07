@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ChevronDown, 
   Sliders, 
@@ -22,9 +22,11 @@ import {
   GripVertical,
   Infinity,
   Sparkles,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Car
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { getTrackDynamicPalette } from '../utils/dynamicColor';
 
 export const NowPlayingModal: React.FC = () => {
   const {
@@ -47,6 +49,8 @@ export const NowPlayingModal: React.FC = () => {
     setQueueOpen,
     lyricsOpen,
     setLyricsOpen,
+    carModeOpen,
+    setCarModeOpen,
     togglePlayPause,
     nextTrack,
     prevTrack,
@@ -65,10 +69,44 @@ export const NowPlayingModal: React.FC = () => {
   } = usePlayer();
 
   const [showTrackDetails, setShowTrackDetails] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const touchStartYRef = useRef<number | null>(null);
+  const activeLyricRef = useRef<HTMLButtonElement | null>(null);
+
+  // Auto-scroll active lyric into view (Unconditional hook)
+  useEffect(() => {
+    if (nowPlayingOpen && lyricsOpen && activeLyricRef.current) {
+      activeLyricRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [currentTime, lyricsOpen, nowPlayingOpen]);
 
   if (!nowPlayingOpen || !currentTrack) return null;
 
+  const palette = getTrackDynamicPalette(currentTrack);
   const npConfig = settings.nowPlayingConfig;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartYRef.current === null) return;
+    const diffY = e.touches[0].clientY - touchStartYRef.current;
+    if (diffY > 0) {
+      setDragY(Math.min(150, diffY * 0.7));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (dragY > 70) {
+      setNowPlayingOpen(false);
+    }
+    setDragY(0);
+    touchStartYRef.current = null;
+  };
 
   const formatTime = (secs: number) => {
     if (!Number.isFinite(secs) || secs < 0) return '0:00';
@@ -110,9 +148,13 @@ export const NowPlayingModal: React.FC = () => {
   return (
     <div 
       className="fixed inset-0 z-50 flex flex-col bg-black text-white select-none overflow-hidden animate-in fade-in slide-in-from-bottom duration-300"
-      style={{ backgroundColor: settings.theme === 'amoled' ? '#000000' : '#0B0D13' }}
+      style={{ 
+        backgroundColor: settings.theme === 'amoled' ? '#000000' : '#0B0D13',
+        transform: dragY > 0 ? `translateY(${dragY}px)` : 'none',
+        transition: dragY === 0 ? 'transform 0.2s ease-out' : 'none'
+      }}
     >
-      {/* Dynamic Background: Fullscreen Backdrop or Ambient Glow */}
+      {/* Dynamic Background: Fullscreen Backdrop or Material You Ambient Mesh Glow */}
       {npConfig.layoutStyle === 'immersive-backdrop' && currentTrack.coverArt ? (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <img 
@@ -124,18 +166,29 @@ export const NowPlayingModal: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black" />
         </div>
       ) : (
-        <div 
-          className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-[140px] opacity-25 pointer-events-none"
-          style={{ background: settings.accentColor }}
-        />
+        <>
+          <div 
+            className="absolute -top-24 left-1/2 -translate-x-1/2 w-[380px] h-[380px] rounded-full blur-[140px] opacity-35 pointer-events-none transition-all duration-700"
+            style={{ background: palette.primary || settings.accentColor }}
+          />
+          <div 
+            className="absolute bottom-1/3 -right-20 w-72 h-72 rounded-full blur-[120px] opacity-25 pointer-events-none transition-all duration-700"
+            style={{ background: palette.glow }}
+          />
+        </>
       )}
 
-      {/* Top Drag Handle Pill (Photo 2) */}
-      <div className="relative z-10 flex justify-center pt-3 pb-1">
+      {/* Top Drag Handle Pill */}
+      <div 
+        className="relative z-10 flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <button 
           onClick={() => setNowPlayingOpen(false)}
           className="w-12 h-1.5 rounded-full bg-white/30 hover:bg-white/60 transition-colors"
-          title="Drag down to minimize"
+          title="Drag down or tap to minimize"
         />
       </div>
 
@@ -152,12 +205,24 @@ export const NowPlayingModal: React.FC = () => {
 
         <div className="flex items-center gap-1">
           <button
+            id="np-btn-carmode"
+            onClick={() => {
+              setNowPlayingOpen(false);
+              setCarModeOpen(true);
+            }}
+            className="p-2.5 rounded-full hover:bg-white/10 text-amber-400 hover:text-amber-300 transition-colors"
+            title="Car / Driving Mode"
+          >
+            <Car className="w-5 h-5" />
+          </button>
+
+          <button
             id="np-btn-customize-player"
             onClick={() => setCustomizerOpen(true)}
             className="p-2.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             title="Customize Player Style"
           >
-            <Sparkles className="w-4 h-4 text-emerald-400" style={{ color: settings.accentColor }} />
+            <Sparkles className="w-4 h-4 text-emerald-400" style={{ color: palette.primary || settings.accentColor }} />
           </button>
 
           <button
@@ -215,13 +280,14 @@ export const NowPlayingModal: React.FC = () => {
                   return (
                     <button
                       key={idx}
+                      ref={isActive ? activeLyricRef : undefined}
                       onClick={() => seek(lyric.time)}
                       className={`block w-full text-center transition-all duration-300 font-medium ${
                         isActive
                           ? 'text-lg sm:text-xl font-extrabold scale-105'
                           : 'text-sm text-white/40 hover:text-white/70'
                       }`}
-                      style={{ color: isActive ? settings.accentColor : undefined }}
+                      style={{ color: isActive ? (palette.primary || settings.accentColor) : undefined }}
                     >
                       {lyric.text}
                     </button>
@@ -461,7 +527,7 @@ export const NowPlayingModal: React.FC = () => {
               className="absolute top-0 left-0 h-1 rounded-lg pointer-events-none transition-all"
               style={{ 
                 width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
-                backgroundColor: settings.accentColor 
+                backgroundColor: palette.primary || settings.accentColor 
               }}
             />
           </div>
@@ -486,7 +552,10 @@ export const NowPlayingModal: React.FC = () => {
             id="np-btn-play"
             onClick={togglePlayPause}
             className="w-18 h-18 rounded-full flex items-center justify-center text-black font-extrabold shadow-2xl transition-transform active:scale-95"
-            style={{ backgroundColor: settings.accentColor }}
+            style={{ 
+              backgroundColor: palette.primary || settings.accentColor,
+              boxShadow: `0 0 30px ${palette.glow}` 
+            }}
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (

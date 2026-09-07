@@ -1,0 +1,110 @@
+import { Track } from '../types';
+
+interface DynamicPalette {
+  primary: string; // Vibrant hex
+  glow: string; // rgba with opacity
+  gradient: string; // CSS linear gradient
+  border: string; // Subtle border color
+}
+
+// Pre-defined elegant palettes mapped to genres/moods
+const GENRE_PALETTES: Record<string, DynamicPalette> = {
+  'Acoustic': {
+    primary: '#F59E0B',
+    glow: 'rgba(245, 158, 11, 0.35)',
+    gradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
+    border: 'rgba(245, 158, 11, 0.3)'
+  },
+  'Lo-Fi': {
+    primary: '#EC4899',
+    glow: 'rgba(236, 72, 153, 0.35)',
+    gradient: 'linear-gradient(135deg, #EC4899 0%, #9D174D 100%)',
+    border: 'rgba(236, 72, 153, 0.3)'
+  },
+  'EDM': {
+    primary: '#8B5CF6',
+    glow: 'rgba(139, 92, 246, 0.4)',
+    gradient: 'linear-gradient(135deg, #8B5CF6 0%, #5B21B6 100%)',
+    border: 'rgba(139, 92, 246, 0.35)'
+  },
+  'Pop': {
+    primary: '#06B6D4',
+    glow: 'rgba(6, 182, 212, 0.35)',
+    gradient: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)',
+    border: 'rgba(6, 182, 212, 0.3)'
+  },
+  'Rock': {
+    primary: '#EF4444',
+    glow: 'rgba(239, 68, 68, 0.35)',
+    gradient: 'linear-gradient(135deg, #EF4444 0%, #991B1B 100%)',
+    border: 'rgba(239, 68, 68, 0.3)'
+  },
+  'Assamese': {
+    primary: '#10B981',
+    glow: 'rgba(16, 185, 129, 0.35)',
+    gradient: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)',
+    border: 'rgba(16, 185, 129, 0.3)'
+  },
+  'Folk': {
+    primary: '#EAB308',
+    glow: 'rgba(234, 179, 8, 0.35)',
+    gradient: 'linear-gradient(135deg, #EAB308 0%, #854D0E 100%)',
+    border: 'rgba(234, 179, 8, 0.3)'
+  },
+  'Ambient': {
+    primary: '#6366F1',
+    glow: 'rgba(99, 102, 241, 0.35)',
+    gradient: 'linear-gradient(135deg, #6366F1 0%, #3730A3 100%)',
+    border: 'rgba(99, 102, 241, 0.3)'
+  }
+};
+
+const DEFAULT_PALETTE: DynamicPalette = {
+  primary: '#10B981',
+  glow: 'rgba(16, 185, 129, 0.35)',
+  gradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+  border: 'rgba(16, 185, 129, 0.3)'
+};
+
+/**
+ * Derives a dynamic, harmonious color palette from a track's coverArt, genre or title
+ */
+export function getTrackDynamicPalette(track: Track | null): DynamicPalette {
+  if (!track) return DEFAULT_PALETTE;
+
+  // 1. Check if coverArt is a CSS gradient with hex colors
+  if (track.coverArt && track.coverArt.includes('#')) {
+    const hexMatches = track.coverArt.match(/#[0-9A-Fa-f]{6}/g);
+    if (hexMatches && hexMatches.length > 0) {
+      const primaryHex = hexMatches[0];
+      const r = parseInt(primaryHex.slice(1, 3), 16);
+      const g = parseInt(primaryHex.slice(3, 5), 16);
+      const b = parseInt(primaryHex.slice(5, 7), 16);
+      return {
+        primary: primaryHex,
+        glow: `rgba(${r}, ${g}, ${b}, 0.35)`,
+        gradient: track.coverArt,
+        border: `rgba(${r}, ${g}, ${b}, 0.35)`
+      };
+    }
+  }
+
+  // 2. Check genre match
+  if (track.genre && GENRE_PALETTES[track.genre]) {
+    return GENRE_PALETTES[track.genre];
+  }
+
+  // 3. Deterministic hash based on title + artist for consistent unique hue
+  const str = (track.title + track.artist).toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  const primary = `hsl(${hue}, 80%, 55%)`;
+  const glow = `hsla(${hue}, 85%, 55%, 0.35)`;
+  const gradient = `linear-gradient(135deg, hsl(${hue}, 75%, 50%) 0%, hsl(${(hue + 40) % 360}, 80%, 25%) 100%)`;
+  const border = `hsla(${hue}, 80%, 55%, 0.35)`;
+
+  return { primary, glow, gradient, border };
+}

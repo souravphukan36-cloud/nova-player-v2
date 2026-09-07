@@ -15,6 +15,7 @@ import { NotificationShadeModal } from './components/NotificationShadeModal';
 import { SleepTimerModal } from './components/SleepTimerModal';
 import { FileScannerModal } from './components/FileScannerModal';
 import { CustomizerModal } from './components/CustomizerModal';
+import { CarModeModal } from './components/CarModeModal';
 import { MainTab, LibrarySubTab } from './types';
 
 const MainLayout: React.FC = () => {
@@ -77,7 +78,6 @@ const MainLayout: React.FC = () => {
         <OneUIHeader 
           title={getHeaderTitle()} 
           subtitle={getHeaderSubtitle()}
-          showScanner={currentTab !== 'settings'}
         />
 
         {/* 3. Tab Content View Area */}
@@ -121,6 +121,7 @@ const MainLayout: React.FC = () => {
       <SleepTimerModal />
       <FileScannerModal />
       <CustomizerModal />
+      <CarModeModal />
     </div>
   );
 };

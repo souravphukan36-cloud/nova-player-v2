@@ -87,7 +87,9 @@ export interface SettingsState {
   homeShowMostPlayed: boolean; // Home screen most played
   libraryDefaultSubTab: LibrarySubTab; // Default library sub-tab
   libraryViewMode: 'list' | 'grid'; // Grid vs List for albums & artists
+  libraryShowCharacterGrid: boolean; // Show Music Character/Mood shelf in library
   searchInstantFilter: boolean; // Instant live search
+  searchShowUnheardShelf: boolean; // Show never-heard-before tracks shelf in search
   systemNotificationsEnabled: boolean; // System Notification & media session
   transitionDelaySecs: number; // Delay between songs in seconds (0 = instant, 0.5s, 1s, 2s, 3s, etc.)
   autoAdvanceLoop: boolean; // Loop back to start when queue finishes so playback never stops

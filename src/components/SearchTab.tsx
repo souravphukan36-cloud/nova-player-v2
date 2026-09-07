@@ -53,8 +53,9 @@ export const SearchTab: React.FC = () => {
         <input
           id="search-input"
           type="text"
+          maxLength={120}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => setQuery(e.target.value.slice(0, 120))}
           placeholder="Search songs, artists, albums, genres..."
           className="w-full pl-11 pr-10 py-3.5 rounded-2xl bg-white/10 border border-white/10 text-white placeholder:text-white/40 text-sm focus:outline-none focus:border-white/30 transition-all"
         />
@@ -163,13 +164,106 @@ export const SearchTab: React.FC = () => {
           )}
         </div>
       ) : (
-        // Empty Search Prompt
-        <div className="py-12 text-center text-white/40 space-y-2">
-          <SearchIcon className="w-12 h-12 mx-auto text-white/20 mb-2" />
-          <h3 className="text-sm font-bold text-white/70">Search Across All Tracks</h3>
-          <p className="text-xs text-white/40 max-w-xs mx-auto">
-            Find local MP3, WAV, FLAC songs by title, artist, album, or folder.
-          </p>
+        <div className="space-y-6 pt-2">
+          {/* Square Row: Never Heard Before / Discover Unheard Tracks */}
+          {settings.searchShowUnheardShelf !== false && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <span>Never Heard Before</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-semibold">
+                      New Discoveries
+                    </span>
+                  </h3>
+                  <p className="text-xs text-white/40">Gems waiting in your library that you haven't played yet</p>
+                </div>
+              </div>
+
+              {/* Square Box Row */}
+              <div className="flex items-start gap-3.5 overflow-x-auto no-scrollbar pb-2 pt-1 -mx-5 px-5">
+                {[...tracks]
+                  .sort((a, b) => (a.playCount || 0) - (b.playCount || 0))
+                  .slice(0, 10)
+                  .map((track) => {
+                    const isCurrent = currentTrack?.id === track.id;
+                    return (
+                      <div
+                        key={track.id}
+                        onClick={() => playTrack(track, tracks)}
+                        className="group flex-shrink-0 w-32 cursor-pointer select-none"
+                      >
+                        {/* Square Album Cover Box */}
+                        <div className="w-32 h-32 rounded-2xl overflow-hidden bg-neutral-900 border border-white/10 relative shadow-lg group-hover:border-white/30 transition-all">
+                          {track.coverArt ? (
+                            <img
+                              src={track.coverArt}
+                              alt={track.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-black text-white p-3 text-center">
+                              <Music className="w-8 h-8 opacity-40 mb-1" />
+                              <span className="text-[10px] font-bold text-white/80 line-clamp-2">{track.title}</span>
+                            </div>
+                          )}
+
+                          {/* Unheard Badge */}
+                          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-semibold text-amber-300 border border-amber-400/20">
+                            Unheard
+                          </div>
+
+                          {/* Quick Play Circle Button */}
+                          <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-emerald-500 text-black flex items-center justify-center shadow-lg transform translate-y-2 opacity-90 group-hover:translate-y-0 group-hover:opacity-100 group-hover:scale-110 transition-all">
+                            {isCurrent && isPlaying ? (
+                              <div className="w-2.5 h-2.5 rounded-sm bg-black" />
+                            ) : (
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Song Name & Artist Info below square */}
+                        <div className="mt-2">
+                          <h4 
+                            className={`text-xs font-bold truncate ${isCurrent ? 'text-emerald-400' : 'text-white'}`}
+                            title={track.title}
+                          >
+                            {track.title}
+                          </h4>
+                          <p className="text-[10px] text-white/50 truncate" title={track.artist}>
+                            {track.artist}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Browse Categories */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white/50">Explore By Vibe</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { title: 'Lossless Audio', query: 'flac', desc: 'Studio quality FLAC & WAV', color: 'from-blue-900/60 to-cyan-950/80' },
+                { title: 'High Bass Tracks', query: 'cyber bass', desc: 'Punchy 8D club sound', color: 'from-purple-900/60 to-pink-950/80' },
+                { title: 'Lo-Fi Melodies', query: 'lo-fi', desc: 'Cozy study & relaxation', color: 'from-amber-900/60 to-red-950/80' },
+                { title: 'Top Favourites', query: 'favourites', desc: 'Your loved tracks', color: 'from-rose-900/60 to-orange-950/80' },
+              ].map((cat) => (
+                <button
+                  key={cat.title}
+                  onClick={() => setQuery(cat.query)}
+                  className={`p-3.5 rounded-2xl bg-gradient-to-br ${cat.color} border border-white/10 text-left hover:border-white/20 active:scale-98 transition-all`}
+                >
+                  <h5 className="text-xs font-bold text-white">{cat.title}</h5>
+                  <p className="text-[10px] text-white/50 mt-0.5">{cat.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

@@ -36,6 +36,144 @@ const FREQUENCIES_10 = [
   { label: '16kHz', desc: 'Air' },
 ];
 
+// Touch and Pointer friendly Vertical EQ Band Column
+const EQBandColumn: React.FC<{
+  label: string;
+  desc: string;
+  gain: number;
+  idx: number;
+  accentColor: string;
+  onChange: (newGain: number) => void;
+}> = ({ label, desc, gain, idx, accentColor, onChange }) => {
+  const trackRef = React.useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+
+  const calculateDbFromEvent = (clientY: number) => {
+    if (!trackRef.current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const height = rect.height;
+    const offsetY = Math.max(0, Math.min(height, clientY - rect.top));
+    // 0 at bottom (-12), height at top (+12)
+    const ratio = 1 - (offsetY / height);
+    const db = Math.round((ratio * 24) - 12);
+    onChange(Math.max(-12, Math.min(12, db)));
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+    calculateDbFromEvent(e.clientY);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    calculateDbFromEvent(e.clientY);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  // Percentage from bottom (0% = -12dB, 50% = 0dB, 100% = +12dB)
+  const pct = Math.max(0, Math.min(100, ((gain + 12) / 24) * 100));
+
+  return (
+    <div className="flex flex-col items-center justify-between h-full w-full select-none">
+      {/* dB readout & tap to reset */}
+      <button
+        onClick={() => onChange(0)}
+        title="Tap to reset to 0dB"
+        className="text-[10px] font-mono font-bold hover:scale-110 active:scale-95 transition-transform"
+        style={{ color: gain !== 0 ? accentColor : '#9ca3af' }}
+      >
+        {gain > 0 ? `+${gain}` : gain}
+      </button>
+
+      {/* Quick increment + */}
+      <button
+        onClick={() => onChange(Math.min(12, gain + 1))}
+        className="w-5 h-4 flex items-center justify-center text-[11px] font-bold text-white/50 hover:text-white active:scale-90"
+        title="Increase +1dB"
+      >
+        +
+      </button>
+
+      {/* Vertical Interactive Slider Track */}
+      <div
+        ref={trackRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={() => setIsDragging(false)}
+        className="relative w-full min-w-[24px] max-w-[34px] h-28 flex items-center justify-center cursor-pointer touch-none my-0.5 group"
+      >
+        {/* Track background groove */}
+        <div className="w-1.5 h-full rounded-full bg-white/15 relative overflow-hidden">
+          {/* Zero center indicator mark */}
+          <div className="absolute top-1/2 left-0 right-0 h-[1.5px] bg-white/40 -translate-y-1/2 z-10" />
+
+          {/* Active fill bar from 0dB */}
+          {gain > 0 && (
+            <div
+              className="absolute left-0 right-0"
+              style={{
+                bottom: '50%',
+                height: `${(gain / 12) * 50}%`,
+                backgroundColor: accentColor,
+              }}
+            />
+          )}
+          {gain < 0 && (
+            <div
+              className="absolute left-0 right-0 bg-rose-500"
+              style={{
+                top: '50%',
+                height: `${(Math.abs(gain) / 12) * 50}%`,
+              }}
+            />
+          )}
+        </div>
+
+        {/* Center line marker across width */}
+        <div className="absolute top-1/2 left-1 right-1 h-[1px] bg-white/20 pointer-events-none -translate-y-1/2" />
+
+        {/* Draggable Knob Thumb */}
+        <div
+          className={`absolute w-4 h-4 rounded-full bg-white shadow-lg pointer-events-none transition-transform ${
+            isDragging ? 'scale-125 ring-2 ring-emerald-400' : 'group-hover:scale-110'
+          }`}
+          style={{
+            bottom: `calc(${pct}% - 8px)`,
+          }}
+        >
+          <div 
+            className="w-1.5 h-1.5 rounded-full mx-auto mt-[5px]"
+            style={{ backgroundColor: gain !== 0 ? accentColor : '#6b7280' }}
+          />
+        </div>
+      </div>
+
+      {/* Quick decrement - */}
+      <button
+        onClick={() => onChange(Math.max(-12, gain - 1))}
+        className="w-5 h-4 flex items-center justify-center text-[11px] font-bold text-white/50 hover:text-white active:scale-90"
+        title="Decrease -1dB"
+      >
+        -
+      </button>
+
+      {/* Frequency label & description */}
+      <div className="text-center mt-1">
+        <p className="text-[10px] sm:text-xs font-bold text-white tracking-tight">{label}</p>
+        <p className="text-[8px] text-white/40 leading-none">{desc}</p>
+      </div>
+    </div>
+  );
+};
+
 export const EqualizerModal: React.FC = () => {
   const {
     equalizer,
@@ -153,47 +291,39 @@ export const EqualizerModal: React.FC = () => {
         {/* Vertical Graphical Equalizer Sliders */}
         <div className="p-4 sm:p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl overflow-hidden">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-white/60">
-              {is10Band ? '10-Band Pro Frequency Curve' : '5-Band Frequency Sliders'}
-            </span>
-            <span className="text-[11px] font-mono text-white/40">Range: -12dB to +12dB</span>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-white/80">
+                {is10Band ? '10-Band Pro Studio DSP' : '5-Band Standard Sliders'}
+              </span>
+              <p className="text-[10px] text-white/40">Drag sliders vertically, tap + / - to fine-tune</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  frequencies.forEach((_, idx) => setEQBand(idx, 0));
+                }}
+                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white/70 hover:text-white transition-colors"
+                title="Reset all bands to 0dB"
+              >
+                Reset Flat
+              </button>
+              <span className="text-[10px] font-mono text-white/40">±12dB</span>
+            </div>
           </div>
 
-          <div className={`grid ${is10Band ? 'grid-cols-10 gap-1' : 'grid-cols-5 gap-2'} h-48 items-center justify-items-center`}>
+          <div className={`grid ${is10Band ? 'grid-cols-10 gap-0.5 sm:gap-1' : 'grid-cols-5 gap-2'} h-56 items-center justify-items-center`}>
             {frequencies.map((freq, idx) => {
               const gain = equalizer.bands[idx] ?? 0;
               return (
-                <div key={idx} className="flex flex-col items-center justify-between h-full w-full">
-                  {/* Current dB readout */}
-                  <span 
-                    className="text-[10px] font-mono font-bold" 
-                    style={{ color: gain !== 0 ? settings.accentColor : '#9ca3af' }}
-                  >
-                    {gain > 0 ? `+${gain}` : gain}
-                  </span>
-
-                  {/* Vertical Slider */}
-                  <div className="relative flex items-center justify-center h-28 my-1">
-                    {/* Zero dB center marker */}
-                    <div className="absolute w-5 h-[1px] bg-white/20 z-0 pointer-events-none" />
-                    <input
-                      type="range"
-                      min="-12"
-                      max="12"
-                      step="1"
-                      value={gain}
-                      onChange={(e) => setEQBand(idx, parseInt(e.target.value))}
-                      className="w-24 h-1.5 bg-white/20 rounded-lg cursor-pointer appearance-none -rotate-90 origin-center"
-                      style={{ accentColor: settings.accentColor }}
-                    />
-                  </div>
-
-                  {/* Frequency label */}
-                  <div className="text-center">
-                    <p className="text-[10px] sm:text-xs font-bold text-white tracking-tight">{freq.label}</p>
-                    <p className="text-[8px] text-white/40 leading-none">{freq.desc}</p>
-                  </div>
-                </div>
+                <EQBandColumn
+                  key={idx}
+                  idx={idx}
+                  label={freq.label}
+                  desc={freq.desc}
+                  gain={gain}
+                  accentColor={settings.accentColor}
+                  onChange={(newGain) => setEQBand(idx, newGain)}
+                />
               );
             })}
           </div>
