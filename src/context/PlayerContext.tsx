@@ -10,7 +10,7 @@ import {
 } from '../types';
 import { DEFAULT_TRACKS, INITIAL_PLAYLISTS } from '../data/defaultTracks';
 import { audioEngine } from '../services/audioEngine';
-import { getAllStoredTracks, deleteStoredTrack, clearAllAudioStorage } from '../services/storageDb';
+import { getAllStoredTracks, deleteStoredTrack, clearAllAudioStorage, saveTrackWithAudio } from '../services/storageDb';
 import { notificationService } from '../services/notificationService';
 
 interface PlayerContextType {
@@ -94,6 +94,7 @@ interface PlayerContextType {
   addTrackToPlaylist: (playlistId: string, trackId: string) => void;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
   reorderPlaylistTracks: (playlistId: string, startIndex: number, endIndex: number) => void;
+  linkAudioFileToTrack: (trackId: string, file: File) => Promise<void>;
 
   // Settings
   updateTheme: (theme: SettingsState['theme']) => void;
@@ -948,6 +949,46 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   };
 
+  const linkAudioFileToTrack = async (trackId: string, file: File) => {
+    let targetTrack: Track | undefined = tracks.find(t => t.id === trackId);
+    if (!targetTrack) {
+      targetTrack = DEFAULT_TRACKS.find(t => t.id === trackId);
+    }
+    if (!targetTrack) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'mp3';
+    const updatedTrack: Track = {
+      ...targetTrack,
+      file,
+      format: (ext as any) || targetTrack.format,
+      bitRate: `${Math.round(file.size / 1024)} KB Master File`,
+    };
+
+    // Save audio blob into IndexedDB permanently so it works across reloads
+    try {
+      await saveTrackWithAudio(updatedTrack, file, updatedTrack.coverArt);
+    } catch (e) {
+      console.warn('Failed to save track in IndexedDB:', e);
+    }
+
+    setTracks(prev => {
+      const idx = prev.findIndex(t => t.id === trackId);
+      if (idx !== -1) {
+        const copy = [...prev];
+        copy[idx] = updatedTrack;
+        return copy;
+      }
+      return [updatedTrack, ...prev];
+    });
+
+    setQueue(prev => prev.map(t => t.id === trackId ? updatedTrack : t));
+
+    // Play user's real song immediately
+    setCurrentTrack(updatedTrack);
+    audioEngine.playTrack(updatedTrack);
+    setIsPlaying(true);
+  };
+
   // Settings
   const updateTheme = (theme: SettingsState['theme']) => {
     setSettings(prev => ({ ...prev, theme }));
@@ -1055,6 +1096,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     addTrackToPlaylist,
     removeTrackFromPlaylist,
     reorderPlaylistTracks,
+    linkAudioFileToTrack,
 
     updateTheme,
     updateAccentColor,

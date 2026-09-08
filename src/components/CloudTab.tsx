@@ -15,7 +15,10 @@ import {
   Shuffle,
   Heart,
   Sliders,
-  CheckCircle2
+  CheckCircle2,
+  Upload,
+  FolderDown,
+  FileAudio
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
@@ -23,6 +26,7 @@ import { telegramCloudService, CloudArtistShelf } from '../services/telegramClou
 
 export const CloudTab: React.FC = () => {
   const { 
+    tracks,
     currentTrack, 
     isPlaying, 
     playTrack, 
@@ -30,6 +34,7 @@ export const CloudTab: React.FC = () => {
     settings, 
     toggleFavorite,
     addTracks,
+    linkAudioFileToTrack,
     setEqualizerOpen
   } = usePlayer();
 
@@ -39,11 +44,73 @@ export const CloudTab: React.FC = () => {
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set());
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [selectedTrackForFile, setSelectedTrackForFile] = useState<Track | null>(null);
 
   // Telegram Config state
   const [channelConfig, setChannelConfig] = useState(() => telegramCloudService.getConfig());
   const [tempBotToken, setTempBotToken] = useState(channelConfig.botToken);
   const [tempChannelId, setTempChannelId] = useState(channelConfig.channelId);
+
+  // Helper to find live track in player state
+  const getLiveTrack = (track: Track): Track => {
+    const live = tracks.find(t => t.id === track.id || t.title.toLowerCase() === track.title.toLowerCase());
+    return live || track;
+  };
+
+  const handleBatchImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0) return;
+
+    let matched = 0;
+    const addedTracks: Track[] = [];
+
+    for (const file of files) {
+      const lower = file.name.toLowerCase();
+      if (lower.includes('baarishein')) {
+        await linkAudioFileToTrack('cloud-anuv-baarishein', file);
+        await linkAudioFileToTrack('anuv-jain-baarishein', file);
+        matched++;
+      } else if (lower.includes('choo lo') || lower.includes('choolo')) {
+        await linkAudioFileToTrack('cloud-local-train-choo-lo', file);
+        await linkAudioFileToTrack('local-train-choo-lo', file);
+        matched++;
+      } else if (lower.includes('husn')) {
+        await linkAudioFileToTrack('cloud-anuv-husn', file);
+        matched++;
+      } else if (lower.includes('aaoge') || lower.includes('kabhi')) {
+        await linkAudioFileToTrack('cloud-local-train-aaoge-tum-kabhi', file);
+        matched++;
+      } else {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'mp3';
+        const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const newTrack: Track = {
+          id: `tg-upload-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          title: cleanTitle,
+          artist: 'Telegram Cloud Music',
+          album: 'NOVA Private Library',
+          duration: 210,
+          format: ext as any,
+          coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+          genre: 'Telegram Audio',
+          folder: 'Telegram Cloud',
+          bitRate: `${Math.round(file.size / 1024)} KB Master File`,
+          playCount: 0,
+          isFavorite: false,
+          dateAdded: Date.now(),
+          file: file,
+        };
+        addedTracks.push(newTrack);
+        matched++;
+      }
+    }
+
+    if (addedTracks.length > 0) {
+      addTracks(addedTracks);
+    }
+
+    setSyncFeedback(`Successfully loaded ${matched} real audio files from Telegram / Storage!`);
+    setTimeout(() => setSyncFeedback(null), 4000);
+  };
 
   // Singer-wise shelves
   const shelves: CloudArtistShelf[] = useMemo(() => {
@@ -135,12 +202,28 @@ export const CloudTab: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Batch Import Songs from Device / Telegram */}
+            <label
+              title="Import song files downloaded from Telegram or phone storage"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 active:scale-95 text-emerald-300 text-xs font-bold transition-all border border-emerald-500/30 cursor-pointer shadow-md"
+            >
+              <FolderDown className="w-4 h-4 text-emerald-400" />
+              <span>Import Songs (MP3)</span>
+              <input
+                type="file"
+                multiple
+                accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg"
+                className="hidden"
+                onChange={handleBatchImport}
+              />
+            </label>
+
             <button
               id="btn-sync-cloud-channel"
               onClick={handleSyncChannel}
               disabled={isSyncing}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-bold transition-all border border-white/10"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-bold transition-all border border-white/10"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
               <span>{isSyncing ? 'Syncing...' : 'Sync Channel'}</span>
@@ -283,7 +366,9 @@ export const CloudTab: React.FC = () => {
                 {/* Song Cards for this Singer */}
                 <div className="space-y-2">
                   {shelf.tracks.map((track, idx) => {
-                    const isThisCurrent = currentTrack?.id === track.id;
+                    const liveTrack = getLiveTrack(track);
+                    const hasRealAudio = Boolean(liveTrack.file || liveTrack.audioUrl);
+                    const isThisCurrent = currentTrack?.id === track.id || currentTrack?.id === liveTrack.id;
                     const isTrackPlaying = isThisCurrent && isPlaying;
                     const isCached = cachedTrackIds.has(track.id);
 
@@ -295,7 +380,11 @@ export const CloudTab: React.FC = () => {
                           if (isThisCurrent) {
                             togglePlayPause();
                           } else {
-                            playTrack(track, shelf.tracks);
+                            if (hasRealAudio) {
+                              playTrack(liveTrack, shelf.tracks);
+                            } else {
+                              setSelectedTrackForFile(track);
+                            }
                           }
                         }}
                         className={`group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl transition-all cursor-pointer border ${
@@ -343,20 +432,62 @@ export const CloudTab: React.FC = () => {
                             }`}>
                               {track.title}
                             </h4>
-                            <div className="flex items-center gap-2 text-[11px] text-white/50 truncate mt-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-white/50 truncate mt-0.5">
                               <span>{track.album}</span>
                               <span>•</span>
                               <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-white/10 text-white/80 font-semibold">
                                 {track.format.toUpperCase()}
                               </span>
                               <span>•</span>
-                              <span>{track.bitRate}</span>
+                              {hasRealAudio ? (
+                                <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5">
+                                  <Check className="w-3 h-3" /> Real Song
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-amber-300 font-semibold">
+                                  Select MP3
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
 
                         {/* Right Controls */}
                         <div className="flex items-center gap-2 shrink-0">
+                          {/* Direct MP3 Attach Button */}
+                          <label
+                            title={hasRealAudio ? "Audio loaded - Tap to change file" : "Select & play real song file"}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
+                              hasRealAudio 
+                                ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
+                                : 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 shadow-sm'
+                            }`}
+                          >
+                            <input
+                              type="file"
+                              accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  await linkAudioFileToTrack(track.id, file);
+                                  if (track.id.includes('baarishein')) {
+                                    await linkAudioFileToTrack('anuv-jain-baarishein', file);
+                                  } else if (track.id.includes('choo-lo')) {
+                                    await linkAudioFileToTrack('local-train-choo-lo', file);
+                                  }
+                                  setSyncFeedback(`Playing: ${track.title}`);
+                                  setTimeout(() => setSyncFeedback(null), 3500);
+                                }
+                              }}
+                            />
+                            <Upload className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">
+                              {hasRealAudio ? 'Audio Attached' : 'Attach MP3'}
+                            </span>
+                          </label>
+
                           {/* Duration */}
                           <span className="text-xs font-mono text-white/40 hidden sm:inline-block">
                             {formatDuration(track.duration)}
@@ -476,6 +607,77 @@ export const CloudTab: React.FC = () => {
                 className="px-5 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-lg"
               >
                 Save & Connect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Attach Audio File Modal for Specific Track */}
+      {selectedTrackForFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-neutral-900 border border-white/20 p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedTrackForFile.coverArt}
+                  alt={selectedTrackForFile.title}
+                  className="w-12 h-12 rounded-2xl object-cover border border-white/20 shadow-md"
+                />
+                <div>
+                  <h3 className="text-sm font-black text-white">{selectedTrackForFile.title}</h3>
+                  <p className="text-xs text-white/60">{selectedTrackForFile.artist} • {selectedTrackForFile.album}</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedTrackForFile(null)}
+                className="p-1.5 rounded-full text-white/50 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2">
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                <FileAudio className="w-4 h-4" />
+                <span>Apna Real Song File Attach Karein</span>
+              </div>
+              <p className="text-xs text-white/70 leading-relaxed">
+                Aapne jo gaana Telegram private channel me upload kiya hai ya phone me download kiya hai, use yahan select karein. Select karte hi seedha real gaana lossless equalizer ke sath play hoga aur app me save ho jayega!
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2.5">
+              <label className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs transition-all shadow-xl cursor-pointer">
+                <Upload className="w-4 h-4" />
+                <span>Device / Telegram Se Audio File Select Karein (MP3 / FLAC)</span>
+                <input
+                  type="file"
+                  accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file && selectedTrackForFile) {
+                      await linkAudioFileToTrack(selectedTrackForFile.id, file);
+                      if (selectedTrackForFile.id.includes('baarishein')) {
+                        await linkAudioFileToTrack('anuv-jain-baarishein', file);
+                      } else if (selectedTrackForFile.id.includes('choo-lo')) {
+                        await linkAudioFileToTrack('local-train-choo-lo', file);
+                      }
+                      setSyncFeedback(`Playing: ${selectedTrackForFile.title} (${file.name})`);
+                      setSelectedTrackForFile(null);
+                      setTimeout(() => setSyncFeedback(null), 4000);
+                    }
+                  }}
+                />
+              </label>
+
+              <button
+                onClick={() => setSelectedTrackForFile(null)}
+                className="w-full py-2.5 text-center text-xs text-white/50 hover:text-white"
+              >
+                Cancel
               </button>
             </div>
           </div>

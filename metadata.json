@@ -1,6 +1,6 @@
 {
   "name": "NOVA Player",
-  "description": "Native Android high fidelity music player with AMOLED dark theme, 10-band Studio DSP equalizer, local file scanner, playlists, lock screen and notification controls. Developed by Sourav Phukan.",
+  "description": "Native Android high fidelity music player with AMOLED dark theme, 10-band Studio DSP equalizer, Telegram Private Library Cloud integration, local file scanner, playlists, lock screen and notification controls. Developed by Sourav Phukan.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

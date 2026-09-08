@@ -525,112 +525,11 @@ class AudioEngine {
         }
         return;
       }
-
-      // Schedule notes based on rhythm
-      const currentBeat = Math.floor((this.synthTime / beatDuration) * 4);
-      if (currentBeat !== step) {
-        step = currentBeat;
-        this.playProceduralNote(track.synthPreset || 'synthwave', step % 16);
-      }
     }, 100);
   }
 
-  private playProceduralNote(preset: string, step: number) {
-    if (!this.ctx || !this.bassBoostFilter) return;
-
-    try {
-      const now = this.ctx.currentTime;
-
-      // Bassline note generator
-      if (step % 2 === 0) {
-        const bassOsc = this.ctx.createOscillator();
-        const bassGain = this.ctx.createGain();
-
-        // Scale notes: A minor / Pentatonic
-        const bassFreqs = [55, 55, 65.41, 48.99, 55, 73.42, 65.41, 43.65];
-        const f = bassFreqs[Math.floor(step / 2) % bassFreqs.length];
-
-        bassOsc.type = preset === 'lofi' ? 'triangle' : preset === 'cyberbass' ? 'sawtooth' : 'sine';
-        bassOsc.frequency.setValueAtTime(f, now);
-
-        bassGain.gain.setValueAtTime(0.35, now);
-        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-
-        bassOsc.connect(bassGain);
-        bassGain.connect(this.bassBoostFilter);
-
-        bassOsc.start(now);
-        bassOsc.stop(now + 0.36);
-      }
-
-      // Kick drum
-      if (step === 0 || step === 4 || step === 8 || step === 12 || (preset === 'cyberbass' && step === 10)) {
-        const kickOsc = this.ctx.createOscillator();
-        const kickGain = this.ctx.createGain();
-
-        kickOsc.type = 'sine';
-        kickOsc.frequency.setValueAtTime(140, now);
-        kickOsc.frequency.exponentialRampToValueAtTime(32, now + 0.12);
-
-        kickGain.gain.setValueAtTime(0.6, now);
-        kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-        kickOsc.connect(kickGain);
-        kickGain.connect(this.bassBoostFilter);
-
-        kickOsc.start(now);
-        kickOsc.stop(now + 0.2);
-      }
-
-      // Snare / Clap / Brush
-      if (step === 4 || step === 12) {
-        const bufferSize = this.ctx.sampleRate * 0.08;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
-        }
-
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-        const noiseFilter = this.ctx.createBiquadFilter();
-        noiseFilter.type = 'bandpass';
-        noiseFilter.frequency.value = preset === 'lofi' ? 1200 : 2400;
-
-        const noiseGain = this.ctx.createGain();
-        noiseGain.gain.setValueAtTime(0.25, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-        noise.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(this.bassBoostFilter);
-
-        noise.start(now);
-      }
-
-      // Melodic Chord / Arpeggio
-      if (step % 2 === 1 || step % 4 === 0) {
-        const leadOsc = this.ctx.createOscillator();
-        const leadGain = this.ctx.createGain();
-
-        const melodies = [220, 261.63, 329.63, 392.00, 440, 523.25, 659.25];
-        const pitch = melodies[(step * 3) % melodies.length];
-
-        leadOsc.type = preset === 'ambient' ? 'sine' : preset === 'synthwave' ? 'sawtooth' : 'triangle';
-        leadOsc.frequency.setValueAtTime(pitch, now);
-
-        leadGain.gain.setValueAtTime(0.12, now);
-        leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-
-        leadOsc.connect(leadGain);
-        leadGain.connect(this.bassBoostFilter);
-
-        leadOsc.start(now);
-        leadOsc.stop(now + 0.42);
-      }
-    } catch {
-      // Audio node scheduling safe catch
-    }
+  private playProceduralNote(_preset: string, _step: number) {
+    // Synth beeps disabled - app requires real audio files / streams
   }
 
   private stopSynth() {
