@@ -19,13 +19,12 @@ import {
   Sparkles,
   Music
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
 
 export const LockScreenModal: React.FC = () => {
   const {
     currentTrack,
     isPlaying,
-    currentTime,
     duration,
     togglePlayPause,
     nextTrack,
@@ -44,6 +43,7 @@ export const LockScreenModal: React.FC = () => {
     setLockScreenOpen,
     settings,
   } = usePlayer();
+  const currentTime = usePlaybackTime();
 
   const [time, setTime] = useState('');
   const [dateStr, setDateStr] = useState('');

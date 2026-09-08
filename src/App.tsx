@@ -4,6 +4,7 @@ import { StatusBar } from './components/StatusBar';
 import { OneUIHeader } from './components/OneUIHeader';
 import { HomeTab } from './components/HomeTab';
 import { LibraryTab } from './components/LibraryTab';
+import { CloudTab } from './components/CloudTab';
 import { SearchTab } from './components/SearchTab';
 import { SettingsTab } from './components/SettingsTab';
 import { MiniPlayer } from './components/MiniPlayer';
@@ -34,6 +35,8 @@ const MainLayout: React.FC = () => {
     switch (currentTab) {
       case 'home':
         return '';
+      case 'cloud':
+        return 'Cloud Library';
       case 'library':
         return 'Music Library';
       case 'search':
@@ -47,6 +50,8 @@ const MainLayout: React.FC = () => {
     switch (currentTab) {
       case 'home':
         return '';
+      case 'cloud':
+        return 'NOVA Private Channel • Singer-Wise Library';
       case 'library':
         return 'Tracks, Albums, Playlists & Folders';
       case 'search':
@@ -68,7 +73,10 @@ const MainLayout: React.FC = () => {
   return (
     <div 
       className="fixed inset-0 w-full h-full flex flex-col overflow-hidden transition-colors duration-300 select-none"
-      style={{ backgroundColor: bgColor }}
+      style={{ 
+        backgroundColor: bgColor,
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 26px)'
+      }}
     >
       {/* 1. Android / One UI Status Bar */}
       <StatusBar />
@@ -88,6 +96,9 @@ const MainLayout: React.FC = () => {
         >
           {currentTab === 'home' && (
             <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
+          )}
+          {currentTab === 'cloud' && (
+            <CloudTab />
           )}
           {currentTab === 'library' && (
             <LibraryTab initialSubTab={librarySubTab} />

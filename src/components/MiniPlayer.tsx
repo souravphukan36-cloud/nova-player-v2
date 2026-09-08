@@ -1,13 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Play, Pause, SkipForward, ListMusic, Heart } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
 import { getTrackDynamicPalette } from '../utils/dynamicColor';
 
 export const MiniPlayer: React.FC = () => {
   const { 
     currentTrack, 
     isPlaying, 
-    currentTime, 
     duration, 
     togglePlayPause, 
     nextTrack, 
@@ -17,6 +16,7 @@ export const MiniPlayer: React.FC = () => {
     setQueueOpen,
     settings 
   } = usePlayer();
+  const currentTime = usePlaybackTime();
 
   const [dragX, setDragX] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);

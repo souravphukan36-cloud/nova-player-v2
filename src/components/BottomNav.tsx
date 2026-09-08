@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Library, Search, Settings } from 'lucide-react';
+import { Home, Library, Search, Settings, Cloud } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { MainTab } from '../types';
 
@@ -13,6 +13,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
 
   const tabs: { id: MainTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'home', label: 'Home', icon: Home },
+    { id: 'cloud', label: 'Cloud', icon: Cloud },
     { id: 'library', label: 'Library', icon: Library },
     { id: 'search', label: 'Search', icon: Search },
     { id: 'settings', label: 'Settings', icon: Settings },

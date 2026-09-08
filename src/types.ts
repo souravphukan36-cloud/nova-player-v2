@@ -67,7 +67,15 @@ export type SortOption = 'title' | 'dateAdded' | 'duration' | 'artist';
 export type SortDirection = 'asc' | 'desc';
 
 export type LibrarySubTab = 'songs' | 'albums' | 'artists' | 'genres' | 'folders' | 'playlists';
-export type MainTab = 'home' | 'library' | 'search' | 'settings';
+export type MainTab = 'home' | 'library' | 'cloud' | 'search' | 'settings';
+
+export interface TelegramChannelConfig {
+  botToken: string;
+  channelId: string;
+  channelTitle: string;
+  isConfigured: boolean;
+  lastSyncTime?: number;
+}
 
 export interface SettingsState {
   theme: 'amoled' | 'dark' | 'midnight' | 'slate';

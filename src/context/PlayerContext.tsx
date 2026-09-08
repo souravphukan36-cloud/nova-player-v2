@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Track, 
   Playlist, 
@@ -182,23 +182,41 @@ const DEFAULT_EQ: EqualizerState = {
 
 const PlayerContext = createContext<PlayerContextType | null>(null);
 
+export const PlayerTimeContext = createContext<number>(0);
+
+export const usePlaybackTime = () => {
+  return useContext(PlayerTimeContext);
+};
+
+const isBannedTrack = (t: Track): boolean => {
+  if (!t) return true;
+  if (/^nova-track-\d+$/i.test(t.id)) return true;
+  const combined = `${t.title || ''} ${t.artist || ''} ${t.album || ''} ${t.folder || ''}`.toLowerCase();
+  return (
+    combined.includes('samsung') ||
+    combined.includes('ringtone') ||
+    combined.includes('over the horizon') ||
+    combined.includes('notification sound')
+  );
+};
+
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Saved state from localStorage
+  // Saved state from localStorage with strict Ringtone & Samsung exclusion filter
   const [tracks, setTracks] = useState<Track[]>(() => {
     try {
       const saved = localStorage.getItem('nova_tracks');
       if (saved) {
-        const parsed = JSON.parse(saved);
+        let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Check if newly introduced default tracks are missing and prepend them
+          // 1. Purge any ringtones or legacy demo tracks
+          parsed = parsed.filter((t: Track) => !isBannedTrack(t));
+
+          // 2. Ensure new default tracks (Anuv Jain & The Local Train) are included
           const existingIds = new Set(parsed.map((t: Track) => t.id));
           const missingDefaults = DEFAULT_TRACKS.filter(dt => !existingIds.has(dt.id));
-          if (missingDefaults.length > 0) {
-            const combined = [...missingDefaults, ...parsed];
-            localStorage.setItem('nova_tracks', JSON.stringify(combined));
-            return combined;
-          }
-          return parsed;
+          const combined = missingDefaults.length > 0 ? [...missingDefaults, ...parsed] : parsed;
+          localStorage.setItem('nova_tracks', JSON.stringify(combined));
+          return combined;
         }
       }
     } catch {
@@ -247,7 +265,17 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [equalizer, setEqualizer] = useState<EqualizerState>(() => {
     try {
       const saved = localStorage.getItem('nova_equalizer');
-      if (saved) return { ...DEFAULT_EQ, ...JSON.parse(saved) };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_EQ,
+          ...parsed,
+          bandMode: '10-band',
+          bands: Array.isArray(parsed.bands) && parsed.bands.length === 10
+            ? parsed.bands
+            : DEFAULT_EQ.bands
+        };
+      }
     } catch {
       // fallback
     }
@@ -257,6 +285,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currentTrack, setCurrentTrack] = useState<Track | null>(DEFAULT_TRACKS[0]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
+  const currentTimeRef = useRef<number>(0);
   const [duration, setDuration] = useState<number>(DEFAULT_TRACKS[0].duration);
   const [volume, setVolumeState] = useState<number>(0.85);
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -325,9 +354,19 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     getAllStoredTracks().then((stored) => {
       if (stored && stored.length > 0) {
+        // Clean up any banned/ringtone tracks from IndexedDB
+        const cleanStored: Track[] = [];
+        for (const t of stored) {
+          if (isBannedTrack(t)) {
+            deleteStoredTrack(t.id).catch(() => {});
+          } else {
+            cleanStored.push(t);
+          }
+        }
+
         setTracks(prev => {
           const existingIds = new Set(prev.map(t => t.id));
-          const newStored = stored.filter(s => !existingIds.has(s.id));
+          const newStored = cleanStored.filter(s => !existingIds.has(s.id));
           if (newStored.length > 0) {
             return [...newStored, ...prev];
           }
@@ -410,6 +449,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     audioEngine.setCallbacks(
       (time) => {
+        currentTimeRef.current = time;
         setCurrentTime(time);
       },
       () => {
@@ -648,8 +688,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     if (effectiveQueue.length === 0) return;
 
-    if (currentTime > 3) {
+    if (currentTimeRef.current > 3) {
       audioEngine.seek(0);
+      currentTimeRef.current = 0;
       setCurrentTime(0);
       return;
     }
@@ -676,6 +717,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const seek = (seconds: number) => {
+    currentTimeRef.current = seconds;
     setCurrentTime(seconds);
     audioEngine.seek(seconds);
   };
@@ -935,94 +977,124 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     clearAllAudioStorage();
   };
 
+  const contextValue = useMemo(() => ({
+    tracks,
+    playlists,
+    currentTrack,
+    isPlaying,
+    get currentTime() {
+      return currentTimeRef.current;
+    },
+    duration,
+    volume,
+    isMuted,
+    shuffle,
+    repeat,
+    queue,
+    queueIndex,
+    equalizer,
+    settings,
+    sleepTimer,
+
+    nowPlayingOpen,
+    setNowPlayingOpen,
+    equalizerOpen,
+    setEqualizerOpen,
+    queueOpen,
+    setQueueOpen,
+    lyricsOpen,
+    setLyricsOpen,
+    lockScreenOpen,
+    setLockScreenOpen,
+    notificationShadeOpen,
+    setNotificationShadeOpen,
+    sleepTimerOpen,
+    setSleepTimerOpen,
+    scannerOpen,
+    setScannerOpen,
+    playlistModalOpen,
+    setPlaylistModalOpen,
+    customizerOpen,
+    setCustomizerOpen,
+    carModeOpen,
+    setCarModeOpen,
+
+    playTrack,
+    togglePlayPause,
+    nextTrack,
+    prevTrack,
+    seek,
+    setVolume,
+    toggleMute,
+    toggleFavorite,
+    setShuffle,
+    setRepeat,
+    reorderQueue,
+    removeFromQueue,
+    clearQueue,
+    addToQueue,
+    playNext,
+
+    setEQPreset,
+    setEQBand,
+    setEQBandMode,
+    setBassBoost,
+    setReverb,
+    setStereoWidening,
+    toggleDolbyAtmos,
+    toggleEightDAudio,
+    toggleEQEnabled,
+
+    startSleepTimer,
+    cancelSleepTimer,
+
+    addTracks,
+    deleteTrack,
+    createPlaylist,
+    deletePlaylist,
+    addTrackToPlaylist,
+    removeTrackFromPlaylist,
+    reorderPlaylistTracks,
+
+    updateTheme,
+    updateAccentColor,
+    updateCrossfade,
+    toggleGapless,
+    clearCache,
+    updateSettings,
+  }), [
+    tracks,
+    playlists,
+    currentTrack,
+    isPlaying,
+    duration,
+    volume,
+    isMuted,
+    shuffle,
+    repeat,
+    queue,
+    queueIndex,
+    equalizer,
+    settings,
+    sleepTimer,
+    nowPlayingOpen,
+    equalizerOpen,
+    queueOpen,
+    lyricsOpen,
+    lockScreenOpen,
+    notificationShadeOpen,
+    sleepTimerOpen,
+    scannerOpen,
+    playlistModalOpen,
+    customizerOpen,
+    carModeOpen,
+  ]);
+
   return (
-    <PlayerContext.Provider
-      value={{
-        tracks,
-        playlists,
-        currentTrack,
-        isPlaying,
-        currentTime,
-        duration,
-        volume,
-        isMuted,
-        shuffle,
-        repeat,
-        queue,
-        queueIndex,
-        equalizer,
-        settings,
-        sleepTimer,
-
-        nowPlayingOpen,
-        setNowPlayingOpen,
-        equalizerOpen,
-        setEqualizerOpen,
-        queueOpen,
-        setQueueOpen,
-        lyricsOpen,
-        setLyricsOpen,
-        lockScreenOpen,
-        setLockScreenOpen,
-        notificationShadeOpen,
-        setNotificationShadeOpen,
-        sleepTimerOpen,
-        setSleepTimerOpen,
-        scannerOpen,
-        setScannerOpen,
-        playlistModalOpen,
-        setPlaylistModalOpen,
-        customizerOpen,
-        setCustomizerOpen,
-        carModeOpen,
-        setCarModeOpen,
-
-        playTrack,
-        togglePlayPause,
-        nextTrack,
-        prevTrack,
-        seek,
-        setVolume,
-        toggleMute,
-        toggleFavorite,
-        setShuffle,
-        setRepeat,
-        reorderQueue,
-        removeFromQueue,
-        clearQueue,
-        addToQueue,
-        playNext,
-
-        setEQPreset,
-        setEQBand,
-        setEQBandMode,
-        setBassBoost,
-        setReverb,
-        setStereoWidening,
-        toggleDolbyAtmos,
-        toggleEightDAudio,
-        toggleEQEnabled,
-
-        startSleepTimer,
-        cancelSleepTimer,
-
-        addTracks,
-        deleteTrack,
-        createPlaylist,
-        deletePlaylist,
-        addTrackToPlaylist,
-        removeTrackFromPlaylist,
-        reorderPlaylistTracks,
-
-        updateTheme,
-        updateAccentColor,
-        updateCrossfade,
-        toggleGapless,
-        clearCache,
-        updateSettings,
-      }}
-    >
-      {children}
+    <PlayerContext.Provider value={contextValue}>
+      <PlayerTimeContext.Provider value={currentTime}>
+        {children}
+      </PlayerTimeContext.Provider>
     </PlayerContext.Provider>
   );
 };

@@ -11,14 +11,13 @@ import {
   X,
   Volume1
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
 import { getTrackDynamicPalette } from '../utils/dynamicColor';
 
 export const CarModeModal: React.FC = () => {
   const {
     currentTrack,
     isPlaying,
-    currentTime,
     duration,
     volume,
     isMuted,
@@ -32,6 +31,7 @@ export const CarModeModal: React.FC = () => {
     setCarModeOpen,
     settings
   } = usePlayer();
+  const currentTime = usePlaybackTime();
 
   if (!carModeOpen || !currentTrack) return null;
 

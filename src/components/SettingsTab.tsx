@@ -216,58 +216,175 @@ export const SettingsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Library & Search Shelves Customization (User Request: Library & Search customization with square box shelves) */}
+      {/* Library & Search Shelves Customization (Redesigned with sleek Proxy UI tactile switches and vibe chips) */}
       <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <LayoutGrid className="w-4 h-4 text-emerald-400" />
-          <span>Library & Search Customization</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-white font-bold text-sm">
+            <div 
+              className="w-7 h-7 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: `${settings.accentColor}20`, color: settings.accentColor }}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </div>
+            <span>Library & Search Customization</span>
+          </div>
+          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+            Proxy UI Shelves
+          </span>
         </div>
-        <p className="text-xs text-white/50">
-          Customize square shelves across your music collection and discovery tabs.
+        <p className="text-xs text-white/50 leading-relaxed">
+          Enable or customize square discovery shelves and interactive mood vibes across your music library.
         </p>
 
-        {/* Library Characters Grid */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Library: Music Character Boxes</span>
-            <span className="text-[11px] text-white/50">
-              Shows top row of square boxes for each music vibe (High Energy, Late Night, Lo-Fi, 8D Bass, Folk)
-            </span>
+        {/* Library Characters Grid Card */}
+        <div 
+          onClick={() => updateSettings?.({ libraryShowCharacterGrid: settings.libraryShowCharacterGrid === false })}
+          className="p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition-all cursor-pointer space-y-3 active:scale-[0.99]"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div 
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                style={{ 
+                  backgroundColor: settings.libraryShowCharacterGrid !== false ? `${settings.accentColor}25` : 'rgba(255,255,255,0.05)',
+                  color: settings.libraryShowCharacterGrid !== false ? settings.accentColor : 'rgba(255,255,255,0.4)'
+                }}
+              >
+                <Music2 className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white block">Library: Music Character Boxes</span>
+                  <span 
+                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
+                      settings.libraryShowCharacterGrid !== false ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
+                    }`}
+                  >
+                    {settings.libraryShowCharacterGrid !== false ? 'Active' : 'Hidden'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-white/50 block">
+                  Top row of square mood boxes for instant filtering (High Energy, Late Night, Lo-Fi, 8D Bass, Folk).
+                </span>
+              </div>
+            </div>
+
+            {/* Tactile Proxy UI Switch */}
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.libraryShowCharacterGrid !== false}
+                className={`w-[52px] h-[28px] rounded-full transition-all relative p-[3px] flex items-center shrink-0 shadow-inner cursor-pointer border ${
+                  settings.libraryShowCharacterGrid !== false 
+                    ? 'border-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]' 
+                    : 'bg-white/10 border-white/15'
+                }`}
+                style={{
+                  backgroundColor: settings.libraryShowCharacterGrid !== false ? (settings.accentColor || '#10B981') : undefined
+                }}
+              >
+                <div
+                  className={`w-[22px] h-[22px] rounded-full bg-white shadow-md transition-transform flex items-center justify-center text-[9px] font-black text-emerald-700 ${
+                    settings.libraryShowCharacterGrid !== false ? 'translate-x-[24px]' : 'translate-x-0'
+                  }`}
+                >
+                  {settings.libraryShowCharacterGrid !== false ? '✓' : ''}
+                </div>
+              </button>
+              <span className="text-[9px] font-mono font-bold tracking-wider text-white/50 uppercase">
+                {settings.libraryShowCharacterGrid !== false ? 'ON' : 'OFF'}
+              </span>
+            </div>
           </div>
-          <button
-            onClick={() => updateSettings?.({ libraryShowCharacterGrid: settings.libraryShowCharacterGrid === false })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.libraryShowCharacterGrid !== false ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.libraryShowCharacterGrid !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
+
+          {/* Micro preview chips */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-white/5">
+            {['⚡ High Energy', '🌙 Late Night', '☕ Lo-Fi', '🎧 8D Bass', '🎻 Folk'].map((chip) => (
+              <span 
+                key={chip}
+                className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
         </div>
 
-        {/* Search Never Heard Shelf */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Search: 'Never Heard Before' Shelf</span>
-            <span className="text-[11px] text-white/50">
-              Shows row of square cards below search bar with cover art & titles of unplayed gems
+        {/* Search Never Heard Shelf Card */}
+        <div 
+          onClick={() => updateSettings?.({ searchShowUnheardShelf: settings.searchShowUnheardShelf === false })}
+          className="p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition-all cursor-pointer space-y-3 active:scale-[0.99]"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div 
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                style={{ 
+                  backgroundColor: settings.searchShowUnheardShelf !== false ? `${settings.accentColor}25` : 'rgba(255,255,255,0.05)',
+                  color: settings.searchShowUnheardShelf !== false ? settings.accentColor : 'rgba(255,255,255,0.4)'
+                }}
+              >
+                <Search className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white block">Search: 'Never Heard Before' Shelf</span>
+                  <span 
+                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
+                      settings.searchShowUnheardShelf !== false ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
+                    }`}
+                  >
+                    {settings.searchShowUnheardShelf !== false ? 'Active' : 'Hidden'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-white/50 block">
+                  Discovery shelf beneath search bar featuring unplayed gems & rare tracks with cover arts.
+                </span>
+              </div>
+            </div>
+
+            {/* Tactile Proxy UI Switch */}
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.searchShowUnheardShelf !== false}
+                className={`w-[52px] h-[28px] rounded-full transition-all relative p-[3px] flex items-center shrink-0 shadow-inner cursor-pointer border ${
+                  settings.searchShowUnheardShelf !== false 
+                    ? 'border-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]' 
+                    : 'bg-white/10 border-white/15'
+                }`}
+                style={{
+                  backgroundColor: settings.searchShowUnheardShelf !== false ? (settings.accentColor || '#10B981') : undefined
+                }}
+              >
+                <div
+                  className={`w-[22px] h-[22px] rounded-full bg-white shadow-md transition-transform flex items-center justify-center text-[9px] font-black text-emerald-700 ${
+                    settings.searchShowUnheardShelf !== false ? 'translate-x-[24px]' : 'translate-x-0'
+                  }`}
+                >
+                  {settings.searchShowUnheardShelf !== false ? '✓' : ''}
+                </div>
+              </button>
+              <span className="text-[9px] font-mono font-bold tracking-wider text-white/50 uppercase">
+                {settings.searchShowUnheardShelf !== false ? 'ON' : 'OFF'}
+              </span>
+            </div>
+          </div>
+
+          {/* Micro preview chips */}
+          <div className="flex items-center gap-1.5 pt-1 border-t border-white/5">
+            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium">
+              ✨ Rare Gems
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium">
+              📻 Zero Playcount
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium">
+              🎨 Artwork Cards
             </span>
           </div>
-          <button
-            onClick={() => updateSettings?.({ searchShowUnheardShelf: settings.searchShowUnheardShelf === false })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.searchShowUnheardShelf !== false ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.searchShowUnheardShelf !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
         </div>
       </div>
 
@@ -858,7 +975,10 @@ export const SettingsTab: React.FC = () => {
             </div>
             <div className="pt-2 border-t border-white/10">
               <span className="text-white/40 block text-[10px] uppercase font-bold">DSP Engine</span>
-              <span className="font-semibold text-white">5-Band Studio DSP</span>
+              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                10-Band Studio DSP
+              </span>
             </div>
           </div>
 

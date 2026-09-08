@@ -19,13 +19,12 @@ import {
   Headphones,
   CheckCircle2
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
 
 export const NotificationShadeModal: React.FC = () => {
   const {
     currentTrack,
     isPlaying,
-    currentTime,
     duration,
     togglePlayPause,
     nextTrack,
@@ -44,6 +43,7 @@ export const NotificationShadeModal: React.FC = () => {
     toggleMute,
     settings,
   } = usePlayer();
+  const currentTime = usePlaybackTime();
 
   const [time, setTime] = useState('');
   const [wifiActive, setWifiActive] = useState(true);

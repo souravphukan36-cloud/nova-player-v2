@@ -12,6 +12,41 @@ export const SUPPORTED_EXTENSIONS: Record<string, AudioFormat> = {
   m4a: 'm4a',
 };
 
+// Automatic filter to block Samsung ringtones, notification chirps, and system sounds
+export function isRingtoneOrSystemSound(fileName: string, folderPath: string = '', durationSeconds?: number): boolean {
+  const combined = `${fileName} ${folderPath}`.toLowerCase();
+  
+  const ringtoneKeywords = [
+    'ringtone',
+    'notification',
+    'alarm',
+    'samsung',
+    'over the horizon',
+    'ui_sound',
+    'system_sound',
+    'hangouts',
+    'whistle',
+    'chime',
+    'ding',
+  ];
+
+  for (const kw of ringtoneKeywords) {
+    if (combined.includes(kw)) return true;
+  }
+
+  // Files shorter than 40 seconds located in system or non-music folders
+  if (
+    durationSeconds !== undefined &&
+    durationSeconds > 0 &&
+    durationSeconds < 40 &&
+    (combined.includes('system') || combined.includes('media') || combined.includes('sound') || combined.includes('alert'))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function parseAudioFile(file: File, folderPath: string = '/Storage/Music/Imported'): Promise<Track> {
   const extension = file.name.split('.').pop()?.toLowerCase() || 'mp3';
   const format: AudioFormat = SUPPORTED_EXTENSIONS[extension] || 'mp3';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Play, 
   Pause, 
@@ -48,38 +48,44 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
   };
 
   // Filtered tracks for the list below
-  const filteredTracks = tracks.filter(t => {
+  const filteredTracks = useMemo(() => tracks.filter(t => {
     if (activeFilter === 'favorites') return t.isFavorite;
     if (activeFilter === 'lossless') return t.format === 'flac' || t.format === 'wav';
     return true;
-  });
+  }), [tracks, activeFilter]);
 
   // Recently played tracks (first 6)
-  const recentlyPlayed = [...tracks].sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0)).slice(0, 6);
+  const recentlyPlayed = useMemo(() => [...tracks].sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0)).slice(0, 6), [tracks]);
 
   // Quick picks
-  const quickPicks = tracks.slice(0, 8);
+  const quickPicks = useMemo(() => tracks.slice(0, 8), [tracks]);
 
-  // Artist spotlight tracks (Thaikkudam Bridge or Atif Aslam)
-  const spotlightArtist = 'Thaikkudam Bridge';
-  const artistTracks = tracks.filter(t => t.artist.toLowerCase().includes('thaikkudam') || t.artist.toLowerCase().includes('atif'));
+  // Artist spotlight tracks (Anuv Jain & The Local Train)
+  const spotlightArtist = 'Anuv Jain & The Local Train';
+  const artistTracks = useMemo(() => tracks.filter(t => 
+    t.artist.toLowerCase().includes('anuv') || 
+    t.artist.toLowerCase().includes('local train') ||
+    t.artist.toLowerCase().includes('atif')
+  ), [tracks]);
 
   // Rain & Soundscape Mood tracks
-  const rainMoodTracks = tracks.filter(t => 
+  const rainMoodTracks = useMemo(() => tracks.filter(t => 
     t.genre.toLowerCase().includes('ambient') || 
     t.genre.toLowerCase().includes('lo-fi') || 
     t.title.toLowerCase().includes('rain') ||
     t.genre.toLowerCase().includes('acoustic')
-  );
+  ), [tracks]);
 
   // Unique albums
-  const albumMap = new Map<string, Track>();
-  tracks.forEach(t => {
-    if (!albumMap.has(t.album)) {
-      albumMap.set(t.album, t);
-    }
-  });
-  const uniqueAlbums = Array.from(albumMap.values());
+  const uniqueAlbums = useMemo(() => {
+    const albumMap = new Map<string, Track>();
+    tracks.forEach(t => {
+      if (!albumMap.has(t.album)) {
+        albumMap.set(t.album, t);
+      }
+    });
+    return Array.from(albumMap.values());
+  }, [tracks]);
 
   return (
     <div className="space-y-7 pb-36 px-4 sm:px-6 select-none animate-in fade-in duration-300">

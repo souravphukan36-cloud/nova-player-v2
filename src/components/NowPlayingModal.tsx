@@ -25,14 +25,13 @@ import {
   SlidersHorizontal,
   Car
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
 import { getTrackDynamicPalette } from '../utils/dynamicColor';
 
 export const NowPlayingModal: React.FC = () => {
   const {
     currentTrack,
     isPlaying,
-    currentTime,
     duration,
     volume,
     isMuted,
@@ -67,6 +66,7 @@ export const NowPlayingModal: React.FC = () => {
     settings,
     updateSettings,
   } = usePlayer();
+  const currentTime = usePlaybackTime();
 
   const [showTrackDetails, setShowTrackDetails] = useState(false);
   const [dragY, setDragY] = useState(0);

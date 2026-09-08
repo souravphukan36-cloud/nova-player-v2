@@ -10,7 +10,7 @@ import {
   Sparkles 
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
-import { parseAudioFile, SUPPORTED_EXTENSIONS } from '../services/fileScanner';
+import { parseAudioFile, SUPPORTED_EXTENSIONS, isRingtoneOrSystemSound } from '../services/fileScanner';
 import { Track } from '../types';
 
 export const FileScannerModal: React.FC = () => {
@@ -36,16 +36,27 @@ export const FileScannerModal: React.FC = () => {
 
     const newTracks: Track[] = [];
     const validExtensions = Object.keys(SUPPORTED_EXTENSIONS);
+    let skippedRingtones = 0;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
 
       if (validExtensions.includes(ext) || file.type.startsWith('audio/')) {
+        // Filter out Samsung ringtones, notification sounds, alarms
+        if (isRingtoneOrSystemSound(file.name, folderPath || '')) {
+          skippedRingtones++;
+          continue;
+        }
+
         setScanStatus(`Parsing metadata: ${file.name} (${i + 1}/${files.length})`);
         try {
           const track = await parseAudioFile(file, folderPath || '/Storage/Music/Imported');
-          newTracks.push(track);
+          if (isRingtoneOrSystemSound(track.title, track.folder, track.duration)) {
+            skippedRingtones++;
+          } else {
+            newTracks.push(track);
+          }
         } catch (e) {
           console.warn('Failed to parse file', file.name, e);
         }
@@ -54,7 +65,8 @@ export const FileScannerModal: React.FC = () => {
 
     setScannedTracks(newTracks);
     setIsScanning(false);
-    setScanStatus(`Scan complete. Found ${newTracks.length} valid audio tracks.`);
+    const skipMsg = skippedRingtones > 0 ? ` (Filtered ${skippedRingtones} ringtones/system sounds)` : '';
+    setScanStatus(`Scan complete. Found ${newTracks.length} valid audio tracks.${skipMsg}`);
 
     if (newTracks.length > 0) {
       addTracks(newTracks);
