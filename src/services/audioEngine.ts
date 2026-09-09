@@ -122,10 +122,11 @@ class AudioEngine {
       this.mainGain.connect(this.analyser);
       this.analyser.connect(this.ctx.destination);
 
-      // Prepare HTML5 Audio for uploaded files
+      // Prepare HTML5 Audio for uploaded and cloud files
       this.audioElement = new Audio();
-      this.audioElement.crossOrigin = 'anonymous';
       this.audioElement.preload = 'auto';
+      this.audioElement.setAttribute('playsinline', 'true');
+      this.audioElement.setAttribute('webkit-playsinline', 'true');
 
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
@@ -233,25 +234,40 @@ class AudioEngine {
         if (track.file) {
           streamUrl = URL.createObjectURL(track.file);
         }
-        if (streamUrl && this.audioElement.src !== streamUrl) {
+        const currentSrc = this.audioElement.src;
+        const isSame = currentSrc === streamUrl || 
+                       (streamUrl && currentSrc.endsWith(streamUrl)) ||
+                       (streamUrl && streamUrl.startsWith('/') && currentSrc.includes(streamUrl));
+
+        if (streamUrl && !isSame) {
           this.audioElement.src = streamUrl;
+          this.audioElement.load();
         }
-        this.audioElement.currentTime = startTime;
+        if (startTime > 0) {
+          try {
+            this.audioElement.currentTime = startTime;
+          } catch {}
+        }
         this.audioElement.volume = this.isMuted ? 0 : this.volume;
         this.audioElement.muted = this.isMuted;
+
         try {
           await this.audioElement.play();
         } catch (e: any) {
           console.warn('HTML5 audio play error:', e);
-          // If aborted or notAllowed (user gesture required), retry once
           if (e?.name === 'NotAllowedError') {
-            console.log('User interaction required to start audio context playback');
+            console.log('User interaction required to start audio playback');
           } else if (e?.name === 'AbortError') {
-            // New track started before previous finished loading; safe to ignore
+            // Track skipped before load
           } else {
-            // Only fallback to synth if not a real cloud/local track
-            if (!track.audioUrl && !track.file) {
-              this.startSynth(track, startTime);
+            // Attempt reload once
+            try {
+              if (streamUrl) {
+                this.audioElement.src = streamUrl;
+                await this.audioElement.play();
+              }
+            } catch (err2) {
+              console.warn('Audio retry failed:', err2);
             }
           }
         }

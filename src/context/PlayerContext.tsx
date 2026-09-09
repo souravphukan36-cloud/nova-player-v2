@@ -920,11 +920,21 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Tracks & Playlists
   const addTracks = (newTracks: Track[]) => {
     setTracks(prev => {
-      const existingIds = new Set(prev.map(t => t.id));
-      const filtered = newTracks.filter(t => !existingIds.has(t.id));
-      return [...prev, ...filtered];
+      // Update any matching existing tracks with latest audioUrl and coverArt
+      const updated = prev.map(p => {
+        const matching = newTracks.find(n => n.id === p.id || n.title.toLowerCase().trim() === p.title.toLowerCase().trim());
+        return matching ? { ...p, ...matching } : p;
+      });
+      const updatedIds = new Set(updated.map(t => t.id));
+      const updatedTitles = new Set(updated.map(t => t.title.toLowerCase().trim()));
+      const newItems = newTracks.filter(t => !updatedIds.has(t.id) && !updatedTitles.has(t.title.toLowerCase().trim()));
+      return [...updated, ...newItems];
     });
-    setQueue(prev => [...prev, ...newTracks]);
+    setQueue(prev => {
+      const queueIds = new Set(prev.map(t => t.id));
+      const toAdd = newTracks.filter(t => !queueIds.has(t.id));
+      return [...prev, ...toAdd];
+    });
   };
 
   const deleteTrack = (trackId: string) => {

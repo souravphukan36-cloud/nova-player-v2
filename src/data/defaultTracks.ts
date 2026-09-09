@@ -113,6 +113,35 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 45, text: 'Palchhin tore sang laage jiya...' },
       { time: 75, text: '♪ (Soulful Indian Classical Fusion) ♪' }
     ]
+  },
+  {
+    id: 'tg-pritam-raabta',
+    title: 'Raabta (Kehte Hain Khuda Ne)',
+    artist: 'Pritam, Shreya Ghoshal, Arijit Singh',
+    album: 'Agent Vinod',
+    duration: 290,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ',
+    synthPreset: 'acoustic',
+    genre: 'Romantic / Hindi Soul',
+    folder: 'NOVA Private Library / Pritam, Shreya Ghoshal, Arijit Singh',
+    year: 2026,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 1,
+    lastPlayed: Date.now(),
+    isFavorite: true,
+    dateAdded: 1788954302000,
+    lyrics: [
+      { time: 0, text: '♪ (Kehte hain khuda ne iss jahan mein sabhi ke liye) ♪' },
+      { time: 15, text: 'Kehte hain khuda ne iss jahan mein sabhi ke liye...' },
+      { time: 32, text: 'Kisi na kisi ko hai banaya har kisi ke liye...' },
+      { time: 48, text: 'Tera milna hai uss rab ka ishaara maanu...' },
+      { time: 68, text: 'Kuch toh hai tujhse raabta, kuch toh hai tujhse raabta...' },
+      { time: 95, text: 'Kaise hum jaane hume kya pata, kuch toh hai tujhse raabta...' },
+      { time: 120, text: '♪ (Soulful vocal harmonies by Arijit Singh & Shreya Ghoshal) ♪' },
+      { time: 150, text: 'Meherbani jaate jaate mujhpe kar gaya...' }
+    ]
   }
 ];
 

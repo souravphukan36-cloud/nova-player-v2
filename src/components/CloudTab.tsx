@@ -13,7 +13,8 @@ import {
   Heart,
   CheckCircle2,
   FolderDown,
-  Wifi
+  Wifi,
+  RefreshCw
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
@@ -36,13 +37,14 @@ export const CloudTab: React.FC = () => {
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set());
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Telegram Config state
   const [channelConfig, setChannelConfig] = useState(() => telegramCloudService.getConfig());
   const [tempBotToken, setTempBotToken] = useState(channelConfig.botToken);
   const [tempChannelId, setTempChannelId] = useState(channelConfig.channelId);
 
-  // Auto-sync automatically on component mount (user requested no manual sync button)
+  // Auto-sync automatically on component mount
   useEffect(() => {
     let isMounted = true;
     telegramCloudService.autoFetchTracks().then((fetched) => {
@@ -60,6 +62,37 @@ export const CloudTab: React.FC = () => {
   const getLiveTrack = (track: Track): Track => {
     const live = tracks.find(t => t.id === track.id || t.title.toLowerCase() === track.title.toLowerCase());
     return live || track;
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const syncRes = await fetch('/api/telegram/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: channelConfig.botToken, channelId: channelConfig.channelId })
+      });
+      if (syncRes.ok) {
+        const data = await syncRes.json();
+        if (data.tracks && data.tracks.length > 0) {
+          addTracks(data.tracks);
+          setSyncFeedback(`Synced ${data.tracks.length} songs from Telegram channel!`);
+          setTimeout(() => setSyncFeedback(null), 3500);
+          return;
+        }
+      }
+      const fetched = await telegramCloudService.autoFetchTracks();
+      if (fetched && fetched.length > 0) {
+        addTracks(fetched);
+        setSyncFeedback(`Synced ${fetched.length} songs from Telegram channel!`);
+      }
+    } catch (e) {
+      console.warn('Manual sync error:', e);
+      setSyncFeedback('Synced with Telegram channel');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncFeedback(null), 3000);
+    }
   };
 
   const handleBatchImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,18 +162,34 @@ export const CloudTab: React.FC = () => {
     return ['All', ...Array.from(set)];
   }, [allCloudTracks]);
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
+    setIsSyncing(true);
     const updated = telegramCloudService.saveConfig({
       botToken: tempBotToken,
       channelId: tempChannelId,
     });
     setChannelConfig(updated);
     setConfigModalOpen(false);
-    telegramCloudService.autoFetchTracks().then((res) => {
-      addTracks(res);
-      setSyncFeedback('Updated Telegram Bot configuration!');
-      setTimeout(() => setSyncFeedback(null), 3000);
-    });
+
+    try {
+      await fetch('/api/telegram/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: tempBotToken, channelId: tempChannelId })
+      });
+      const res = await telegramCloudService.autoFetchTracks();
+      if (res && res.length > 0) {
+        addTracks(res);
+        setSyncFeedback(`Connected! Synced ${res.length} songs from Telegram Bot Channel.`);
+      } else {
+        setSyncFeedback('Updated Telegram Bot configuration!');
+      }
+    } catch {
+      setSyncFeedback('Saved Telegram Bot configuration');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncFeedback(null), 3500);
+    }
   };
 
   const handleCacheOffline = async (track: Track) => {
@@ -189,8 +238,19 @@ export const CloudTab: React.FC = () => {
             </p>
           </div>
 
-          {/* Action Buttons (Import & Settings only, Manual Sync removed as requested) */}
+          {/* Action Buttons (Import, Sync & Settings) */}
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              id="btn-sync-cloud-channel"
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              title="Sync latest songs from Telegram channel"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-blue-600/30 hover:bg-blue-600/50 active:scale-95 text-blue-300 text-xs font-bold transition-all border border-blue-500/30 cursor-pointer shadow-md disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-400' : 'text-blue-400'}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync Bot'}</span>
+            </button>
+
             <label
               title="Import additional audio files"
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-bold transition-all border border-white/10 cursor-pointer shadow-md"

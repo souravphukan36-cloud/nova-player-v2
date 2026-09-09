@@ -23,7 +23,7 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
     duration: 305,
     format: 'mp3',
     coverArt: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_1.mp3',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ',
     synthPreset: 'acoustic',
     genre: 'Indie Acoustic / Poetry',
     folder: 'NOVA Private Library / Anuv Jain',
@@ -50,7 +50,7 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
     duration: 264,
     format: 'm4a',
     coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_2.m4a',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMFaqBCEbQf_eGZ5pL7b_n57h2vXzMAAjg3AAL02QABVf79k2hR_buhPQQ',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
     folder: 'NOVA Private Library / The Local Train',
@@ -77,8 +77,8 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
     album: 'Aalas Ka Pedh',
     duration: 233,
     format: 'm4a',
-    coverArt: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_0.m4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
     folder: 'NOVA Private Library / The Local Train',
@@ -98,6 +98,58 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
       { time: 104, text: '♪ (Raman Negi vocal power & soaring rock guitar riff) ♪' },
       { time: 135, text: 'Choo lo jo mujhe tum kabhi... kho na jaaun main...' }
     ]
+  },
+  {
+    id: 'tg-garvit-kaahe-mose',
+    title: 'Kaahe Mose',
+    artist: 'Garvit Soni, Priyansh Srivastava',
+    album: 'SambalpuriStar.In - Kaahe Mose',
+    duration: 219,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA',
+    synthPreset: 'acoustic',
+    genre: 'Hindi Soul / Indie',
+    folder: 'NOVA Private Library / Garvit Soni, Priyansh Srivastava',
+    year: 2026,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 15,
+    isFavorite: true,
+    dateAdded: 1788943704000,
+    lyrics: [
+      { time: 0, text: '♪ (Soulful Indian Contemporary Prelude) ♪' },
+      { time: 15, text: 'Kaahe mose naina milaye re...' },
+      { time: 45, text: 'Palchhin tore sang laage jiya...' },
+      { time: 75, text: '♪ (Soulful Indian Classical & Contemporary Fusion) ♪' }
+    ]
+  },
+  {
+    id: 'tg-pritam-raabta',
+    title: 'Raabta (Kehte Hain Khuda Ne)',
+    artist: 'Pritam, Shreya Ghoshal, Arijit Singh',
+    album: 'Agent Vinod',
+    duration: 290,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ',
+    synthPreset: 'acoustic',
+    genre: 'Romantic / Hindi Soul',
+    folder: 'NOVA Private Library / Pritam, Shreya Ghoshal, Arijit Singh',
+    year: 2026,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 20,
+    isFavorite: true,
+    dateAdded: 1788954302000,
+    lyrics: [
+      { time: 0, text: '♪ (Kehte hain khuda ne iss jahan mein sabhi ke liye) ♪' },
+      { time: 15, text: 'Kehte hain khuda ne iss jahan mein sabhi ke liye...' },
+      { time: 32, text: 'Kisi na kisi ko hai banaya har kisi ke liye...' },
+      { time: 48, text: 'Tera milna hai uss rab ka ishaara maanu...' },
+      { time: 68, text: 'Kuch toh hai tujhse raabta, kuch toh hai tujhse raabta...' },
+      { time: 95, text: 'Kaise hum jaane hume kya pata, kuch toh hai tujhse raabta...' },
+      { time: 120, text: '♪ (Soulful vocal harmonies by Arijit Singh & Shreya Ghoshal) ♪' },
+      { time: 150, text: 'Meherbani jaate jaate mujhpe kar gaya...' }
+    ]
   }
 ];
 
@@ -109,6 +161,14 @@ export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> 
   'The Local Train': {
     photoUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800&auto=format&fit=crop&q=80',
     bio: 'Iconic Indian rock band renowned for Choo Lo, Aaoge Tum Kabhi, and energetic live soundscapes.'
+  },
+  'Garvit Soni, Priyansh Srivastava': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E',
+    bio: 'Soulful contemporary Hindi indie music and expressive classical fusion melodies.'
+  },
+  'Pritam, Shreya Ghoshal, Arijit Singh': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA',
+    bio: 'Timeless romantic melodies and chart-topping Bollywood masterpieces featuring soulful vocal power.'
   }
 };
 
@@ -141,29 +201,23 @@ class TelegramCloudService {
 
   private loadSavedTracks() {
     try {
-      // Clear legacy storage key that had fake demo songs
       localStorage.removeItem('nova_cloud_channel_tracks');
       const saved = localStorage.getItem(STORAGE_KEY_CLOUD_TRACKS);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Verify it contains user's songs, purge any old demo tracks
-          const clean = parsed.filter((t: Track) => 
-            t.id.startsWith('tg-') || 
-            t.title.toLowerCase().includes('arz') || 
-            t.title.toLowerCase().includes('choo') || 
-            t.title.toLowerCase().includes('aaoge')
-          );
-          if (clean.length > 0) {
-            this.cloudTracks = clean;
-            return;
-          }
+          // Merge with INITIAL_CLOUD_TRACKS to guarantee new songs like Raabta & Kaahe Mose are included
+          const existingIds = new Set(parsed.map((t: Track) => t.id));
+          const existingTitles = new Set(parsed.map((t: Track) => t.title.toLowerCase().trim()));
+          const newFromInitial = INITIAL_CLOUD_TRACKS.filter(t => !existingIds.has(t.id) && !existingTitles.has(t.title.toLowerCase().trim()));
+          this.cloudTracks = [...parsed, ...newFromInitial];
+          return;
         }
       }
     } catch {
       // fallback
     }
-    this.cloudTracks = INITIAL_CLOUD_TRACKS;
+    this.cloudTracks = [...INITIAL_CLOUD_TRACKS];
   }
 
   public getConfig(): TelegramChannelConfig {
