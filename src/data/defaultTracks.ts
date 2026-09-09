@@ -9,7 +9,7 @@ export const DEFAULT_TRACKS: Track[] = [
     duration: 305,
     format: 'mp3',
     coverArt: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_1.mp3',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ',
     synthPreset: 'acoustic',
     genre: 'Indie Acoustic / Poetry',
     folder: 'NOVA Private Library / Anuv Jain',
@@ -38,7 +38,7 @@ export const DEFAULT_TRACKS: Track[] = [
     duration: 264,
     format: 'm4a',
     coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_2.m4a',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
     folder: 'NOVA Private Library / The Local Train',
@@ -66,8 +66,8 @@ export const DEFAULT_TRACKS: Track[] = [
     album: 'Aalas Ka Pedh',
     duration: 233,
     format: 'm4a',
-    coverArt: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_0.m4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
     folder: 'NOVA Private Library / The Local Train',
@@ -87,6 +87,31 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 88, text: 'Jaane kyu yeh dooriyan badh gayi hain darmiyaan' },
       { time: 104, text: '♪ (Raman Negi vocal power & soaring rock guitar riff) ♪' },
       { time: 135, text: 'Choo lo jo mujhe tum kabhi... kho na jaaun main...' }
+    ]
+  },
+  {
+    id: 'tg-kaahe-mose',
+    title: 'Kaahe Mose',
+    artist: 'Garvit Soni, Priyansh Srivastava',
+    album: 'SambalpuriStar.In - Kaahe Mose',
+    duration: 219,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA',
+    synthPreset: 'acoustic',
+    genre: 'Hindi Soul / Indie',
+    folder: 'NOVA Private Library / Garvit Soni, Priyansh Srivastava',
+    year: 2025,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 5,
+    lastPlayed: Date.now() - 60000,
+    isFavorite: true,
+    dateAdded: 1788943704000,
+    lyrics: [
+      { time: 0, text: '♪ Kaahe Mose - Garvit Soni, Priyansh Srivastava ♪' },
+      { time: 15, text: 'Kaahe mose naina milaye re...' },
+      { time: 45, text: 'Palchhin tore sang laage jiya...' },
+      { time: 75, text: '♪ (Soulful Indian Classical Fusion) ♪' }
     ]
   }
 ];

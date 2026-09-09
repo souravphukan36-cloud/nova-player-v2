@@ -12,14 +12,14 @@ const BASE_TRACKS = [
   {
     id: 'tg-anuv-arz-kiya-hai',
     fileId: 'CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ',
-    filePath: 'music/file_1.mp3',
+    filePath: 'music/file_2',
     title: 'Arz Kiya Hai',
     artist: 'Anuv Jain',
     album: 'Arz Kiya Hai - Single',
     duration: 305,
     format: 'mp3',
     coverArt: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_1.mp3',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ',
     synthPreset: 'acoustic',
     genre: 'Indie Acoustic / Soul',
     folder: 'NOVA Private Library / Anuv Jain',
@@ -40,14 +40,14 @@ const BASE_TRACKS = [
   {
     id: 'tg-local-train-aaoge-tum-kabhi',
     fileId: 'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ',
-    filePath: 'music/file_2.m4a',
+    filePath: 'music/file_3',
     title: 'Aaoge Tum Kabhi',
     artist: 'The Local Train',
     album: 'Aalas Ka Pedh',
     duration: 264,
     format: 'm4a',
     coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_2.m4a',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
     folder: 'NOVA Private Library / The Local Train',
@@ -70,14 +70,14 @@ const BASE_TRACKS = [
   {
     id: 'tg-local-train-choo-lo',
     fileId: 'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA',
-    filePath: 'music/file_0.m4a',
+    filePath: 'music/file_4',
     title: 'Choo Lo',
     artist: 'The Local Train',
     album: 'Aalas Ka Pedh',
     duration: 233,
     format: 'm4a',
-    coverArt: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?path=music/file_0.m4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
     folder: 'NOVA Private Library / The Local Train',
@@ -103,6 +103,31 @@ const BASE_TRACKS = [
 // In-memory track store that can dynamically include any newly detected songs
 let dynamicTracks = [...BASE_TRACKS];
 
+// Cache resolved Telegram file_paths so we don't spam getFile API
+const filePathCache: Record<string, string> = {
+  'CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ': 'music/file_2',
+  'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ': 'music/file_3',
+  'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'music/file_4',
+  'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'music/file_0.mp3'
+};
+
+async function resolveTelegramFilePath(fileId: string): Promise<string | null> {
+  if (filePathCache[fileId]) return filePathCache[fileId];
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+    if (res.ok) {
+      const data = await res.json() as any;
+      if (data.ok && data.result?.file_path) {
+        filePathCache[fileId] = data.result.file_path;
+        return data.result.file_path;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to resolve Telegram file path for', fileId, err);
+  }
+  return null;
+}
+
 // Helper: Query Telegram Bot API for new updates / files
 async function fetchTelegramUpdates() {
   try {
@@ -118,44 +143,48 @@ async function fetchTelegramUpdates() {
         if (audio && (audio.mime_type?.startsWith('audio/') || audio.file_name?.match(/\.(mp3|flac|wav|m4a|aac|ogg)$/i))) {
           const fileId = audio.file_id;
           // Check if already in dynamicTracks
-          const exists = dynamicTracks.some(t => t.fileId === fileId || t.title.toLowerCase() === (audio.title || '').toLowerCase());
+          const exists = dynamicTracks.some(t => t.fileId === fileId || (audio.title && t.title.toLowerCase() === audio.title.toLowerCase()));
           if (!exists) {
             // Retrieve file path from Telegram
-            const fileInfoRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
-            if (fileInfoRes.ok) {
-              const fileInfo = await fileInfoRes.json() as any;
-              if (fileInfo.ok && fileInfo.result?.file_path) {
-                const filePath = fileInfo.result.file_path;
-                const performer = audio.performer || 'Indie Artist';
-                const title = audio.title || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio';
-                const ext = audio.file_name?.split('.').pop()?.toLowerCase() || 'm4a';
+            const filePath = await resolveTelegramFilePath(fileId);
+            if (filePath) {
+              const performer = audio.performer || 'Indie Artist';
+              const title = audio.title || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio';
+              const ext = audio.file_name?.split('.').pop()?.toLowerCase() || 'mp3';
 
-                dynamicTracks.push({
-                  id: `tg-${fileId.substring(0, 16)}`,
-                  fileId,
-                  filePath,
-                  title,
-                  artist: performer,
-                  album: 'NOVA Private Library',
-                  duration: audio.duration || 210,
-                  format: ext as any,
-                  coverArt: performer.toLowerCase().includes('anuv')
-                    ? 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80'
-                    : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-                  audioUrl: `/api/telegram/audio?path=${encodeURIComponent(filePath)}&file_id=${fileId}`,
-                  synthPreset: 'acoustic',
-                  genre: 'Telegram Cloud Music',
-                  folder: `NOVA Private Library / ${performer}`,
-                  year: new Date().getFullYear(),
-                  bitRate: '320 kbps (Telegram Cloud Master)',
-                  playCount: 0,
-                  isFavorite: false,
-                  dateAdded: (msg.date || Math.floor(Date.now() / 1000)) * 1000,
-                  lyrics: [
-                    { time: 0, text: `♪ Now Playing ${title} by ${performer} ♪` }
-                  ]
-                });
+              // Cover art: use Telegram audio thumbnail if available, or artist fallback
+              const thumbFileId = audio.thumbnail?.file_id || audio.thumb?.file_id;
+              let coverArt = performer.toLowerCase().includes('anuv')
+                ? 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80'
+                : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+
+              if (thumbFileId) {
+                coverArt = `/api/telegram/image?file_id=${thumbFileId}`;
               }
+
+              dynamicTracks.push({
+                id: `tg-${fileId.substring(0, 16)}`,
+                fileId,
+                filePath,
+                title,
+                artist: performer,
+                album: 'NOVA Private Library',
+                duration: audio.duration || 210,
+                format: ext as any,
+                coverArt,
+                audioUrl: `/api/telegram/audio?file_id=${fileId}`,
+                synthPreset: 'acoustic',
+                genre: 'Telegram Cloud Music',
+                folder: `NOVA Private Library / ${performer}`,
+                year: new Date().getFullYear(),
+                bitRate: '320 kbps (Telegram Cloud Master)',
+                playCount: 0,
+                isFavorite: false,
+                dateAdded: (msg.date || Math.floor(Date.now() / 1000)) * 1000,
+                lyrics: [
+                  { time: 0, text: `♪ Now Playing ${title} by ${performer} ♪` }
+                ]
+              });
             }
           }
         }
@@ -203,17 +232,7 @@ async function startServer() {
 
     // If only file_id is provided, resolve file path first
     if (!filePath && fileId) {
-      try {
-        const fileInfoRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
-        if (fileInfoRes.ok) {
-          const info = await fileInfoRes.json() as any;
-          if (info.ok && info.result?.file_path) {
-            filePath = info.result.file_path;
-          }
-        }
-      } catch (e) {
-        console.warn('Error resolving file_id:', e);
-      }
+      filePath = (await resolveTelegramFilePath(fileId)) || '';
     }
 
     if (!filePath) {
@@ -263,6 +282,39 @@ async function startServer() {
         res.status(502).send('Error streaming audio from Telegram');
       }
     });
+  });
+
+  // 3. Image Proxy for Telegram Track Thumbnails / Album Covers
+  app.get('/api/telegram/image', async (req: Request, res: Response) => {
+    const fileId = req.query.file_id as string;
+    if (!fileId) {
+      res.status(400).send('Missing file_id');
+      return;
+    }
+
+    try {
+      const filePath = await resolveTelegramFilePath(fileId);
+      if (!filePath) {
+        res.status(404).send('Image file not found on Telegram');
+        return;
+      }
+
+      const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
+      https.get(telegramFileUrl, (tgRes) => {
+        res.status(tgRes.statusCode || 200);
+        res.setHeader('Content-Type', tgRes.headers['content-type'] || 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        tgRes.pipe(res);
+      }).on('error', (err) => {
+        console.error('Telegram image proxy error:', err);
+        if (!res.headersSent) {
+          res.status(502).send('Error fetching image');
+        }
+      });
+    } catch (err) {
+      res.status(500).send('Image proxy error');
+    }
   });
 
   // Vite middleware setup (development vs production)

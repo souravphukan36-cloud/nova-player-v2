@@ -125,6 +125,8 @@ class AudioEngine {
       // Prepare HTML5 Audio for uploaded files
       this.audioElement = new Audio();
       this.audioElement.crossOrigin = 'anonymous';
+      this.audioElement.preload = 'auto';
+
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
           const cur = this.audioElement.currentTime;
@@ -145,6 +147,7 @@ class AudioEngine {
           }
         }
       });
+
       this.audioElement.addEventListener('ended', () => {
         // Never trigger on synthetic carrier wave audio or when synth is playing
         if (this.audioElement?.src?.startsWith('data:audio/wav')) return;
@@ -154,6 +157,10 @@ class AudioEngine {
             this.onEndedCallback();
           }
         }
+      });
+
+      this.audioElement.addEventListener('error', (e) => {
+        console.warn('Audio element error:', this.audioElement?.error, e);
       });
 
       this.audioElement.addEventListener('loadedmetadata', () => {
@@ -222,19 +229,31 @@ class AudioEngine {
       // Local or URL audio playback
       this.stopSynth();
       if (this.audioElement) {
+        let streamUrl = track.audioUrl;
         if (track.file) {
-          this.audioElement.src = URL.createObjectURL(track.file);
-        } else if (track.audioUrl) {
-          this.audioElement.src = track.audioUrl;
+          streamUrl = URL.createObjectURL(track.file);
+        }
+        if (streamUrl && this.audioElement.src !== streamUrl) {
+          this.audioElement.src = streamUrl;
         }
         this.audioElement.currentTime = startTime;
         this.audioElement.volume = this.isMuted ? 0 : this.volume;
         this.audioElement.muted = this.isMuted;
         try {
           await this.audioElement.play();
-        } catch (e) {
-          console.warn('HTML5 audio play error, fallback to synth', e);
-          this.startSynth(track, startTime);
+        } catch (e: any) {
+          console.warn('HTML5 audio play error:', e);
+          // If aborted or notAllowed (user gesture required), retry once
+          if (e?.name === 'NotAllowedError') {
+            console.log('User interaction required to start audio context playback');
+          } else if (e?.name === 'AbortError') {
+            // New track started before previous finished loading; safe to ignore
+          } else {
+            // Only fallback to synth if not a real cloud/local track
+            if (!track.audioUrl && !track.file) {
+              this.startSynth(track, startTime);
+            }
+          }
         }
       }
     } else {
