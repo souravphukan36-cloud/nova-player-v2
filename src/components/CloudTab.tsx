@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Cloud, 
-  RefreshCw, 
   Settings2, 
   Play, 
   Pause, 
@@ -11,14 +10,10 @@ import {
   Music, 
   Sparkles, 
   Radio, 
-  ExternalLink,
-  Shuffle,
   Heart,
-  Sliders,
   CheckCircle2,
-  Upload,
   FolderDown,
-  FileAudio
+  Wifi
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
@@ -31,25 +26,35 @@ export const CloudTab: React.FC = () => {
     isPlaying, 
     playTrack, 
     togglePlayPause, 
-    settings, 
     toggleFavorite,
     addTracks,
     linkAudioFileToTrack,
-    setEqualizerOpen
   } = usePlayer();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSinger, setSelectedSinger] = useState<string>('All');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set());
   const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [selectedTrackForFile, setSelectedTrackForFile] = useState<Track | null>(null);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // Telegram Config state
   const [channelConfig, setChannelConfig] = useState(() => telegramCloudService.getConfig());
   const [tempBotToken, setTempBotToken] = useState(channelConfig.botToken);
   const [tempChannelId, setTempChannelId] = useState(channelConfig.channelId);
+
+  // Auto-sync automatically on component mount (user requested no manual sync button)
+  useEffect(() => {
+    let isMounted = true;
+    telegramCloudService.autoFetchTracks().then((fetched) => {
+      if (isMounted && fetched && fetched.length > 0) {
+        addTracks(fetched);
+      }
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Helper to find live track in player state
   const getLiveTrack = (track: Track): Track => {
@@ -66,19 +71,14 @@ export const CloudTab: React.FC = () => {
 
     for (const file of files) {
       const lower = file.name.toLowerCase();
-      if (lower.includes('baarishein')) {
-        await linkAudioFileToTrack('cloud-anuv-baarishein', file);
-        await linkAudioFileToTrack('anuv-jain-baarishein', file);
+      if (lower.includes('arz') || lower.includes('jain')) {
+        await linkAudioFileToTrack('tg-anuv-arz-kiya-hai', file);
         matched++;
-      } else if (lower.includes('choo lo') || lower.includes('choolo')) {
-        await linkAudioFileToTrack('cloud-local-train-choo-lo', file);
-        await linkAudioFileToTrack('local-train-choo-lo', file);
-        matched++;
-      } else if (lower.includes('husn')) {
-        await linkAudioFileToTrack('cloud-anuv-husn', file);
+      } else if (lower.includes('choo') || lower.includes('choolo')) {
+        await linkAudioFileToTrack('tg-local-train-choo-lo', file);
         matched++;
       } else if (lower.includes('aaoge') || lower.includes('kabhi')) {
-        await linkAudioFileToTrack('cloud-local-train-aaoge-tum-kabhi', file);
+        await linkAudioFileToTrack('tg-local-train-aaoge-tum-kabhi', file);
         matched++;
       } else {
         const ext = file.name.split('.').pop()?.toLowerCase() || 'mp3';
@@ -108,18 +108,18 @@ export const CloudTab: React.FC = () => {
       addTracks(addedTracks);
     }
 
-    setSyncFeedback(`Successfully loaded ${matched} real audio files from Telegram / Storage!`);
-    setTimeout(() => setSyncFeedback(null), 4000);
+    setSyncFeedback(`Imported ${matched} songs from storage!`);
+    setTimeout(() => setSyncFeedback(null), 3000);
   };
 
   // Singer-wise shelves
   const shelves: CloudArtistShelf[] = useMemo(() => {
     return telegramCloudService.getSingerWiseShelves(searchQuery, selectedSinger);
-  }, [searchQuery, selectedSinger, isSyncing]);
+  }, [searchQuery, selectedSinger, tracks]);
 
   const allCloudTracks = useMemo(() => {
     return telegramCloudService.getCloudTracks();
-  }, [isSyncing]);
+  }, [tracks]);
 
   const allSingers = useMemo(() => {
     const set = new Set<string>();
@@ -129,25 +129,6 @@ export const CloudTab: React.FC = () => {
     return ['All', ...Array.from(set)];
   }, [allCloudTracks]);
 
-  const handleSyncChannel = async () => {
-    setIsSyncing(true);
-    setSyncFeedback('Connecting to Telegram Channel Cloud...');
-
-    try {
-      const result = await telegramCloudService.syncWithTelegramChannel();
-      setSyncFeedback(result.message);
-      // Auto-add new tracks to player library if not already present
-      addTracks(telegramCloudService.getCloudTracks());
-    } catch (e) {
-      setSyncFeedback('Synced with NOVA Private Library catalog.');
-    } finally {
-      setIsSyncing(false);
-      setTimeout(() => {
-        setSyncFeedback(null);
-      }, 3500);
-    }
-  };
-
   const handleSaveConfig = () => {
     const updated = telegramCloudService.saveConfig({
       botToken: tempBotToken,
@@ -155,7 +136,11 @@ export const CloudTab: React.FC = () => {
     });
     setChannelConfig(updated);
     setConfigModalOpen(false);
-    handleSyncChannel();
+    telegramCloudService.autoFetchTracks().then((res) => {
+      addTracks(res);
+      setSyncFeedback('Updated Telegram Bot configuration!');
+      setTimeout(() => setSyncFeedback(null), 3000);
+    });
   };
 
   const handleCacheOffline = async (track: Track) => {
@@ -163,6 +148,8 @@ export const CloudTab: React.FC = () => {
     if (success) {
       setCachedTrackIds(prev => new Set([...prev, track.id]));
       addTracks([track]);
+      setSyncFeedback(`Saved "${track.title}" for offline playback!`);
+      setTimeout(() => setSyncFeedback(null), 3000);
     }
   };
 
@@ -175,7 +162,7 @@ export const CloudTab: React.FC = () => {
   return (
     <div className="flex flex-col space-y-6 px-4 py-3 select-none animate-in fade-in duration-200">
       
-      {/* 1. Channel Connection Banner Card */}
+      {/* 1. Channel Connection Banner Card (Automatic live connection, manual sync removed) */}
       <div 
         className="relative overflow-hidden rounded-3xl p-5 border border-white/10 shadow-2xl backdrop-blur-xl"
         style={{ 
@@ -186,8 +173,9 @@ export const CloudTab: React.FC = () => {
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                Telegram Bot Cloud Connected
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <Wifi className="w-3 h-3" />
+                Auto-Synced Telegram Cloud
               </span>
             </div>
             
@@ -197,19 +185,18 @@ export const CloudTab: React.FC = () => {
             </h2>
 
             <p className="text-xs text-white/60">
-              Channel: <span className="text-white/90 font-mono font-bold">{channelConfig.channelId || '@NOVAPrivateLibrary'}</span> • {allCloudTracks.length} Songs Loaded (Ready for 1500+ Library)
+              Channel: <span className="text-white/90 font-mono font-bold">{channelConfig.channelId || '-1003542494794'}</span> • {allCloudTracks.length} Songs Live (Direct Cloud Stream)
             </p>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons (Import & Settings only, Manual Sync removed as requested) */}
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-            {/* Batch Import Songs from Device / Telegram */}
             <label
-              title="Import song files downloaded from Telegram or phone storage"
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 active:scale-95 text-emerald-300 text-xs font-bold transition-all border border-emerald-500/30 cursor-pointer shadow-md"
+              title="Import additional audio files"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-bold transition-all border border-white/10 cursor-pointer shadow-md"
             >
               <FolderDown className="w-4 h-4 text-emerald-400" />
-              <span>Import Songs (MP3)</span>
+              <span>Import Audio</span>
               <input
                 type="file"
                 multiple
@@ -218,16 +205,6 @@ export const CloudTab: React.FC = () => {
                 onChange={handleBatchImport}
               />
             </label>
-
-            <button
-              id="btn-sync-cloud-channel"
-              onClick={handleSyncChannel}
-              disabled={isSyncing}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-bold transition-all border border-white/10"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Sync Channel'}</span>
-            </button>
 
             <button
               id="btn-config-cloud-channel"
@@ -259,7 +236,7 @@ export const CloudTab: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Anuv Jain, The Local Train, or 1500+ songs..."
+            placeholder="Search uploaded songs (Arz Kiya Hai, Aaoge Tum Kabhi, Choo Lo)..."
             className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-white placeholder-white/40 text-xs focus:outline-none focus:border-white/30 transition-colors"
           />
           {searchQuery && (
@@ -303,8 +280,8 @@ export const CloudTab: React.FC = () => {
         {shelves.length === 0 ? (
           <div className="text-center py-12 space-y-3">
             <Music className="w-12 h-12 text-white/20 mx-auto" />
-            <p className="text-sm font-semibold text-white/70">No songs found in this category</p>
-            <p className="text-xs text-white/40">Try searching another singer or clear the filter.</p>
+            <p className="text-sm font-semibold text-white/70">No songs found</p>
+            <p className="text-xs text-white/40">Try searching another singer or clear the search filter.</p>
           </div>
         ) : (
           shelves.map((shelf) => {
@@ -367,7 +344,6 @@ export const CloudTab: React.FC = () => {
                 <div className="space-y-2">
                   {shelf.tracks.map((track, idx) => {
                     const liveTrack = getLiveTrack(track);
-                    const hasRealAudio = Boolean(liveTrack.file || liveTrack.audioUrl);
                     const isThisCurrent = currentTrack?.id === track.id || currentTrack?.id === liveTrack.id;
                     const isTrackPlaying = isThisCurrent && isPlaying;
                     const isCached = cachedTrackIds.has(track.id);
@@ -380,11 +356,7 @@ export const CloudTab: React.FC = () => {
                           if (isThisCurrent) {
                             togglePlayPause();
                           } else {
-                            if (hasRealAudio) {
-                              playTrack(liveTrack, shelf.tracks);
-                            } else {
-                              setSelectedTrackForFile(track);
-                            }
+                            playTrack(liveTrack, shelf.tracks);
                           }
                         }}
                         className={`group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl transition-all cursor-pointer border ${
@@ -432,62 +404,20 @@ export const CloudTab: React.FC = () => {
                             }`}>
                               {track.title}
                             </h4>
-                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-white/50 truncate mt-0.5">
+                            <div className="flex items-center gap-1.5 text-[11px] text-white/50 truncate mt-0.5">
                               <span>{track.album}</span>
                               <span>•</span>
                               <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-white/10 text-white/80 font-semibold">
                                 {track.format.toUpperCase()}
                               </span>
                               <span>•</span>
-                              {hasRealAudio ? (
-                                <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5">
-                                  <Check className="w-3 h-3" /> Real Song
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-amber-300 font-semibold">
-                                  Select MP3
-                                </span>
-                              )}
+                              <span className="text-[10px] text-emerald-400/90 font-medium">Cloud Stream</span>
                             </div>
                           </div>
                         </div>
 
                         {/* Right Controls */}
                         <div className="flex items-center gap-2 shrink-0">
-                          {/* Direct MP3 Attach Button */}
-                          <label
-                            title={hasRealAudio ? "Audio loaded - Tap to change file" : "Select & play real song file"}
-                            onClick={(e) => e.stopPropagation()}
-                            className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
-                              hasRealAudio 
-                                ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
-                                : 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 shadow-sm'
-                            }`}
-                          >
-                            <input
-                              type="file"
-                              accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  await linkAudioFileToTrack(track.id, file);
-                                  if (track.id.includes('baarishein')) {
-                                    await linkAudioFileToTrack('anuv-jain-baarishein', file);
-                                  } else if (track.id.includes('choo-lo')) {
-                                    await linkAudioFileToTrack('local-train-choo-lo', file);
-                                  }
-                                  setSyncFeedback(`Playing: ${track.title}`);
-                                  setTimeout(() => setSyncFeedback(null), 3500);
-                                }
-                              }}
-                            />
-                            <Upload className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">
-                              {hasRealAudio ? 'Audio Attached' : 'Attach MP3'}
-                            </span>
-                          </label>
-
                           {/* Duration */}
                           <span className="text-xs font-mono text-white/40 hidden sm:inline-block">
                             {formatDuration(track.duration)}
@@ -495,7 +425,7 @@ export const CloudTab: React.FC = () => {
 
                           {/* Offline Download button */}
                           <button
-                            title={isCached ? 'Downloaded for Offline Play' : 'Save Song Offline'}
+                            title={isCached ? 'Saved Offline' : 'Save Song Offline'}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleCacheOffline(track);
@@ -545,8 +475,8 @@ export const CloudTab: React.FC = () => {
                   <Cloud className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-white">Configure Telegram Cloud</h3>
-                  <p className="text-[11px] text-white/50">Link NOVA Private Library Channel</p>
+                  <h3 className="text-sm font-black text-white">Telegram Cloud Settings</h3>
+                  <p className="text-[11px] text-white/50">NOVA Private Library Connection</p>
                 </div>
               </div>
 
@@ -560,37 +490,34 @@ export const CloudTab: React.FC = () => {
 
             <div className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="text-white/70 font-semibold">Channel Username / ID</label>
+                <label className="text-white/70 font-semibold">Channel ID</label>
                 <input
                   type="text"
                   value={tempChannelId}
                   onChange={(e) => setTempChannelId(e.target.value)}
-                  placeholder="@NOVAPrivateLibrary or channel chat ID"
+                  placeholder="-1003542494794"
                   className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-white/30 font-mono"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-white/70 font-semibold">Telegram Bot Token (Optional for Live API updates)</label>
+                <label className="text-white/70 font-semibold">Telegram Bot Token</label>
                 <input
                   type="password"
                   value={tempBotToken}
                   onChange={(e) => setTempBotToken(e.target.value)}
-                  placeholder="123456789:ABCdefGHIjkLmNoPQRstuVWXyz"
+                  placeholder="8846538187:..."
                   className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-white/30 font-mono"
                 />
-                <p className="text-[10px] text-white/40">
-                  You can get this token free from @BotFather in Telegram.
-                </p>
               </div>
 
               <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
                 <div className="flex items-center gap-1.5 text-white/80 font-bold">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>1500+ Songs Ready</span>
+                  <span>Automatic Real-Time Sync</span>
                 </div>
                 <p className="text-[11px] text-white/50 leading-relaxed">
-                  Songs are automatically organized by singer (Anuv Jain, The Local Train, etc.) with lossless studio equalizer tuning.
+                  Songs uploaded to your Telegram channel are loaded automatically every time the app opens. No manual syncing is required.
                 </p>
               </div>
             </div>
@@ -606,78 +533,7 @@ export const CloudTab: React.FC = () => {
                 onClick={handleSaveConfig}
                 className="px-5 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-lg"
               >
-                Save & Connect
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Attach Audio File Modal for Specific Track */}
-      {selectedTrackForFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-neutral-900 border border-white/20 p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img
-                  src={selectedTrackForFile.coverArt}
-                  alt={selectedTrackForFile.title}
-                  className="w-12 h-12 rounded-2xl object-cover border border-white/20 shadow-md"
-                />
-                <div>
-                  <h3 className="text-sm font-black text-white">{selectedTrackForFile.title}</h3>
-                  <p className="text-xs text-white/60">{selectedTrackForFile.artist} • {selectedTrackForFile.album}</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedTrackForFile(null)}
-                className="p-1.5 rounded-full text-white/50 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2">
-              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-                <FileAudio className="w-4 h-4" />
-                <span>Apna Real Song File Attach Karein</span>
-              </div>
-              <p className="text-xs text-white/70 leading-relaxed">
-                Aapne jo gaana Telegram private channel me upload kiya hai ya phone me download kiya hai, use yahan select karein. Select karte hi seedha real gaana lossless equalizer ke sath play hoga aur app me save ho jayega!
-              </p>
-            </div>
-
-            <div className="pt-2 flex flex-col gap-2.5">
-              <label className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs transition-all shadow-xl cursor-pointer">
-                <Upload className="w-4 h-4" />
-                <span>Device / Telegram Se Audio File Select Karein (MP3 / FLAC)</span>
-                <input
-                  type="file"
-                  accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file && selectedTrackForFile) {
-                      await linkAudioFileToTrack(selectedTrackForFile.id, file);
-                      if (selectedTrackForFile.id.includes('baarishein')) {
-                        await linkAudioFileToTrack('anuv-jain-baarishein', file);
-                      } else if (selectedTrackForFile.id.includes('choo-lo')) {
-                        await linkAudioFileToTrack('local-train-choo-lo', file);
-                      }
-                      setSyncFeedback(`Playing: ${selectedTrackForFile.title} (${file.name})`);
-                      setSelectedTrackForFile(null);
-                      setTimeout(() => setSyncFeedback(null), 4000);
-                    }
-                  }}
-                />
-              </label>
-
-              <button
-                onClick={() => setSelectedTrackForFile(null)}
-                className="w-full py-2.5 text-center text-xs text-white/50 hover:text-white"
-              >
-                Cancel
+                Save
               </button>
             </div>
           </div>

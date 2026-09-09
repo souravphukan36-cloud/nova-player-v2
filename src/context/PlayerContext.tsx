@@ -12,6 +12,7 @@ import { DEFAULT_TRACKS, INITIAL_PLAYLISTS } from '../data/defaultTracks';
 import { audioEngine } from '../services/audioEngine';
 import { getAllStoredTracks, deleteStoredTrack, clearAllAudioStorage, saveTrackWithAudio } from '../services/storageDb';
 import { notificationService } from '../services/notificationService';
+import { telegramCloudService } from '../services/telegramCloudService';
 
 interface PlayerContextType {
   tracks: Track[];
@@ -202,22 +203,35 @@ const isBannedTrack = (t: Track): boolean => {
 };
 
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Saved state from localStorage with strict Ringtone & Samsung exclusion filter
+  // Saved state from localStorage with strict exclusion of un-uploaded demo tracks
   const [tracks, setTracks] = useState<Track[]>(() => {
     try {
       const saved = localStorage.getItem('nova_tracks');
       if (saved) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // 1. Purge any ringtones or legacy demo tracks
-          parsed = parsed.filter((t: Track) => !isBannedTrack(t));
+          // 1. Purge legacy demo tracks that the user didn't upload to their Telegram bot
+          const isLegacyDemo = (id: string) =>
+            id.startsWith('bitchord-') ||
+            id.startsWith('cloud-anuv-') ||
+            id.startsWith('cloud-local-train-') ||
+            id === 'anuv-jain-baarishein' ||
+            id === 'anuv-jain-husn' ||
+            id === 'anuv-jain-alag-aasmaan' ||
+            id === 'anuv-jain-mishri' ||
+            id === 'local-train-choo-lo' ||
+            id === 'local-train-aaoge-tum-kabhi';
 
-          // 2. Ensure new default tracks (Anuv Jain & The Local Train) are included
+          parsed = parsed.filter((t: Track) => !isBannedTrack(t) && !isLegacyDemo(t.id));
+
+          // 2. Ensure the 3 real uploaded Telegram tracks are included
           const existingIds = new Set(parsed.map((t: Track) => t.id));
           const missingDefaults = DEFAULT_TRACKS.filter(dt => !existingIds.has(dt.id));
           const combined = missingDefaults.length > 0 ? [...missingDefaults, ...parsed] : parsed;
-          localStorage.setItem('nova_tracks', JSON.stringify(combined));
-          return combined;
+          if (combined.length > 0) {
+            localStorage.setItem('nova_tracks', JSON.stringify(combined));
+            return combined;
+          }
         }
       }
     } catch {
@@ -376,6 +390,28 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }).catch(err => {
       console.warn('Error loading stored tracks:', err);
+    });
+
+    // Automatically load songs from Telegram Bot Cloud on app open (no manual sync button required)
+    telegramCloudService.autoFetchTracks().then((cloudTracks) => {
+      if (cloudTracks && cloudTracks.length > 0) {
+        setTracks(prev => {
+          // Keep any locally imported files
+          const localTracks = prev.filter(t => t.file || !t.id.startsWith('tg-'));
+          const cloudIds = new Set(cloudTracks.map(c => c.id));
+          const filteredLocal = localTracks.filter(l => !cloudIds.has(l.id));
+          const merged = [...cloudTracks, ...filteredLocal];
+          try {
+            localStorage.setItem('nova_tracks', JSON.stringify(merged.map(({ file, ...rest }) => rest)));
+          } catch {}
+          return merged;
+        });
+
+        // Ensure current track is set if none is active
+        setCurrentTrack(prev => prev || cloudTracks[0]);
+      }
+    }).catch(err => {
+      console.warn('Auto Telegram sync error:', err);
     });
   }, []);
 

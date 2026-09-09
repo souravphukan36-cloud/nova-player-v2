@@ -486,37 +486,6 @@ export const NowPlayingModal: React.FC = () => {
                 </button>
               </div>
             )}
-
-            {/* Quick Attach Real Audio File Banner if no real audio file is yet attached */}
-            {(!currentTrack.file && !currentTrack.audioUrl) && (
-              <div className="w-full max-w-sm px-3 mt-2.5">
-                <label className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-500/25 transition-all shadow-md">
-                  <div className="flex items-center gap-2">
-                    <Upload className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="truncate">Attach Real Song (MP3 / FLAC)</span>
-                  </div>
-                  <span className="text-[10px] px-2.5 py-1 rounded-xl bg-amber-400 text-black font-bold shrink-0">
-                    Select File
-                  </span>
-                  <input
-                    type="file"
-                    accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && currentTrack) {
-                        linkAudioFileToTrack(currentTrack.id, file);
-                        if (currentTrack.id.includes('baarishein')) {
-                          linkAudioFileToTrack('cloud-anuv-baarishein', file);
-                        } else if (currentTrack.id.includes('choo-lo')) {
-                          linkAudioFileToTrack('cloud-local-train-choo-lo', file);
-                        }
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-            )}
           </div>
         )}
 

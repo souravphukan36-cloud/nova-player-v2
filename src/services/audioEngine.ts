@@ -156,6 +156,12 @@ class AudioEngine {
         }
       });
 
+      this.audioElement.addEventListener('loadedmetadata', () => {
+        if (this.audioElement && this.currentTrack && this.audioElement.duration && !isNaN(this.audioElement.duration)) {
+          this.currentTrack.duration = Math.round(this.audioElement.duration);
+        }
+      });
+
       // Hook media source with direct fallback for Android WebView
       try {
         this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
