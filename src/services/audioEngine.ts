@@ -311,23 +311,44 @@ class AudioEngine {
     }
   }
 
+  public isCurrentTrackLoaded(): boolean {
+    return Boolean(
+      this.audioElement &&
+      this.audioElement.src &&
+      this.audioElement.src.length > 5 &&
+      !this.audioElement.src.endsWith('/')
+    );
+  }
+
   public resume() {
     if (!this.currentTrack) return;
     this.isPlaying = true;
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
-    if (this.audioElement && this.audioElement.src && !this.isSynthPlaying) {
+
+    // Guarantee volume is audible
+    if (this.audioElement) {
+      this.audioElement.muted = this.isMuted;
+      this.audioElement.volume = this.isMuted ? 0 : Math.max(0.1, this.volume || 0.85);
+    }
+
+    if (this.isCurrentTrackLoaded() && !this.isSynthPlaying) {
       if (this.synthTime > 0) {
         try {
-          this.audioElement.currentTime = this.synthTime;
+          this.audioElement!.currentTime = this.synthTime;
         } catch {
           // ignore
         }
       }
-      this.audioElement.play().catch(() => {});
+      this.audioElement!.play().catch((err) => {
+        console.warn('audioElement.play() failed in resume, re-triggering playTrack:', err);
+        if (this.currentTrack) {
+          this.playTrack(this.currentTrack, this.synthTime || 0);
+        }
+      });
     } else if (this.currentTrack.file || this.currentTrack.audioUrl) {
-      this.audioElement?.play().catch(() => {});
+      this.playTrack(this.currentTrack, this.synthTime || 0);
     } else {
       this.startSynth(this.currentTrack, this.synthTime);
     }

@@ -398,30 +398,54 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     // Automatically load songs from Telegram Bot Cloud on app open (no manual sync button required)
-    telegramCloudService.autoFetchTracks().then((cloudTracks) => {
-      if (cloudTracks && cloudTracks.length > 0) {
-        setTracks(prev => {
-          // Keep any locally imported files
-          const localTracks = prev.filter(t => t.file || !t.id.startsWith('tg-'));
-          const cloudIds = new Set(cloudTracks.map(c => c.id));
-          const filteredLocal = localTracks.filter(l => !cloudIds.has(l.id));
-          const merged = [...cloudTracks, ...filteredLocal];
-          try {
-            localStorage.setItem('nova_tracks', JSON.stringify(merged.map(({ file, ...rest }) => rest)));
-          } catch {}
-          return merged;
-        });
+    const syncTelegramCloud = async () => {
+      try {
+        const cloudTracks = await telegramCloudService.autoFetchTracks();
+        if (cloudTracks && cloudTracks.length > 0) {
+          setTracks(prev => {
+            // Keep any locally imported files
+            const localTracks = prev.filter(t => t.file || !t.id.startsWith('tg-'));
+            const cloudIds = new Set(cloudTracks.map(c => c.id));
+            const filteredLocal = localTracks.filter(l => !cloudIds.has(l.id));
+            const merged = [...cloudTracks, ...filteredLocal];
+            try {
+              localStorage.setItem('nova_tracks', JSON.stringify(merged.map(({ file, ...rest }) => rest)));
+            } catch {}
+            return merged;
+          });
 
-        // Ensure current track is refreshed with fresh coverArt, audioUrl and singer details
-        setCurrentTrack(prev => {
-          if (!prev) return cloudTracks[0];
-          const fresh = cloudTracks.find(c => c.id === prev.id || c.title.toLowerCase().trim() === prev.title.toLowerCase().trim());
-          return fresh ? { ...prev, ...fresh } : prev;
-        });
+          // Ensure current track is refreshed with fresh coverArt, audioUrl and singer details
+          setCurrentTrack(prev => {
+            if (!prev) return cloudTracks[0];
+            const fresh = cloudTracks.find(c => c.id === prev.id || c.title.toLowerCase().trim() === prev.title.toLowerCase().trim());
+            return fresh ? { ...prev, ...fresh } : prev;
+          });
+        }
+      } catch (err) {
+        console.warn('Auto Telegram sync error:', err);
       }
-    }).catch(err => {
-      console.warn('Auto Telegram sync error:', err);
-    });
+    };
+
+    // Initial sync
+    syncTelegramCloud();
+
+    // Auto-refresh when user switches back from Telegram to the app tab
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        syncTelegramCloud();
+      }
+    };
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', handleFocusOrVisible);
+
+    // Periodic check every 12 seconds
+    const interval = setInterval(syncTelegramCloud, 12000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisible);
+      document.removeEventListener('visibilitychange', handleFocusOrVisible);
+      clearInterval(interval);
+    };
   }, []);
 
   // Persist tracks
@@ -672,11 +696,17 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
+    audioEngine.ensureAudioUnlocked();
+
     if (isPlaying) {
       audioEngine.pause();
       setIsPlaying(false);
     } else {
-      audioEngine.resume();
+      if (audioEngine.isCurrentTrackLoaded()) {
+        audioEngine.resume();
+      } else {
+        audioEngine.playTrack(currentTrack, currentTimeRef.current || 0, settingsRef.current.crossfadeSecs);
+      }
       setIsPlaying(true);
     }
   };

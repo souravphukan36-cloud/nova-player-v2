@@ -1,13 +1,39 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import https from 'https';
+import fs from 'fs';
+import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 
 const PORT = 3000;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg';
 const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || '-1003542494794';
 
-// Preset baseline of all 5 songs uploaded by Sourav in the Telegram channel
+// High-speed disk cache directories (Spotify-grade edge caching)
+const CACHE_DIR = path.join(process.cwd(), '.cache');
+const AUDIO_CACHE_DIR = path.join(CACHE_DIR, 'audio');
+const IMAGE_CACHE_DIR = path.join(CACHE_DIR, 'images');
+
+try {
+  fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true });
+  fs.mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
+} catch (e) {
+  console.warn('Cache directory creation notice:', e);
+}
+
+function getAudioCachePath(fileId: string, filePath?: string): string {
+  const hash = crypto.createHash('md5').update(fileId || filePath || 'audio').digest('hex');
+  const isM4a = (filePath && (filePath.endsWith('.m4a') || filePath.includes('file_3') || filePath.includes('file_4') || filePath.includes('file_6'))) ||
+                (fileId && (fileId.includes('.m4a') || fileId.includes('Aaoge') || fileId.includes('Choo') || fileId.includes('Raabta')));
+  return path.join(AUDIO_CACHE_DIR, `${hash}${isM4a ? '.m4a' : '.mp3'}`);
+}
+
+function getImageCachePath(fileId: string): string {
+  const hash = crypto.createHash('md5').update(fileId).digest('hex');
+  return path.join(IMAGE_CACHE_DIR, `${hash}.jpg`);
+}
+
+// Preset baseline of all verified songs uploaded in the Telegram channel
 const BASE_TRACKS = [
   {
     id: 'tg-anuv-arz-kiya-hai',
@@ -142,16 +168,51 @@ const BASE_TRACKS = [
     bitRate: '320 kbps (Telegram Cloud Master)',
     playCount: 1,
     isFavorite: true,
-    dateAdded: 1788954302000,
+    dateAdded: 1788947500000,
     lyrics: [
-      { time: 0, text: '♪ (Kehte hain khuda ne iss jahan mein sabhi ke liye) ♪' },
-      { time: 15, text: 'Kehte hain khuda ne iss jahan mein sabhi ke liye...' },
-      { time: 32, text: 'Kisi na kisi ko hai banaya har kisi ke liye...' },
-      { time: 48, text: 'Tera milna hai uss rab ka ishaara maanu...' },
-      { time: 68, text: 'Kuch toh hai tujhse raabta, kuch toh hai tujhse raabta...' },
-      { time: 95, text: 'Kaise hum jaane hume kya pata, kuch toh hai tujhse raabta...' },
-      { time: 120, text: '♪ (Soulful vocal harmonies by Arijit Singh & Shreya Ghoshal) ♪' },
-      { time: 150, text: 'Meherbani jaate jaate mujhpe kar gaya...' }
+      { time: 0, text: '♪ (Lush orchestral strings and acoustic guitar intro) ♪' },
+      { time: 18, text: 'Kehte hain khuda ne iss jahan mein sabhi ke liye...' },
+      { time: 35, text: 'Kisi na kisi ko hai banaya har kisi ke liye...' },
+      { time: 54, text: 'Tera milna hai uss rab ka ishaara maanu...' },
+      { time: 72, text: 'Mujhko banaya tere jaise hi kisi ke liye...' },
+      { time: 90, text: 'Kuch toh hai tujhse raabta... kuch toh hai tujhse raabta...' },
+      { time: 120, text: '♪ (Arijit Singh soulful acoustic bridge) ♪' }
+    ]
+  },
+  {
+    id: 'tg-keane-somewhere-only-we-know',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA',
+    filePath: 'music/file_8.mp3',
+    title: 'Somewhere Only We Know',
+    artist: 'Keane',
+    album: 'Hopes and Fears',
+    duration: 237,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA',
+    synthPreset: 'acoustic',
+    genre: 'Piano Rock / Indie Pop',
+    folder: 'NOVA Private Library / Keane',
+    year: 2004,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 1,
+    isFavorite: true,
+    dateAdded: 1788950000000,
+    lyrics: [
+      { time: 0, text: '♪ (Distinctive driving piano chord riff) ♪' },
+      { time: 14, text: 'I walked across an empty land...' },
+      { time: 21, text: 'I knew the pathway like the back of my hand' },
+      { time: 28, text: 'I felt the earth beneath my feet' },
+      { time: 35, text: 'Sat by the river and it made me complete' },
+      { time: 42, text: 'Oh simple thing, where have you gone?' },
+      { time: 49, text: "I'm getting old and I need something to rely on" },
+      { time: 56, text: 'So tell me when you gonna let me in' },
+      { time: 63, text: "I'm getting tired and I need somewhere to begin" },
+      { time: 70, text: '♪ (Soaring piano and vocal harmony crescendo) ♪' },
+      { time: 84, text: 'And if you have a minute why don\'t we go...' },
+      { time: 91, text: 'Talk about it somewhere only we know?' },
+      { time: 98, text: 'This could be the end of everything...' },
+      { time: 105, text: 'So why don\'t we go somewhere only we know?' }
     ]
   }
 ];
@@ -165,7 +226,9 @@ const filePathCache: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ': 'music/file_3',
   'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'music/file_4',
   'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'music/file_0.mp3',
-  'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_6.m4a'
+  'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_6.m4a',
+  'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_8.mp3',
+  'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_9.jpg'
 };
 
 // Explicit MIME type mapping for high-fidelity audio playback across Chrome/Android/iOS
@@ -175,11 +238,13 @@ const fileMimeCache: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'audio/mp4',  // Choo Lo (.m4a)
   'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'audio/mpeg', // Kaahe Mose (.mp3)
   'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'audio/mp4',  // Raabta (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'audio/mpeg', // Somewhere Only We Know (.mp3)
   'music/file_2': 'audio/mpeg',
   'music/file_3': 'audio/mp4',
   'music/file_4': 'audio/mp4',
   'music/file_0.mp3': 'audio/mpeg',
-  'music/file_6.m4a': 'audio/mp4'
+  'music/file_6.m4a': 'audio/mp4',
+  'music/file_8.mp3': 'audio/mpeg'
 };
 
 async function resolveTelegramFilePath(fileId: string): Promise<string | null> {
@@ -320,7 +385,7 @@ async function startServer() {
     });
   });
 
-  // 2. High-speed Audio Stream Proxy (passes Range headers for seeking & 10-band EQ)
+  // 2. High-speed Audio Stream Proxy with Spotify-grade Disk Caching & Range support
   app.all('/api/telegram/audio', async (req: Request, res: Response) => {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -339,11 +404,78 @@ async function startServer() {
       filePath = (await resolveTelegramFilePath(fileId)) || '';
     }
 
-    if (!filePath) {
+    if (!filePath && !fileId) {
       res.status(400).send('Missing filePath or fileId');
       return;
     }
 
+    // Determine content-type based on explicit fileMimeCache, then filename/extension
+    let contentType = (fileId && fileMimeCache[fileId]) || (filePath && fileMimeCache[filePath]);
+    if (!contentType) {
+      const ext = filePath ? filePath.split('.').pop()?.toLowerCase() : '';
+      if (ext === 'm4a' || ext === 'mp4' || ext === 'aac' || (filePath && (filePath.includes('file_3') || filePath.includes('file_4') || filePath.includes('file_6')))) {
+        contentType = 'audio/mp4';
+      } else if (ext === 'flac') {
+        contentType = 'audio/flac';
+      } else if (ext === 'wav') {
+        contentType = 'audio/wav';
+      } else if (ext === 'ogg') {
+        contentType = 'audio/ogg';
+      } else {
+        contentType = 'audio/mpeg';
+      }
+    }
+
+    // 1. Check local disk cache (instant playback, 0 network latency, Spotify-grade speed)
+    const cachedFilePath = getAudioCachePath(fileId || filePath, filePath);
+
+    if (fs.existsSync(cachedFilePath)) {
+      try {
+        const stat = fs.statSync(cachedFilePath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('X-Cache-Status', 'HIT-DISK');
+
+        if (req.method === 'HEAD') {
+          res.setHeader('Content-Length', fileSize);
+          res.status(200).end();
+          return;
+        }
+
+        if (range) {
+          const parts = range.replace(/bytes=/, '').split('-');
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+          const chunkSize = (end - start) + 1;
+
+          res.status(206);
+          res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+          res.setHeader('Content-Length', chunkSize);
+
+          const stream = fs.createReadStream(cachedFilePath, { start, end });
+          stream.pipe(res);
+          return;
+        } else {
+          res.status(200);
+          res.setHeader('Content-Length', fileSize);
+          const stream = fs.createReadStream(cachedFilePath);
+          stream.pipe(res);
+          return;
+        }
+      } catch (err) {
+        console.warn('Error reading from disk cache, falling back to Telegram proxy:', err);
+      }
+    }
+
+    // 2. Cache Miss: Stream from Telegram and write to local disk cache simultaneously
     const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
 
     const headers: Record<string, string> = {};
@@ -354,23 +486,6 @@ async function startServer() {
     https.get(telegramFileUrl, { headers }, (tgRes) => {
       const statusCode = tgRes.statusCode || 200;
 
-      // Determine content-type based on explicit fileMimeCache, then filename/extension
-      let contentType = (fileId && fileMimeCache[fileId]) || fileMimeCache[filePath];
-      if (!contentType) {
-        const ext = filePath.split('.').pop()?.toLowerCase();
-        if (ext === 'm4a' || ext === 'mp4' || ext === 'aac' || filePath.includes('file_3') || filePath.includes('file_4') || filePath.includes('file_6')) {
-          contentType = 'audio/mp4';
-        } else if (ext === 'flac') {
-          contentType = 'audio/flac';
-        } else if (ext === 'wav') {
-          contentType = 'audio/wav';
-        } else if (ext === 'ogg') {
-          contentType = 'audio/ogg';
-        } else {
-          contentType = 'audio/mpeg';
-        }
-      }
-
       res.status(statusCode);
       res.setHeader('Content-Type', contentType);
       res.setHeader('Accept-Ranges', 'bytes');
@@ -378,6 +493,7 @@ async function startServer() {
       res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
       res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+      res.setHeader('X-Cache-Status', 'MISS-STREAMING');
 
       if (tgRes.headers['content-range']) {
         res.setHeader('Content-Range', tgRes.headers['content-range']);
@@ -389,6 +505,23 @@ async function startServer() {
       if (req.method === 'HEAD') {
         res.end();
         return;
+      }
+
+      // If full audio stream (status 200), save to disk cache in background
+      if (statusCode === 200) {
+        const tempPath = `${cachedFilePath}.tmp.${Date.now()}`;
+        const writeStream = fs.createWriteStream(tempPath);
+        tgRes.pipe(writeStream);
+        writeStream.on('finish', () => {
+          fs.rename(tempPath, cachedFilePath, (err) => {
+            if (!err) {
+              console.log(`[Spotify Cache Engine] Saved to disk cache: ${path.basename(cachedFilePath)}`);
+            }
+          });
+        });
+        writeStream.on('error', () => {
+          try { fs.unlinkSync(tempPath); } catch {}
+        });
       }
 
       tgRes.pipe(res);
@@ -403,7 +536,7 @@ async function startServer() {
   // In-memory cache for fetched Telegram images to make album artwork load instantly
   const imageMemoryCache: Map<string, { buffer: Buffer; mimeType: string }> = new Map();
 
-  // 3. Image Proxy for Telegram Track Thumbnails / Album Covers
+  // 3. Image Proxy for Telegram Track Thumbnails / Album Covers (Memory + Disk Cached)
   app.get('/api/telegram/image', async (req: Request, res: Response) => {
     const fileId = req.query.file_id as string;
     if (!fileId) {
@@ -421,6 +554,21 @@ async function startServer() {
       return;
     }
 
+    // Check disk cache
+    const diskImagePath = getImageCachePath(fileId);
+    if (fs.existsSync(diskImagePath)) {
+      try {
+        const buffer = fs.readFileSync(diskImagePath);
+        const mimeType = 'image/jpeg';
+        imageMemoryCache.set(fileId, { buffer, mimeType });
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.send(buffer);
+        return;
+      } catch {}
+    }
+
     try {
       const filePath = await resolveTelegramFilePath(fileId);
       if (!filePath) {
@@ -435,7 +583,6 @@ async function startServer() {
           return;
         }
 
-        // Strictly enforce standard image MIME types so browsers & mobile WebViews never fail to render <img>
         let mimeType = 'image/jpeg';
         const lowerPath = filePath.toLowerCase();
         if (lowerPath.endsWith('.png')) {
@@ -458,6 +605,9 @@ async function startServer() {
         tgRes.on('end', () => {
           const buffer = Buffer.concat(chunks);
           imageMemoryCache.set(fileId, { buffer, mimeType });
+          try {
+            fs.writeFileSync(diskImagePath, buffer);
+          } catch {}
           res.send(buffer);
         });
       }).on('error', (err) => {
@@ -489,11 +639,52 @@ async function startServer() {
     });
   }
 
-  // Start background periodic polling for Telegram bot updates
+  // Spotify-grade background pre-caching: downloads and warms all channel audio to local SSD
+  async function preCacheAllTracks() {
+    for (const track of dynamicTracks) {
+      try {
+        const cachedAudio = getAudioCachePath(track.fileId, track.filePath);
+        if (!fs.existsSync(cachedAudio)) {
+          let filePath = track.filePath;
+          if (!filePath && track.fileId) {
+            filePath = await resolveTelegramFilePath(track.fileId) || '';
+          }
+          if (filePath) {
+            const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
+            const tempPath = `${cachedAudio}.tmp.${Date.now()}`;
+            await new Promise<void>((resolve) => {
+              https.get(telegramFileUrl, (tgRes) => {
+                if (tgRes.statusCode === 200) {
+                  const ws = fs.createWriteStream(tempPath);
+                  tgRes.pipe(ws);
+                  ws.on('finish', () => {
+                    fs.rename(tempPath, cachedAudio, () => {
+                      console.log(`[Spotify Pre-Cache] Pre-cached to disk: "${track.title}" by ${track.artist}`);
+                      resolve();
+                    });
+                  });
+                  ws.on('error', () => {
+                    try { fs.unlinkSync(tempPath); } catch {}
+                    resolve();
+                  });
+                } else {
+                  resolve();
+                }
+              }).on('error', () => resolve());
+            });
+          }
+        }
+      } catch {
+        // quiet fallback
+      }
+    }
+  }
+
+  // Start background periodic polling for Telegram bot updates (every 10s)
   setInterval(() => {
-    fetchTelegramUpdates().catch(() => {});
-  }, 20000);
-  fetchTelegramUpdates().catch(() => {});
+    fetchTelegramUpdates().then(() => preCacheAllTracks()).catch(() => {});
+  }, 10000);
+  fetchTelegramUpdates().then(() => preCacheAllTracks()).catch(() => {});
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`NOVA Player server running on http://0.0.0.0:${PORT}`);

@@ -150,6 +150,40 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
       { time: 120, text: '♪ (Soulful vocal harmonies by Arijit Singh & Shreya Ghoshal) ♪' },
       { time: 150, text: 'Meherbani jaate jaate mujhpe kar gaya...' }
     ]
+  },
+  {
+    id: 'tg-keane-somewhere-only-we-know',
+    title: 'Somewhere Only We Know',
+    artist: 'Keane',
+    album: 'Hopes and Fears',
+    duration: 237,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA',
+    synthPreset: 'acoustic',
+    genre: 'Piano Rock / Indie Pop',
+    folder: 'NOVA Private Library / Keane',
+    year: 2004,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 1,
+    isFavorite: true,
+    dateAdded: 1788950000000,
+    lyrics: [
+      { time: 0, text: '♪ (Distinctive driving piano chord riff) ♪' },
+      { time: 14, text: 'I walked across an empty land...' },
+      { time: 21, text: 'I knew the pathway like the back of my hand' },
+      { time: 28, text: 'I felt the earth beneath my feet' },
+      { time: 35, text: 'Sat by the river and it made me complete' },
+      { time: 42, text: 'Oh simple thing, where have you gone?' },
+      { time: 49, text: "I'm getting old and I need something to rely on" },
+      { time: 56, text: 'So tell me when you gonna let me in' },
+      { time: 63, text: "I'm getting tired and I need somewhere to begin" },
+      { time: 70, text: '♪ (Soaring piano and vocal harmony crescendo) ♪' },
+      { time: 84, text: 'And if you have a minute why don\'t we go...' },
+      { time: 91, text: 'Talk about it somewhere only we know?' },
+      { time: 98, text: 'This could be the end of everything...' },
+      { time: 105, text: 'So why don\'t we go somewhere only we know?' }
+    ]
   }
 ];
 
@@ -169,6 +203,10 @@ export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> 
   'Pritam, Shreya Ghoshal, Arijit Singh': {
     photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA',
     bio: 'Timeless romantic melodies and chart-topping Bollywood masterpieces featuring soulful vocal power.'
+  },
+  'Keane': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E',
+    bio: 'Legendary English alternative rock band known for piano-driven anthems like Somewhere Only We Know and Everybody\'s Changing.'
   }
 };
 

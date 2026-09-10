@@ -142,6 +142,41 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 120, text: '♪ (Soulful vocal harmonies by Arijit Singh & Shreya Ghoshal) ♪' },
       { time: 150, text: 'Meherbani jaate jaate mujhpe kar gaya...' }
     ]
+  },
+  {
+    id: 'tg-keane-somewhere-only-we-know',
+    title: 'Somewhere Only We Know',
+    artist: 'Keane',
+    album: 'Hopes and Fears',
+    duration: 237,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA',
+    synthPreset: 'acoustic',
+    genre: 'Piano Rock / Indie Pop',
+    folder: 'NOVA Private Library / Keane',
+    year: 2004,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 1,
+    lastPlayed: Date.now(),
+    isFavorite: true,
+    dateAdded: 1788950000000,
+    lyrics: [
+      { time: 0, text: '♪ (Distinctive driving piano chord riff) ♪' },
+      { time: 14, text: 'I walked across an empty land...' },
+      { time: 21, text: 'I knew the pathway like the back of my hand' },
+      { time: 28, text: 'I felt the earth beneath my feet' },
+      { time: 35, text: 'Sat by the river and it made me complete' },
+      { time: 42, text: 'Oh simple thing, where have you gone?' },
+      { time: 49, text: "I'm getting old and I need something to rely on" },
+      { time: 56, text: 'So tell me when you gonna let me in' },
+      { time: 63, text: "I'm getting tired and I need somewhere to begin" },
+      { time: 70, text: '♪ (Soaring piano and vocal harmony crescendo) ♪' },
+      { time: 84, text: 'And if you have a minute why don\'t we go...' },
+      { time: 91, text: 'Talk about it somewhere only we know?' },
+      { time: 98, text: 'This could be the end of everything...' },
+      { time: 105, text: 'So why don\'t we go somewhere only we know?' }
+    ]
   }
 ];
 
@@ -151,7 +186,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Favourites',
     description: 'Tracks you loved with a heart',
     coverArt: 'linear-gradient(135deg, #EC4899 0%, #EF4444 100%)',
-    trackIds: ['tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi'],
+    trackIds: ['tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -161,7 +196,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Recently Played',
     description: 'Your recent listening sessions',
     coverArt: 'linear-gradient(135deg, #7C6EFF 0%, #4F46E5 100%)',
-    trackIds: ['tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi'],
+    trackIds: ['tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -171,7 +206,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'NOVA Telegram Cloud',
     description: 'Cloud vault tracks streamed from NOVA Private Library',
     coverArt: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)',
-    trackIds: ['tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
+    trackIds: ['tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 10,
     updatedAt: Date.now()
