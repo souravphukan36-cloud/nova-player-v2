@@ -27,7 +27,7 @@ import {
   Upload
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
-import { getTrackDynamicPalette } from '../utils/dynamicColor';
+import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 export const NowPlayingModal: React.FC = () => {
   const {
@@ -346,8 +346,17 @@ export const NowPlayingModal: React.FC = () => {
                         className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold text-white overflow-hidden shadow"
                         style={{ background: track.coverArt }}
                       >
-                        {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
-                          <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+                        {isCoverArtImage(track.coverArt) ? (
+                          <img 
+                            src={track.coverArt} 
+                            alt="" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const img = e.currentTarget as HTMLImageElement;
+                              img.onerror = null;
+                              img.src = DEFAULT_FALLBACK_ART;
+                            }}
+                          />
                         ) : (
                           isCurrent && isPlaying ? '▶' : idx + 1
                         )}
@@ -399,9 +408,15 @@ export const NowPlayingModal: React.FC = () => {
                     <div className="w-3/5 h-3/5 rounded-full border border-neutral-800/60 flex items-center justify-center">
                       <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
                         <img 
-                          src={currentTrack.coverArt} 
-                          alt="" 
+                          src={isCoverArtImage(currentTrack.coverArt) ? currentTrack.coverArt : DEFAULT_FALLBACK_ART} 
+                          alt={currentTrack.title} 
                           className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.onerror = null;
+                            img.src = DEFAULT_FALLBACK_ART;
+                          }}
                         />
                       </div>
                     </div>
@@ -415,12 +430,17 @@ export const NowPlayingModal: React.FC = () => {
                   npConfig.layoutStyle === 'immersive-backdrop' ? 'shadow-black/80' : ''
                 }`}
               >
-                {currentTrack.coverArt ? (
+                {isCoverArtImage(currentTrack.coverArt) ? (
                   <img
                     src={currentTrack.coverArt}
                     alt={currentTrack.title}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      img.onerror = null;
+                      img.src = DEFAULT_FALLBACK_ART;
+                    }}
                   />
                 ) : (
                   <div 

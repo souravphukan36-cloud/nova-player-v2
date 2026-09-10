@@ -12,7 +12,7 @@ import {
   Volume1
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
-import { getTrackDynamicPalette } from '../utils/dynamicColor';
+import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 export const CarModeModal: React.FC = () => {
   const {
@@ -81,12 +81,17 @@ export const CarModeModal: React.FC = () => {
             boxShadow: `0 0 50px ${palette.glow}` 
           }}
         >
-          {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
+          {isCoverArtImage(currentTrack.coverArt) ? (
             <img 
               src={currentTrack.coverArt} 
               alt={currentTrack.title} 
               className="w-full h-full object-cover" 
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                img.onerror = null;
+                img.src = DEFAULT_FALLBACK_ART;
+              }}
             />
           ) : null}
         </div>

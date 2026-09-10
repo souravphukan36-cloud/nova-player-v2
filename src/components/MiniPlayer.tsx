@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Play, Pause, SkipForward, ListMusic, Heart } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
-import { getTrackDynamicPalette } from '../utils/dynamicColor';
+import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 export const MiniPlayer: React.FC = () => {
   const { 
@@ -114,8 +114,18 @@ export const MiniPlayer: React.FC = () => {
             className="w-11 h-11 rounded-xl shadow-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden ring-1 ring-white/10"
             style={{ background: currentTrack.coverArt }}
           >
-            {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
-              <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            {isCoverArtImage(currentTrack.coverArt) ? (
+              <img 
+                src={currentTrack.coverArt} 
+                alt={currentTrack.title} 
+                className="w-full h-full object-cover" 
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  img.onerror = null;
+                  img.src = DEFAULT_FALLBACK_ART;
+                }}
+              />
             ) : null}
             {isPlaying && (
               <div className="absolute inset-0 bg-black/30 flex items-center justify-center gap-0.5">

@@ -90,7 +90,7 @@ export const DEFAULT_TRACKS: Track[] = [
     ]
   },
   {
-    id: 'tg-kaahe-mose',
+    id: 'tg-garvit-kaahe-mose',
     title: 'Kaahe Mose',
     artist: 'Garvit Soni, Priyansh Srivastava',
     album: 'SambalpuriStar.In - Kaahe Mose',

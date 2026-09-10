@@ -50,7 +50,7 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
     duration: 264,
     format: 'm4a',
     coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMFaqBCEbQf_eGZ5pL7b_n57h2vXzMAAjg3AAL02QABVf79k2hR_buhPQQ',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
     folder: 'NOVA Private Library / The Local Train',
@@ -206,11 +206,23 @@ class TelegramCloudService {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge with INITIAL_CLOUD_TRACKS to guarantee new songs like Raabta & Kaahe Mose are included
-          const existingIds = new Set(parsed.map((t: Track) => t.id));
-          const existingTitles = new Set(parsed.map((t: Track) => t.title.toLowerCase().trim()));
-          const newFromInitial = INITIAL_CLOUD_TRACKS.filter(t => !existingIds.has(t.id) && !existingTitles.has(t.title.toLowerCase().trim()));
-          this.cloudTracks = [...parsed, ...newFromInitial];
+          // Always refresh with authoritative INITIAL_CLOUD_TRACKS so stale/broken cached audio URLs or cover arts get repaired immediately
+          const initialMap = new Map(INITIAL_CLOUD_TRACKS.map(t => [t.id, t]));
+          const updated = parsed.map((t: Track) => {
+            const fresh = initialMap.get(t.id);
+            if (fresh) {
+              return {
+                ...t,
+                ...fresh,
+                playCount: t.playCount ?? fresh.playCount,
+                isFavorite: t.isFavorite ?? fresh.isFavorite
+              };
+            }
+            return t;
+          });
+          const existingIds = new Set(updated.map((t: Track) => t.id));
+          const newFromInitial = INITIAL_CLOUD_TRACKS.filter(t => !existingIds.has(t.id));
+          this.cloudTracks = [...updated, ...newFromInitial];
           return;
         }
       }

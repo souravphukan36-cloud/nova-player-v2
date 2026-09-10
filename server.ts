@@ -400,11 +400,24 @@ async function startServer() {
     });
   });
 
+  // In-memory cache for fetched Telegram images to make album artwork load instantly
+  const imageMemoryCache: Map<string, { buffer: Buffer; mimeType: string }> = new Map();
+
   // 3. Image Proxy for Telegram Track Thumbnails / Album Covers
   app.get('/api/telegram/image', async (req: Request, res: Response) => {
     const fileId = req.query.file_id as string;
     if (!fileId) {
       res.status(400).send('Missing file_id');
+      return;
+    }
+
+    // Check fast in-memory cache
+    if (imageMemoryCache.has(fileId)) {
+      const cached = imageMemoryCache.get(fileId)!;
+      res.setHeader('Content-Type', cached.mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.send(cached.buffer);
       return;
     }
 
@@ -417,11 +430,36 @@ async function startServer() {
 
       const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
       https.get(telegramFileUrl, (tgRes) => {
-        res.status(tgRes.statusCode || 200);
-        res.setHeader('Content-Type', tgRes.headers['content-type'] || 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+        if (tgRes.statusCode !== 200) {
+          res.status(tgRes.statusCode || 404).send('Image not available');
+          return;
+        }
+
+        // Strictly enforce standard image MIME types so browsers & mobile WebViews never fail to render <img>
+        let mimeType = 'image/jpeg';
+        const lowerPath = filePath.toLowerCase();
+        if (lowerPath.endsWith('.png')) {
+          mimeType = 'image/png';
+        } else if (lowerPath.endsWith('.webp')) {
+          mimeType = 'image/webp';
+        } else if (lowerPath.endsWith('.gif')) {
+          mimeType = 'image/gif';
+        } else {
+          mimeType = 'image/jpeg';
+        }
+
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
         res.setHeader('Access-Control-Allow-Origin', '*');
-        tgRes.pipe(res);
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+
+        const chunks: Buffer[] = [];
+        tgRes.on('data', (c) => chunks.push(c));
+        tgRes.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          imageMemoryCache.set(fileId, { buffer, mimeType });
+          res.send(buffer);
+        });
       }).on('error', (err) => {
         console.error('Telegram image proxy error:', err);
         if (!res.headersSent) {
@@ -429,7 +467,10 @@ async function startServer() {
         }
       });
     } catch (err) {
-      res.status(500).send('Image proxy error');
+      console.error('Telegram image route exception:', err);
+      if (!res.headersSent) {
+        res.status(500).send('Image proxy error');
+      }
     }
   });
 

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
+import { isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 interface HomeTabProps {
   onNavigateToLibrary: (subTab?: string) => void;
@@ -177,10 +178,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
                     }`}
                   >
                     <img 
-                      src={track.coverArt} 
+                      src={track.coverArt || DEFAULT_FALLBACK_ART} 
                       alt={track.title} 
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                       referrerPolicy="no-referrer" 
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.onerror = null;
+                        img.src = DEFAULT_FALLBACK_ART;
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
 
@@ -256,10 +262,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
                 >
                   <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/25 transition-all duration-300 group-hover:-translate-y-1">
                     <img 
-                      src={track.coverArt} 
+                      src={track.coverArt || DEFAULT_FALLBACK_ART} 
                       alt={track.title} 
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                       referrerPolicy="no-referrer" 
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.onerror = null;
+                        img.src = DEFAULT_FALLBACK_ART;
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
@@ -318,10 +329,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
               >
                 <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/30 transition-all duration-300">
                   <img 
-                    src={track.coverArt} 
+                    src={track.coverArt || DEFAULT_FALLBACK_ART} 
                     alt={track.title} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     referrerPolicy="no-referrer" 
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      img.onerror = null;
+                      img.src = DEFAULT_FALLBACK_ART;
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2">
@@ -366,10 +382,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
               >
                 <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/30 transition-all duration-300">
                   <img 
-                    src={track.coverArt} 
+                    src={track.coverArt || DEFAULT_FALLBACK_ART} 
                     alt={track.album} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     referrerPolicy="no-referrer" 
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      img.onerror = null;
+                      img.src = DEFAULT_FALLBACK_ART;
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
                   <div className="absolute top-2.5 right-2.5">
@@ -420,10 +441,15 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
               >
                 <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-emerald-400/40 transition-all duration-300 group-hover:-translate-y-1">
                   <img 
-                    src={track.coverArt} 
+                    src={track.coverArt || DEFAULT_FALLBACK_ART} 
                     alt={track.title} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     referrerPolicy="no-referrer" 
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      img.onerror = null;
+                      img.src = DEFAULT_FALLBACK_ART;
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
                   
@@ -487,12 +513,17 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
                       className="w-12 h-12 rounded-xl flex-shrink-0 shadow-md overflow-hidden relative flex items-center justify-center text-xs font-bold text-white group-hover:scale-105 transition-transform"
                       style={{ background: track.coverArt }}
                     >
-                      {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
+                      {isCoverArtImage(track.coverArt) ? (
                         <img 
                           src={track.coverArt} 
                           alt={track.title} 
                           className="w-full h-full object-cover" 
                           referrerPolicy="no-referrer" 
+                          onError={(e) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.onerror = null;
+                            img.src = DEFAULT_FALLBACK_ART;
+                          }}
                         />
                       ) : (
                         <Music className="w-5 h-5 text-white/60" />

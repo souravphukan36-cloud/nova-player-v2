@@ -20,6 +20,7 @@ import {
   Music
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
+import { isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 export const LockScreenModal: React.FC = () => {
   const {
@@ -150,12 +151,17 @@ export const LockScreenModal: React.FC = () => {
 
                   {/* Center Cover Art Photo */}
                   <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden relative shadow-inner">
-                    {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
+                    {isCoverArtImage(currentTrack.coverArt) ? (
                       <img 
                         src={currentTrack.coverArt} 
                         alt={currentTrack.title} 
                         className="w-full h-full object-cover" 
                         referrerPolicy="no-referrer" 
+                        onError={(e) => {
+                          const img = e.currentTarget as HTMLImageElement;
+                          img.onerror = null;
+                          img.src = DEFAULT_FALLBACK_ART;
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full bg-emerald-950 flex items-center justify-center text-emerald-400">

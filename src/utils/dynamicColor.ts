@@ -66,6 +66,19 @@ const DEFAULT_PALETTE: DynamicPalette = {
   border: 'rgba(16, 185, 129, 0.3)'
 };
 
+export const DEFAULT_FALLBACK_ART = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+
+export function isCoverArtImage(url?: string | null): boolean {
+  if (!url) return false;
+  return (
+    url.startsWith('/') ||
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:')
+  );
+}
+
 /**
  * Derives a dynamic, harmonious color palette from a track's coverArt, genre or title
  */

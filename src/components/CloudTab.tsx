@@ -19,6 +19,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
 import { telegramCloudService, CloudArtistShelf } from '../services/telegramCloudService';
+import { DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 export const CloudTab: React.FC = () => {
   const { 
@@ -441,12 +442,17 @@ export const CloudTab: React.FC = () => {
                           </div>
 
                           {/* Cover Thumbnail */}
-                          <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-white/10">
+                          <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-neutral-800">
                             <img 
-                              src={track.coverArt} 
+                              src={track.coverArt || DEFAULT_FALLBACK_ART} 
                               alt={track.title}
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                img.onerror = null;
+                                img.src = DEFAULT_FALLBACK_ART;
+                              }}
                             />
                             <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                               {isTrackPlaying ? (

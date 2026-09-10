@@ -224,10 +224,15 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
           parsed = parsed.filter((t: Track) => !isBannedTrack(t) && !isLegacyDemo(t.id));
 
-          // 2. Ensure the 3 real uploaded Telegram tracks are included
-          const existingIds = new Set(parsed.map((t: Track) => t.id));
+          // 2. Ensure all verified real Telegram tracks have up-to-date coverArt, audioUrl, and metadata
+          const defaultMap = new Map(DEFAULT_TRACKS.map(dt => [dt.id, dt]));
+          const updated = parsed.map((t: Track) => {
+            const fresh = defaultMap.get(t.id);
+            return fresh ? { ...t, ...fresh, playCount: t.playCount ?? fresh.playCount, isFavorite: t.isFavorite ?? fresh.isFavorite } : t;
+          });
+          const existingIds = new Set(updated.map((t: Track) => t.id));
           const missingDefaults = DEFAULT_TRACKS.filter(dt => !existingIds.has(dt.id));
-          const combined = missingDefaults.length > 0 ? [...missingDefaults, ...parsed] : parsed;
+          const combined = missingDefaults.length > 0 ? [...missingDefaults, ...updated] : updated;
           if (combined.length > 0) {
             localStorage.setItem('nova_tracks', JSON.stringify(combined));
             return combined;
@@ -407,8 +412,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return merged;
         });
 
-        // Ensure current track is set if none is active
-        setCurrentTrack(prev => prev || cloudTracks[0]);
+        // Ensure current track is refreshed with fresh coverArt, audioUrl and singer details
+        setCurrentTrack(prev => {
+          if (!prev) return cloudTracks[0];
+          const fresh = cloudTracks.find(c => c.id === prev.id || c.title.toLowerCase().trim() === prev.title.toLowerCase().trim());
+          return fresh ? { ...prev, ...fresh } : prev;
+        });
       }
     }).catch(err => {
       console.warn('Auto Telegram sync error:', err);

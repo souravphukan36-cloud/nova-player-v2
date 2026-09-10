@@ -20,6 +20,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 import { Track, Playlist, LibrarySubTab, SortOption, SortDirection } from '../types';
 import { sanitizeText } from '../utils/security';
+import { isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 interface LibraryTabProps {
   initialSubTab?: LibrarySubTab;
@@ -435,8 +436,18 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                     className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md overflow-hidden relative flex items-center justify-center text-xs font-bold text-white"
                     style={{ background: track.coverArt }}
                   >
-                    {track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('blob:') || track.coverArt.startsWith('data:')) ? (
-                      <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    {isCoverArtImage(track.coverArt) ? (
+                      <img 
+                        src={track.coverArt} 
+                        alt={track.title} 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const img = e.currentTarget as HTMLImageElement;
+                          img.onerror = null;
+                          img.src = DEFAULT_FALLBACK_ART;
+                        }}
+                      />
                     ) : null}
                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                       {isCurrent && isPlaying ? '▶' : idx + 1}

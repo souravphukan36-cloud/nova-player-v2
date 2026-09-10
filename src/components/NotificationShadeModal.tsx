@@ -20,6 +20,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
+import { isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
 
 export const NotificationShadeModal: React.FC = () => {
   const {
@@ -373,12 +374,17 @@ export const NotificationShadeModal: React.FC = () => {
                 className="w-14 h-14 rounded-2xl flex-shrink-0 cursor-pointer shadow-lg overflow-hidden relative group"
                 style={{ background: currentTrack.coverArt }}
               >
-                {currentTrack.coverArt && (currentTrack.coverArt.startsWith('http') || currentTrack.coverArt.startsWith('blob:') || currentTrack.coverArt.startsWith('data:')) ? (
+                {isCoverArtImage(currentTrack.coverArt) ? (
                   <img 
                     src={currentTrack.coverArt} 
                     alt={currentTrack.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
                     referrerPolicy="no-referrer" 
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      img.onerror = null;
+                      img.src = DEFAULT_FALLBACK_ART;
+                    }}
                   />
                 ) : null}
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white text-xs font-bold">
