@@ -24,7 +24,10 @@ import {
   Sparkles,
   SlidersHorizontal,
   Car,
-  Upload
+  Upload,
+  Download,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
 import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
@@ -67,9 +70,14 @@ export const NowPlayingModal: React.FC = () => {
     settings,
     updateSettings,
     linkAudioFileToTrack,
+    downloadTrack,
+    deleteDownloadedTrack,
+    downloadedTrackIds,
+    isDownloading,
   } = usePlayer();
   const currentTime = usePlaybackTime();
 
+  const [downloading, setDownloading] = useState(false);
   const [showTrackDetails, setShowTrackDetails] = useState(false);
   const [dragY, setDragY] = useState(0);
   const touchStartYRef = useRef<number | null>(null);
@@ -478,6 +486,39 @@ export const NowPlayingModal: React.FC = () => {
                   <Heart className={`w-6 h-6 ${currentTrack.isFavorite ? 'fill-current' : ''}`} />
                 </button>
 
+                {/* Download Offline Button */}
+                <button
+                  id="np-btn-download"
+                  disabled={downloading}
+                  onClick={async () => {
+                    if (downloading) return;
+                    setDownloading(true);
+                    try {
+                      await downloadTrack(currentTrack);
+                    } finally {
+                      setDownloading(false);
+                    }
+                  }}
+                  className={`p-2.5 rounded-full hover:bg-white/10 transition-transform active:scale-110 ${
+                    downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded
+                      ? 'text-emerald-400'
+                      : 'text-white/70 hover:text-white'
+                  }`}
+                  title={
+                    downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded
+                      ? 'Downloaded (Offline Ready)'
+                      : 'Download Offline to Phone'
+                  }
+                >
+                  {downloading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                  ) : downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded ? (
+                    <CheckCircle2 className="w-5 h-5 fill-emerald-500/20 text-emerald-400" />
+                  ) : (
+                    <Download className="w-5 h-5" />
+                  )}
+                </button>
+
                 <button
                   onClick={() => setShowTrackDetails(!showTrackDetails)}
                   className="p-2.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
@@ -527,6 +568,12 @@ export const NowPlayingModal: React.FC = () => {
               <div><span className="text-white/40">Genre:</span> {currentTrack.genre}</div>
               <div><span className="text-white/40">Play Count:</span> {currentTrack.playCount} times</div>
               <div className="col-span-2 truncate"><span className="text-white/40">Folder:</span> {currentTrack.folder}</div>
+              <div className="col-span-2 flex items-center justify-between pt-1 border-t border-white/10">
+                <span className="text-white/40">Offline Storage:</span>
+                <span className={downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded ? "text-emerald-400 font-semibold" : "text-white/50"}>
+                  {downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded ? "✓ Downloaded (0s Offline Play)" : "Cloud Stream"}
+                </span>
+              </div>
             </div>
           </div>
         )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Search as SearchIcon, X, Music, Heart, Play } from 'lucide-react';
+import { Search as SearchIcon, X, Music, Heart, Play, Download, CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
-import { isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
+import { isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
 
 export const SearchTab: React.FC = () => {
   const {
@@ -11,11 +11,17 @@ export const SearchTab: React.FC = () => {
     playTrack,
     toggleFavorite,
     settings,
+    downloadedTrackIds,
+    downloadTrack,
+    deleteDownloadedTrack,
+    isDownloading,
   } = usePlayer();
 
   const [query, setQuery] = useState('');
+  const [offlineOnlyFilter, setOfflineOnlyFilter] = useState(false);
 
   const quickChips = [
+    'Offline Ready',
     'Favourites',
     'Synthwave',
     'Sourav Phukan',
@@ -25,8 +31,17 @@ export const SearchTab: React.FC = () => {
   ];
 
   const filteredTracks = tracks.filter((track) => {
-    if (!query.trim()) return false;
-    const q = query.toLowerCase();
+    const isOffline = downloadedTrackIds.has(track.id) || track.isDownloaded;
+    if (offlineOnlyFilter && !isOffline) return false;
+
+    if (!query.trim()) {
+      return offlineOnlyFilter ? isOffline : false;
+    }
+
+    const q = query.toLowerCase().trim();
+    if (q === 'offline ready' || q === 'offline' || q === 'downloaded') {
+      return isOffline;
+    }
     if (q === 'favourites' || q === 'favorite') {
       return track.isFavorite;
     }
@@ -45,6 +60,8 @@ export const SearchTab: React.FC = () => {
     const s = Math.floor(secs % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
+
+  const topMatch = filteredTracks.length > 0 ? filteredTracks[0] : null;
 
   return (
     <div className="space-y-4 pb-36 px-5 select-none animate-in fade-in duration-200">
@@ -108,69 +125,156 @@ export const SearchTab: React.FC = () => {
               <p className="text-xs text-white/30 mt-1">Try searching by artist, album, or file extension</p>
             </div>
           ) : (
-            <div className="space-y-1">
-              {filteredTracks.map((track, idx) => {
-                const isCurrent = currentTrack?.id === track.id;
-                return (
-                  <div
-                    key={track.id}
-                    onClick={() => playTrack(track, filteredTracks)}
-                    className={`flex items-center justify-between p-2.5 rounded-2xl cursor-pointer transition-colors ${
-                      isCurrent ? 'bg-white/10 border border-white/15' : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                      <div 
-                        className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md relative overflow-hidden flex items-center justify-center text-xs font-bold text-white"
-                        style={{ background: track.coverArt }}
-                      >
-                        {isCoverArtImage(track.coverArt) ? (
-                          <img 
-                            src={track.coverArt} 
-                            alt={track.title} 
-                            className="w-full h-full object-cover" 
-                            referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              const img = e.currentTarget as HTMLImageElement;
-                              img.onerror = null;
-                              img.src = DEFAULT_FALLBACK_ART;
-                            }}
-                          />
-                        ) : null}
-                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                          {isCurrent && isPlaying ? '▶' : idx + 1}
+            <div className="space-y-3">
+              {/* Top Match Highlight Card */}
+              {topMatch && (
+                <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 relative overflow-hidden group shadow-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      Top Match
+                    </span>
+                    {(downloadedTrackIds.has(topMatch.id) || topMatch.isDownloaded) && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        Offline Ready
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3.5">
+                    <div 
+                      className="w-14 h-14 rounded-xl flex-shrink-0 shadow-md overflow-hidden relative flex items-center justify-center text-xs font-bold text-white"
+                      style={{ background: topMatch.coverArt }}
+                    >
+                      {isCoverArtImage(topMatch.coverArt) ? (
+                        <img 
+                          src={getResolvedCoverArt(topMatch.coverArt)} 
+                          alt={topMatch.title} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.onerror = null;
+                            img.src = DEFAULT_FALLBACK_ART;
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-bold text-white truncate">{topMatch.title}</h3>
+                      <p className="text-xs text-white/60 truncate mt-0.5">{topMatch.artist}</p>
+                      <p className="text-[10px] text-white/40 mt-0.5 uppercase font-mono">{topMatch.format} • {formatTime(topMatch.duration)}</p>
+                    </div>
+                    <button
+                      onClick={() => playTrack(topMatch, filteredTracks)}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-black font-extrabold shadow-md transition-transform active:scale-95 flex-shrink-0"
+                      style={{ backgroundColor: settings.accentColor }}
+                      title="Play"
+                    >
+                      <Play className="w-4 h-4 fill-current ml-0.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                {filteredTracks.map((track, idx) => {
+                  const isCurrent = currentTrack?.id === track.id;
+                  const isOffline = downloadedTrackIds.has(track.id) || track.isDownloaded;
+                  return (
+                    <div
+                      key={track.id}
+                      onClick={() => playTrack(track, filteredTracks)}
+                      className={`flex items-center justify-between p-2.5 rounded-2xl cursor-pointer transition-colors ${
+                        isCurrent ? 'bg-white/10 border border-white/15' : 'hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                        <div 
+                          className="w-11 h-11 rounded-xl flex-shrink-0 shadow-md relative overflow-hidden flex items-center justify-center text-xs font-bold text-white"
+                          style={{ background: track.coverArt }}
+                        >
+                          {isCoverArtImage(track.coverArt) ? (
+                            <img 
+                              src={getResolvedCoverArt(track.coverArt)} 
+                              alt={track.title} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                img.onerror = null;
+                                img.src = DEFAULT_FALLBACK_ART;
+                              }}
+                            />
+                          ) : null}
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            {isCurrent && isPlaying ? '▶' : idx + 1}
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 
+                            className={`text-xs font-bold truncate ${isCurrent ? 'text-white' : 'text-white/90'}`}
+                            style={{ color: isCurrent ? settings.accentColor : undefined }}
+                          >
+                            {track.title}
+                          </h4>
+                          <p className="text-[11px] text-white/50 truncate flex items-center gap-1.5 mt-0.5">
+                            <span>{track.artist}</span>
+                            <span>•</span>
+                            <span className="uppercase text-[9px] px-1 rounded bg-white/10 text-white/70">{track.format}</span>
+                            {isOffline && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
+                                <CheckCircle2 className="w-2.5 h-2.5" />
+                                <span>Offline</span>
+                              </span>
+                            )}
+                          </p>
                         </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 
-                          className={`text-xs font-bold truncate ${isCurrent ? 'text-white' : 'text-white/90'}`}
-                          style={{ color: isCurrent ? settings.accentColor : undefined }}
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-mono text-white/40">{formatTime(track.duration)}</span>
+                        
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isOffline) {
+                              deleteDownloadedTrack(track.id);
+                            } else {
+                              downloadTrack(track);
+                            }
+                          }}
+                          disabled={isDownloading === track.id}
+                          className={`p-1.5 rounded-full hover:bg-white/10 transition-colors ${
+                            isOffline ? 'text-emerald-400' : 'text-white/40 hover:text-white'
+                          }`}
+                          title={isOffline ? 'Offline Ready (Stored Locally)' : 'Download Offline'}
                         >
-                          {track.title}
-                        </h4>
-                        <p className="text-[11px] text-white/50 truncate">
-                          {track.artist} • {track.album}
-                        </p>
+                          {isDownloading === track.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                          ) : isOffline ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(track.id);
+                          }}
+                          className={`p-1.5 rounded-full hover:bg-white/10 ${
+                            track.isFavorite ? 'text-rose-500' : 'text-white/40 hover:text-white'
+                          }`}
+                        >
+                          <Heart className={`w-4 h-4 ${track.isFavorite ? 'fill-current' : ''}`} />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-white/40">{formatTime(track.duration)}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite(track.id);
-                        }}
-                        className={`p-1.5 rounded-full hover:bg-white/10 ${
-                          track.isFavorite ? 'text-rose-500' : 'text-white/40 hover:text-white'
-                        }`}
-                      >
-                        <Heart className={`w-4 h-4 ${track.isFavorite ? 'fill-current' : ''}`} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

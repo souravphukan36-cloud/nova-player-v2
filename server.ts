@@ -376,6 +376,66 @@ async function resolveTelegramFilePath(fileId: string): Promise<string | null> {
   return null;
 }
 
+const prewarmingSet = new Set<string>();
+
+async function prewarmTrackCache(fileId: string, filePath?: string) {
+  if (!fileId && !filePath) return;
+  const key = fileId || filePath || '';
+  if (prewarmingSet.has(key)) return;
+  const cachedFilePath = getAudioCachePath(fileId, filePath);
+  if (fs.existsSync(cachedFilePath)) return;
+
+  prewarmingSet.add(key);
+  try {
+    let path = filePath;
+    if (!path && fileId) {
+      path = (await resolveTelegramFilePath(fileId)) || undefined;
+    }
+    if (!path) {
+      prewarmingSet.delete(key);
+      return;
+    }
+    const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${path}`;
+    const tempPath = `${cachedFilePath}.prewarm.${Date.now()}`;
+    const req = https.get(telegramFileUrl, (res) => {
+      if (res.statusCode === 200) {
+        const ws = fs.createWriteStream(tempPath);
+        res.pipe(ws);
+        ws.on('finish', () => {
+          fs.rename(tempPath, cachedFilePath, (err) => {
+            prewarmingSet.delete(key);
+            if (!err) {
+              console.log(`[Pre-buffer Engine] Pre-buffered track to cache: ${path}`);
+            }
+          });
+        });
+        ws.on('error', () => {
+          prewarmingSet.delete(key);
+          try { fs.unlinkSync(tempPath); } catch {}
+        });
+      } else {
+        prewarmingSet.delete(key);
+      }
+    });
+    req.on('error', () => {
+      prewarmingSet.delete(key);
+      try { fs.unlinkSync(tempPath); } catch {}
+    });
+  } catch {
+    prewarmingSet.delete(key);
+  }
+}
+
+function prewarmAllTracks() {
+  setTimeout(async () => {
+    for (const tr of dynamicTracks.slice(0, 15)) {
+      if (tr.fileId) {
+        await prewarmTrackCache(tr.fileId, tr.filePath);
+      }
+    }
+  }, 1000);
+}
+
 // Helper: Query Telegram Bot API for new updates / files
 async function fetchTelegramUpdates(customToken?: string) {
   const tokenToUse = customToken || TELEGRAM_BOT_TOKEN;
@@ -490,6 +550,8 @@ async function startServer() {
   app.get('/api/telegram/tracks', async (req: Request, res: Response) => {
     // Check for any new updates in background
     await fetchTelegramUpdates();
+    // Warm track cache in background for 0-second fast playback
+    prewarmAllTracks();
     res.json({
       success: true,
       channel: 'NOVA Private Library',
@@ -599,6 +661,7 @@ async function startServer() {
     }
 
     // 2. Cache Miss: Stream from Telegram and write to local disk cache simultaneously
+    prewarmTrackCache(fileId || '', filePath || '');
     const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
 
     const headers: Record<string, string> = {};

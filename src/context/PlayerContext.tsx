@@ -10,7 +10,14 @@ import {
 } from '../types';
 import { DEFAULT_TRACKS, INITIAL_PLAYLISTS } from '../data/defaultTracks';
 import { audioEngine } from '../services/audioEngine';
-import { getAllStoredTracks, deleteStoredTrack, clearAllAudioStorage, saveTrackWithAudio } from '../services/storageDb';
+import { 
+  getAllStoredTracks, 
+  deleteStoredTrack, 
+  clearAllAudioStorage, 
+  saveTrackWithAudio,
+  getAllDownloadedTrackIds,
+  downloadAndSaveTrackOffline
+} from '../services/storageDb';
 import { notificationService } from '../services/notificationService';
 import { telegramCloudService } from '../services/telegramCloudService';
 
@@ -90,6 +97,10 @@ interface PlayerContextType {
   // Playlists & Tracks
   addTracks: (newTracks: Track[]) => void;
   deleteTrack: (trackId: string) => void;
+  downloadTrack: (track: Track) => Promise<boolean>;
+  deleteDownloadedTrack: (trackId: string) => Promise<void>;
+  downloadedTrackIds: Set<string>;
+  isDownloading: string | null;
   createPlaylist: (name: string, description?: string) => void;
   deletePlaylist: (playlistId: string) => void;
   addTrackToPlaylist: (playlistId: string, trackId: string) => void;
@@ -338,6 +349,49 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [playlistModalOpen, setPlaylistModalOpen] = useState<boolean>(false);
   const [customizerOpen, setCustomizerOpen] = useState<boolean>(false);
   const [carModeOpen, setCarModeOpen] = useState<boolean>(false);
+  const [downloadedTrackIds, setDownloadedTrackIds] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
+
+  // Load offline stored track IDs on startup
+  useEffect(() => {
+    getAllDownloadedTrackIds().then(ids => {
+      setDownloadedTrackIds(ids);
+      // Mark matching tracks as downloaded
+      setTracks(prev => prev.map(t => ids.has(t.id) ? { ...t, isDownloaded: true } : t));
+    }).catch(() => {});
+  }, []);
+
+  // Offline track download handler
+  const downloadTrack = async (track: Track): Promise<boolean> => {
+    setIsDownloading(track.id);
+    try {
+      const ok = await downloadAndSaveTrackOffline(track, true);
+      if (ok) {
+        setDownloadedTrackIds(prev => new Set([...prev, track.id]));
+        setTracks(prev => prev.map(t => t.id === track.id ? { ...t, isDownloaded: true } : t));
+      }
+      return ok;
+    } catch (err) {
+      console.warn('Failed to download track offline:', err);
+      return false;
+    } finally {
+      setIsDownloading(null);
+    }
+  };
+
+  const deleteDownloadedTrack = async (trackId: string): Promise<void> => {
+    try {
+      await deleteStoredTrack(trackId);
+      setDownloadedTrackIds(prev => {
+        const copy = new Set(prev);
+        copy.delete(trackId);
+        return copy;
+      });
+      setTracks(prev => prev.map(t => t.id === trackId ? { ...t, isDownloaded: false } : t));
+    } catch (err) {
+      console.warn('Failed to delete offline track:', err);
+    }
+  };
 
   // References for event loops and timer management
   const autoAdvanceTimerRef = useRef<number | null>(null);
@@ -529,13 +583,32 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const handlePrev = () => prevTrack();
     const handleNext = () => nextTrack();
+    const handlePlayState = (e: any) => {
+      if (e?.detail && typeof e.detail.isPlaying === 'boolean') {
+        setIsPlaying(e.detail.isPlaying);
+      }
+    };
+    const handlePlayCmd = () => {
+      audioEngine.resume();
+      setIsPlaying(true);
+    };
+    const handlePauseCmd = () => {
+      audioEngine.pause();
+      setIsPlaying(false);
+    };
 
     window.addEventListener('nova-prev-track', handlePrev);
     window.addEventListener('nova-next-track', handleNext);
+    window.addEventListener('nova-play-state', handlePlayState);
+    window.addEventListener('nova-play', handlePlayCmd);
+    window.addEventListener('nova-pause', handlePauseCmd);
 
     return () => {
       window.removeEventListener('nova-prev-track', handlePrev);
       window.removeEventListener('nova-next-track', handleNext);
+      window.removeEventListener('nova-play-state', handlePlayState);
+      window.removeEventListener('nova-play', handlePlayCmd);
+      window.removeEventListener('nova-pause', handlePauseCmd);
     };
   }, []);
 
@@ -1176,6 +1249,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     addTracks,
     deleteTrack,
+    downloadTrack,
+    deleteDownloadedTrack,
+    downloadedTrackIds,
+    isDownloading,
     createPlaylist,
     deletePlaylist,
     addTrackToPlaylist,
@@ -1215,6 +1292,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     playlistModalOpen,
     customizerOpen,
     carModeOpen,
+    downloadedTrackIds,
+    isDownloading,
   ]);
 
   return (

@@ -39,6 +39,52 @@ class AudioEngine {
   private isMuted: boolean = false;
   private volume: number = 0.85;
 
+  // WakeLock & background audio stabilization
+  private wakeLock: any = null;
+  private preloaderAudio: HTMLAudioElement | null = null;
+
+  private async requestWakeLock() {
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        if (!this.wakeLock) {
+          this.wakeLock = await (navigator as any).wakeLock.request('screen');
+          this.wakeLock.addEventListener('release', () => {
+            this.wakeLock = null;
+          });
+        }
+      } catch {
+        // Safe fallback if wakeLock is restricted
+      }
+    }
+  }
+
+  private releaseWakeLock() {
+    if (this.wakeLock) {
+      try {
+        this.wakeLock.release();
+      } catch {}
+      this.wakeLock = null;
+    }
+  }
+
+  public prebufferNextTrack(nextTrack: Track | undefined) {
+    if (!nextTrack) return;
+    try {
+      if (!this.preloaderAudio) {
+        this.preloaderAudio = new Audio();
+        this.preloaderAudio.preload = 'auto';
+        this.preloaderAudio.volume = 0;
+      }
+      let url = nextTrack.audioUrl ? resolveAudioStreamUrl(nextTrack.audioUrl) : '';
+      if (url && this.preloaderAudio.src !== url) {
+        this.preloaderAudio.src = url;
+        this.preloaderAudio.load();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   constructor() {
     // Audio context will be initialized on first user interaction to comply with browser autoplay policies
   }
@@ -177,6 +223,26 @@ class AudioEngine {
         }
       });
 
+      this.audioElement.addEventListener('play', () => {
+        this.isPlaying = true;
+        this.requestWakeLock();
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+        }
+        window.dispatchEvent(new CustomEvent('nova-play-state', { detail: { isPlaying: true } }));
+      });
+
+      this.audioElement.addEventListener('pause', () => {
+        if (!this.isSynthPlaying) {
+          this.isPlaying = false;
+          this.releaseWakeLock();
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'paused';
+          }
+          window.dispatchEvent(new CustomEvent('nova-play-state', { detail: { isPlaying: false } }));
+        }
+      });
+
       // Direct hardware HTML5 Audio routing for 100% reliable, loud, crystal-clear playback across all devices
       // Do NOT attach createMediaElementSource by default as browser CORS / cross-origin policies silence audio on mobile
     } catch (err) {
@@ -215,8 +281,25 @@ class AudioEngine {
     this.onEndedCallback = onEnded;
   }
 
+  public preloadNextTrack(track: Track) {
+    if (!track) return;
+    getStoredAudio(track.id).then(stored => {
+      if (stored) return; // already stored in IndexedDB offline
+      if (track.audioUrl) {
+        resolveAudioStreamUrlAsync(track.audioUrl).then(url => {
+          if (url && typeof window !== 'undefined') {
+            const preloader = new Audio();
+            preloader.preload = 'auto';
+            preloader.src = url;
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
+
   public async playTrack(track: Track, startTime: number = 0, crossfadeSecs: number = 0) {
     this.init();
+    this.requestWakeLock();
     // Non-blocking resume to preserve user interaction gesture token for HTML5 Audio play()
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
@@ -239,14 +322,27 @@ class AudioEngine {
     // Update system Media Session (Android lock screen & notifications)
     this.updateMediaSession(track);
 
-    if (track.file || track.audioUrl) {
-      // Local or URL audio playback
+    // 1. Check if stored in IndexedDB first for instant 0-second offline playback
+    let streamUrl = '';
+    try {
+      const storedBlob = await getStoredAudio(track.id);
+      if (storedBlob) {
+        streamUrl = URL.createObjectURL(storedBlob);
+      }
+    } catch {}
+
+    if (!streamUrl) {
+      if (track.file) {
+        streamUrl = URL.createObjectURL(track.file);
+      } else if (track.audioUrl) {
+        streamUrl = await resolveAudioStreamUrlAsync(track.audioUrl);
+      }
+    }
+
+    if (streamUrl) {
+      // Local, offline IndexedDB or Telegram CDN audio playback
       this.stopSynth();
       if (this.audioElement) {
-        let streamUrl = track.audioUrl ? await resolveAudioStreamUrlAsync(track.audioUrl) : '';
-        if (track.file) {
-          streamUrl = URL.createObjectURL(track.file);
-        }
         const currentSrc = this.audioElement.src;
         const isSame = currentSrc === streamUrl || 
                        (streamUrl && currentSrc.endsWith(streamUrl)) ||
@@ -328,6 +424,7 @@ class AudioEngine {
 
   public pause() {
     this.isPlaying = false;
+    this.releaseWakeLock();
     if (this.audioElement && !this.isSynthPlaying) {
       this.audioElement.pause();
     }
@@ -351,6 +448,7 @@ class AudioEngine {
   public resume() {
     if (!this.currentTrack) return;
     this.isPlaying = true;
+    this.requestWakeLock();
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }

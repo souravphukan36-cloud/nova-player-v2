@@ -1,5 +1,6 @@
 // IndexedDB persistent storage for NOVA Player local audio files and artwork
 import { Track } from '../types';
+import { resolveAudioStreamUrl, resolveAudioStreamUrlAsync } from './apiConfig';
 
 const DB_NAME = 'nova_music_player_db';
 const DB_VERSION = 1;
@@ -168,5 +169,102 @@ export async function clearAllAudioStorage(): Promise<void> {
     });
   } catch (err) {
     console.warn('Error clearing audio storage:', err);
+  }
+}
+
+// Check if a track has its audio file stored locally in IndexedDB
+export async function isTrackDownloaded(trackId: string): Promise<boolean> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_AUDIO, 'readonly');
+      const store = tx.objectStore(STORE_AUDIO);
+      const request = store.get(trackId);
+      request.onsuccess = () => {
+        const record = request.result as StoredAudioRecord | undefined;
+        resolve(Boolean(record && record.blob));
+      };
+      request.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
+// Retrieve set of all track IDs stored offline
+export async function getAllDownloadedTrackIds(): Promise<Set<string>> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_AUDIO, 'readonly');
+      const store = tx.objectStore(STORE_AUDIO);
+      const request = store.getAllKeys();
+      request.onsuccess = () => {
+        const keys = (request.result as string[]) || [];
+        resolve(new Set(keys.map(String)));
+      };
+      request.onerror = () => resolve(new Set());
+    });
+  } catch {
+    return new Set();
+  }
+}
+
+// Download track audio from URL, save to IndexedDB for offline playing, and trigger device file download
+export async function downloadAndSaveTrackOffline(
+  track: Track,
+  triggerFileSave = true
+): Promise<boolean> {
+  try {
+    let streamUrl = track.audioUrl ? resolveAudioStreamUrl(track.audioUrl) : '';
+    if (!streamUrl && track.audioUrl) {
+      streamUrl = await resolveAudioStreamUrlAsync(track.audioUrl);
+    }
+    if (!streamUrl && track.file) {
+      streamUrl = URL.createObjectURL(track.file);
+    }
+    if (!streamUrl) {
+      throw new Error('No audio URL available for download');
+    }
+
+    const response = await fetch(streamUrl);
+    if (!response.ok) {
+      throw new Error(`Fetch failed with status: ${response.status}`);
+    }
+    const blob = await response.blob();
+
+    // 1. Store in IndexedDB
+    const ext = track.format || 'mp3';
+    const cleanArtist = track.artist.replace(/[/\\?%*:|"<>]/g, '');
+    const cleanTitle = track.title.replace(/[/\\?%*:|"<>]/g, '');
+    const fileName = `${cleanArtist} - ${cleanTitle}.${ext}`;
+    const file = new File([blob], fileName, { type: blob.type || 'audio/mpeg' });
+    await saveTrackWithAudio(track, file, track.coverArt);
+
+    // 2. Trigger browser download to device storage if requested
+    if (triggerFileSave && typeof document !== 'undefined') {
+      try {
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = downloadUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(downloadUrl);
+          } catch {}
+        }, 5000);
+      } catch (dlErr) {
+        console.warn('Direct device save notice:', dlErr);
+      }
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Download offline error for track:', track.title, err);
+    return false;
   }
 }

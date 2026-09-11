@@ -24,6 +24,7 @@ export interface Track {
   playCount: number;
   lastPlayed?: number; // timestamp
   isFavorite: boolean;
+  isDownloaded?: boolean;
   dateAdded: number; // timestamp
 }
 
@@ -66,7 +67,7 @@ export type RepeatMode = 'off' | 'all' | 'one';
 export type SortOption = 'title' | 'dateAdded' | 'duration' | 'artist';
 export type SortDirection = 'asc' | 'desc';
 
-export type LibrarySubTab = 'songs' | 'albums' | 'artists' | 'genres' | 'folders' | 'playlists';
+export type LibrarySubTab = 'songs' | 'albums' | 'artists' | 'genres' | 'folders' | 'playlists' | 'downloaded';
 export type MainTab = 'home' | 'library' | 'cloud' | 'search' | 'settings';
 
 export interface TelegramChannelConfig {
