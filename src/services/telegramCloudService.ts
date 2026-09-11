@@ -1,5 +1,6 @@
 import { Track, TelegramChannelConfig } from '../types';
 import { saveTrackWithAudio } from './storageDb';
+import { getApiBaseUrl, resolveAudioStreamUrl } from './apiConfig';
 
 const STORAGE_KEY_CONFIG = 'nova_telegram_channel_config';
 const STORAGE_KEY_CLOUD_TRACKS = 'nova_cloud_channel_tracks_v2';
@@ -375,7 +376,8 @@ class TelegramCloudService {
   // Automatic silent sync with Telegram Bot on app open
   public async autoFetchTracks(): Promise<Track[]> {
     try {
-      const res = await fetch('/api/telegram/tracks');
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/telegram/tracks`);
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.tracks) && data.tracks.length > 0) {
@@ -397,7 +399,8 @@ class TelegramCloudService {
     try {
       let audioBlob: Blob;
       if (track.audioUrl) {
-        const resp = await fetch(track.audioUrl);
+        const fullUrl = resolveAudioStreamUrl(track.audioUrl);
+        const resp = await fetch(fullUrl);
         audioBlob = await resp.blob();
       } else {
         audioBlob = new Blob([new Uint8Array(1024)], { type: 'audio/mpeg' });

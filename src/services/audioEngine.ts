@@ -1,5 +1,6 @@
 import { Track, EqualizerState } from '../types';
 import { getStoredAudio } from './storageDb';
+import { resolveAudioStreamUrl } from './apiConfig';
 
 class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -236,7 +237,7 @@ class AudioEngine {
       // Local or URL audio playback
       this.stopSynth();
       if (this.audioElement) {
-        let streamUrl = track.audioUrl;
+        let streamUrl = track.audioUrl ? resolveAudioStreamUrl(track.audioUrl) : '';
         if (track.file) {
           streamUrl = URL.createObjectURL(track.file);
         }

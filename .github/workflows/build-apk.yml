@@ -33,8 +33,7 @@ jobs:
       - name: Add Capacitor Android Platform
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
-          npx cap init "NOVA Player" "com.sourav.novaplayer" --web-dir dist
-          npx cap add android
+          npx cap add android || true
           node scripts/prepare-android.cjs
           npx cap sync android
 
