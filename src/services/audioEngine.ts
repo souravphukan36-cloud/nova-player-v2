@@ -1,6 +1,12 @@
 import { Track, EqualizerState } from '../types';
 import { getStoredAudio } from './storageDb';
-import { resolveAudioStreamUrl } from './apiConfig';
+import { 
+  resolveAudioStreamUrl, 
+  resolveAudioStreamUrlAsync, 
+  resolveTelegramFilePath, 
+  extractFileId, 
+  DEFAULT_TELEGRAM_BOT_TOKEN 
+} from './apiConfig';
 
 class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -237,7 +243,7 @@ class AudioEngine {
       // Local or URL audio playback
       this.stopSynth();
       if (this.audioElement) {
-        let streamUrl = track.audioUrl ? resolveAudioStreamUrl(track.audioUrl) : '';
+        let streamUrl = track.audioUrl ? await resolveAudioStreamUrlAsync(track.audioUrl) : '';
         if (track.file) {
           streamUrl = URL.createObjectURL(track.file);
         }
@@ -267,8 +273,18 @@ class AudioEngine {
           } else if (e?.name === 'AbortError') {
             // Track switched before current loaded
           } else {
-            // Attempt reload once
+            // Attempt reload with fresh Telegram file_path resolution
             try {
+              const fileId = extractFileId(track.audioUrl);
+              if (fileId) {
+                const freshPath = await resolveTelegramFilePath(fileId, true);
+                if (freshPath) {
+                  const directUrl = `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${freshPath}`;
+                  this.audioElement.src = directUrl;
+                  await this.audioElement.play();
+                  return;
+                }
+              }
               if (streamUrl) {
                 this.audioElement.src = streamUrl;
                 await this.audioElement.play();

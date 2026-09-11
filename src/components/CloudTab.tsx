@@ -19,7 +19,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
 import { telegramCloudService, CloudArtistShelf } from '../services/telegramCloudService';
-import { DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
+import { DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
 
 export const CloudTab: React.FC = () => {
   const { 

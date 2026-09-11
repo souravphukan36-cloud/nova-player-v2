@@ -27,7 +27,7 @@ import {
   Upload
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
-import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
+import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
 
 export const NowPlayingModal: React.FC = () => {
   const {
@@ -408,7 +408,7 @@ export const NowPlayingModal: React.FC = () => {
                     <div className="w-3/5 h-3/5 rounded-full border border-neutral-800/60 flex items-center justify-center">
                       <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
                         <img 
-                          src={isCoverArtImage(currentTrack.coverArt) ? currentTrack.coverArt : DEFAULT_FALLBACK_ART} 
+                          src={getResolvedCoverArt(currentTrack.coverArt)} 
                           alt={currentTrack.title} 
                           className="w-full h-full object-cover" 
                           referrerPolicy="no-referrer"
@@ -432,7 +432,7 @@ export const NowPlayingModal: React.FC = () => {
               >
                 {isCoverArtImage(currentTrack.coverArt) ? (
                   <img
-                    src={currentTrack.coverArt}
+                    src={getResolvedCoverArt(currentTrack.coverArt)}
                     alt={currentTrack.title}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"

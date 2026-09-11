@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Play, Pause, SkipForward, ListMusic, Heart } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
-import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
+import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
 
 export const MiniPlayer: React.FC = () => {
   const { 
@@ -116,7 +116,7 @@ export const MiniPlayer: React.FC = () => {
           >
             {isCoverArtImage(currentTrack.coverArt) ? (
               <img 
-                src={currentTrack.coverArt} 
+                src={getResolvedCoverArt(currentTrack.coverArt)} 
                 alt={currentTrack.title} 
                 className="w-full h-full object-cover" 
                 referrerPolicy="no-referrer"

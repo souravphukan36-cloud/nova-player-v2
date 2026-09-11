@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
-import { isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
+import { isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
 
 interface HomeTabProps {
   onNavigateToLibrary: (subTab?: string) => void;
@@ -178,7 +178,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
                     }`}
                   >
                     <img 
-                      src={track.coverArt || DEFAULT_FALLBACK_ART} 
+                      src={getResolvedCoverArt(track.coverArt)} 
                       alt={track.title} 
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                       referrerPolicy="no-referrer" 
@@ -262,7 +262,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
                 >
                   <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/25 transition-all duration-300 group-hover:-translate-y-1">
                     <img 
-                      src={track.coverArt || DEFAULT_FALLBACK_ART} 
+                      src={getResolvedCoverArt(track.coverArt)} 
                       alt={track.title} 
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                       referrerPolicy="no-referrer" 
@@ -382,7 +382,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
               >
                 <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-white/30 transition-all duration-300">
                   <img 
-                    src={track.coverArt || DEFAULT_FALLBACK_ART} 
+                    src={getResolvedCoverArt(track.coverArt)} 
                     alt={track.album} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     referrerPolicy="no-referrer" 
@@ -441,7 +441,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
               >
                 <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-lg border border-white/10 group-hover:border-emerald-400/40 transition-all duration-300 group-hover:-translate-y-1">
                   <img 
-                    src={track.coverArt || DEFAULT_FALLBACK_ART} 
+                    src={getResolvedCoverArt(track.coverArt)} 
                     alt={track.title} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     referrerPolicy="no-referrer" 
@@ -515,7 +515,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
                     >
                       {isCoverArtImage(track.coverArt) ? (
                         <img 
-                          src={track.coverArt} 
+                          src={getResolvedCoverArt(track.coverArt)} 
                           alt={track.title} 
                           className="w-full h-full object-cover" 
                           referrerPolicy="no-referrer" 

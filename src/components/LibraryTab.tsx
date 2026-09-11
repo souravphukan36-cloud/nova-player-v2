@@ -20,7 +20,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 import { Track, Playlist, LibrarySubTab, SortOption, SortDirection } from '../types';
 import { sanitizeText } from '../utils/security';
-import { isCoverArtImage, DEFAULT_FALLBACK_ART } from '../utils/dynamicColor';
+import { isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
 
 interface LibraryTabProps {
   initialSubTab?: LibrarySubTab;
@@ -438,7 +438,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                   >
                     {isCoverArtImage(track.coverArt) ? (
                       <img 
-                        src={track.coverArt} 
+                        src={getResolvedCoverArt(track.coverArt)} 
                         alt={track.title} 
                         className="w-full h-full object-cover" 
                         referrerPolicy="no-referrer"

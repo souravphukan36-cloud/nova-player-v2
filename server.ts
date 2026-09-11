@@ -251,6 +251,38 @@ const BASE_TRACKS = [
 
 // In-memory track store that can dynamically include any newly detected songs
 let dynamicTracks = [...BASE_TRACKS];
+let lastTelegramUpdateId = 0;
+
+const TRACKS_DB_PATH = path.join(CACHE_DIR, 'tracks_db.json');
+
+// Load persisted tracks and offset on startup
+try {
+  if (fs.existsSync(TRACKS_DB_PATH)) {
+    const dbData = JSON.parse(fs.readFileSync(TRACKS_DB_PATH, 'utf-8'));
+    if (Array.isArray(dbData.tracks)) {
+      // Merge with BASE_TRACKS to ensure base tracks are always present
+      const existingIds = new Set(BASE_TRACKS.map(t => t.id));
+      const newTracks = dbData.tracks.filter((t: any) => !existingIds.has(t.id));
+      dynamicTracks = [...BASE_TRACKS, ...newTracks];
+    }
+    if (dbData.lastUpdateId) {
+      lastTelegramUpdateId = dbData.lastUpdateId;
+    }
+  }
+} catch (e) {
+  console.warn('Could not load tracks DB:', e);
+}
+
+function saveTracksDb() {
+  try {
+    fs.writeFileSync(TRACKS_DB_PATH, JSON.stringify({
+      lastUpdateId: lastTelegramUpdateId,
+      tracks: dynamicTracks
+    }, null, 2));
+  } catch (e) {
+    console.warn('Could not save tracks DB:', e);
+  }
+}
 
 // Cache resolved Telegram file_paths so we don't spam getFile API
 const filePathCache: Record<string, string> = {
@@ -348,12 +380,17 @@ async function resolveTelegramFilePath(fileId: string): Promise<string | null> {
 async function fetchTelegramUpdates(customToken?: string) {
   const tokenToUse = customToken || TELEGRAM_BOT_TOKEN;
   try {
-    const url = `https://api.telegram.org/bot${tokenToUse}/getUpdates?allowed_updates=["channel_post","message"]&limit=100`;
+    const url = `https://api.telegram.org/bot${tokenToUse}/getUpdates?allowed_updates=["channel_post","message"]&limit=100&offset=${lastTelegramUpdateId + 1}`;
     const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json() as any;
     if (data.ok && Array.isArray(data.result)) {
+      let hasUpdates = false;
       for (const item of data.result) {
+        if (item.update_id && item.update_id > lastTelegramUpdateId) {
+          lastTelegramUpdateId = item.update_id;
+          hasUpdates = true;
+        }
         const msg = item.channel_post || item.message;
         if (!msg) continue;
         const audio = msg.audio || msg.document;
@@ -418,6 +455,9 @@ async function fetchTelegramUpdates(customToken?: string) {
             }
           }
         }
+      }
+      if (hasUpdates) {
+        saveTracksDb();
       }
     }
   } catch (err) {

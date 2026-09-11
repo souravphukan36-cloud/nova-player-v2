@@ -1,4 +1,5 @@
 import { Track } from '../types';
+import { resolveImageUrl } from '../services/apiConfig';
 
 interface DynamicPalette {
   primary: string; // Vibrant hex
@@ -77,6 +78,14 @@ export function isCoverArtImage(url?: string | null): boolean {
     url.startsWith('blob:') ||
     url.startsWith('data:')
   );
+}
+
+export function getResolvedCoverArt(url?: string | null): string {
+  if (!url) return DEFAULT_FALLBACK_ART;
+  if (url.startsWith('linear-gradient') || url.startsWith('radial-gradient')) {
+    return url;
+  }
+  return resolveImageUrl(url);
 }
 
 /**
