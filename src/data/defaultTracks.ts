@@ -177,6 +177,37 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 98, text: 'This could be the end of everything...' },
       { time: 105, text: 'So why don\'t we go somewhere only we know?' }
     ]
+  },
+  {
+    id: 'tg-anuv-jo-tum-mere-ho',
+    title: 'Jo Tum Mere Ho',
+    artist: 'Anuv Jain',
+    album: 'Jo Tum Mere Ho - Single',
+    duration: 259,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA',
+    synthPreset: 'acoustic',
+    genre: 'Indie Acoustic / Romantic',
+    folder: 'NOVA Private Library / Anuv Jain',
+    year: 2024,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 5,
+    lastPlayed: Date.now() - 120000,
+    isFavorite: true,
+    dateAdded: 1789068141000,
+    lyrics: [
+      { time: 0, text: '♪ (Delicate acoustic picking & romantic guitar chords) ♪' },
+      { time: 14, text: 'Jo tum mere ho, toh main kuch bhi nahi...' },
+      { time: 30, text: 'Tere bina ab toh jeena nahi...' },
+      { time: 48, text: 'Haule se muskura do ek dafa...' },
+      { time: 65, text: '♪ (Acoustic rhythm cadence & soothing vocal melody) ♪' },
+      { time: 92, text: 'Teri aankhon mein basi hai meri har subah...' },
+      { time: 120, text: 'Jo tum mere ho, har gham se juda...' },
+      { time: 155, text: '♪ (Emotional vocal build & gentle acoustic guitar harmonics) ♪' },
+      { time: 190, text: 'Saath chalenge hum wahan, jahan aasmaan mile...' },
+      { time: 225, text: 'Jo tum mere ho...' }
+    ]
   }
 ];
 
@@ -186,7 +217,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Favourites',
     description: 'Tracks you loved with a heart',
     coverArt: 'linear-gradient(135deg, #EC4899 0%, #EF4444 100%)',
-    trackIds: ['tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
+    trackIds: ['tg-anuv-jo-tum-mere-ho', 'tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -196,7 +227,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Recently Played',
     description: 'Your recent listening sessions',
     coverArt: 'linear-gradient(135deg, #7C6EFF 0%, #4F46E5 100%)',
-    trackIds: ['tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo'],
+    trackIds: ['tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -206,7 +237,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'NOVA Telegram Cloud',
     description: 'Cloud vault tracks streamed from NOVA Private Library',
     coverArt: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)',
-    trackIds: ['tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
+    trackIds: ['tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 10,
     updatedAt: Date.now()

@@ -214,6 +214,38 @@ const BASE_TRACKS = [
       { time: 98, text: 'This could be the end of everything...' },
       { time: 105, text: 'So why don\'t we go somewhere only we know?' }
     ]
+  },
+  {
+    id: 'tg-anuv-jo-tum-mere-ho',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA',
+    filePath: 'music/file_10.m4a',
+    title: 'Jo Tum Mere Ho',
+    artist: 'Anuv Jain',
+    album: 'Jo Tum Mere Ho - Single',
+    duration: 259,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA',
+    synthPreset: 'acoustic',
+    genre: 'Indie Acoustic / Romantic',
+    folder: 'NOVA Private Library / Anuv Jain',
+    year: 2024,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 1,
+    isFavorite: true,
+    dateAdded: 1789068141000,
+    lyrics: [
+      { time: 0, text: '♪ (Delicate acoustic picking & romantic guitar chords) ♪' },
+      { time: 14, text: 'Jo tum mere ho, toh main kuch bhi nahi...' },
+      { time: 30, text: 'Tere bina ab toh jeena nahi...' },
+      { time: 48, text: 'Haule se muskura do ek dafa...' },
+      { time: 65, text: '♪ (Acoustic rhythm cadence & soothing vocal melody) ♪' },
+      { time: 92, text: 'Teri aankhon mein basi hai meri har subah...' },
+      { time: 120, text: 'Jo tum mere ho, har gham se juda...' },
+      { time: 155, text: '♪ (Emotional vocal build & gentle acoustic guitar harmonics) ♪' },
+      { time: 190, text: 'Saath chalenge hum wahan, jahan aasmaan mile...' },
+      { time: 225, text: 'Jo tum mere ho...' }
+    ]
   }
 ];
 
@@ -228,7 +260,9 @@ const filePathCache: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'music/file_0.mp3',
   'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_6.m4a',
   'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_8.mp3',
-  'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_9.jpg'
+  'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'music/file_10.m4a',
+  'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_9.jpg',
+  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_11.jpg'
 };
 
 // Explicit MIME type mapping for high-fidelity audio playback across Chrome/Android/iOS
@@ -239,13 +273,59 @@ const fileMimeCache: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'audio/mpeg', // Kaahe Mose (.mp3)
   'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'audio/mp4',  // Raabta (.m4a)
   'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'audio/mpeg', // Somewhere Only We Know (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'audio/mp4',  // Jo Tum Mere Ho (.m4a)
   'music/file_2': 'audio/mpeg',
   'music/file_3': 'audio/mp4',
   'music/file_4': 'audio/mp4',
   'music/file_0.mp3': 'audio/mpeg',
   'music/file_6.m4a': 'audio/mp4',
-  'music/file_8.mp3': 'audio/mpeg'
+  'music/file_8.mp3': 'audio/mpeg',
+  'music/file_10.m4a': 'audio/mp4'
 };
+
+// Intelligent metadata cleaner for uploaded audio files
+function cleanAudioMetadata(rawTitle: string, rawPerformer: string): { title: string; artist: string } {
+  let title = rawTitle || 'Telegram Audio';
+  let artist = rawPerformer || 'Indie Artist';
+
+  const knownArtists = [
+    'Anuv Jain',
+    'The Local Train',
+    'Keane',
+    'Arijit Singh',
+    'Prateek Kuhad',
+    'Pritam',
+    'Atif Aslam',
+    'Mohit Chauhan',
+    'Shreya Ghoshal',
+    'Garvit Soni',
+    'Priyansh Srivastava'
+  ];
+
+  for (const known of knownArtists) {
+    const re = new RegExp(`\\b${known}\\b`, 'i');
+    if (re.test(title) || re.test(artist)) {
+      artist = known;
+      title = title.replace(re, '').trim();
+      break;
+    }
+  }
+
+  // Remove junk like (M4A_128K), (Lyrics), [Official Audio], etc.
+  title = title
+    .replace(/\(.*?\)/g, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/\b(lyrics|official audio|official video|full song|audio|hd|4k)\b/gi, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!title) {
+    title = rawTitle.replace(/\(.*?\)/g, '').trim() || 'Telegram Audio';
+  }
+
+  return { title, artist };
+}
 
 async function resolveTelegramFilePath(fileId: string): Promise<string | null> {
   if (filePathCache[fileId]) return filePathCache[fileId];
@@ -295,8 +375,9 @@ async function fetchTelegramUpdates(customToken?: string) {
             const filePath = await resolveTelegramFilePath(fileId);
             if (filePath) {
               fileMimeCache[filePath] = mime;
-              const performer = audio.performer || 'Indie Artist';
-              const title = audio.title || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio';
+              const rawPerformer = audio.performer || 'Indie Artist';
+              const rawTitle = audio.title || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio';
+              const { title, artist } = cleanAudioMetadata(rawTitle, rawPerformer);
               const ext = (mime === 'audio/mp4' || audio.file_name?.endsWith('.m4a')) ? 'm4a' : 'mp3';
 
               // Unique Track ID
@@ -307,6 +388,8 @@ async function fetchTelegramUpdates(customToken?: string) {
               let coverArt = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
               if (thumbFileId) {
                 coverArt = `/api/telegram/image?file_id=${thumbFileId}`;
+              } else if (artist === 'Anuv Jain') {
+                coverArt = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
               }
 
               dynamicTracks.push({
@@ -314,7 +397,7 @@ async function fetchTelegramUpdates(customToken?: string) {
                 fileId,
                 filePath,
                 title,
-                artist: performer,
+                artist,
                 album: 'NOVA Private Library',
                 duration: audio.duration || 240,
                 format: ext as any,
@@ -322,14 +405,14 @@ async function fetchTelegramUpdates(customToken?: string) {
                 audioUrl: `/api/telegram/audio?file_id=${fileId}`,
                 synthPreset: 'acoustic',
                 genre: 'Telegram Cloud Music',
-                folder: `NOVA Private Library / ${performer}`,
+                folder: `NOVA Private Library / ${artist}`,
                 year: new Date().getFullYear(),
                 bitRate: '320 kbps (Telegram Cloud Master)',
                 playCount: 0,
                 isFavorite: false,
                 dateAdded: (msg.date || Math.floor(Date.now() / 1000)) * 1000,
                 lyrics: [
-                  { time: 0, text: `♪ Now Playing ${title} by ${performer} ♪` }
+                  { time: 0, text: `♪ Now Playing ${title} by ${artist} ♪` }
                 ]
               });
             }

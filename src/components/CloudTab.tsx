@@ -146,14 +146,15 @@ export const CloudTab: React.FC = () => {
     setTimeout(() => setSyncFeedback(null), 3000);
   };
 
+  const allCloudTracks = useMemo(() => {
+    const list = tracks.filter(t => t.id.startsWith('tg-') || t.audioUrl?.includes('/telegram/'));
+    return list.length > 0 ? list : telegramCloudService.getCloudTracks();
+  }, [tracks]);
+
   // Singer-wise shelves
   const shelves: CloudArtistShelf[] = useMemo(() => {
-    return telegramCloudService.getSingerWiseShelves(searchQuery, selectedSinger);
-  }, [searchQuery, selectedSinger, tracks]);
-
-  const allCloudTracks = useMemo(() => {
-    return telegramCloudService.getCloudTracks();
-  }, [tracks]);
+    return telegramCloudService.getSingerWiseShelves(searchQuery, selectedSinger, allCloudTracks);
+  }, [searchQuery, selectedSinger, allCloudTracks]);
 
   const allSingers = useMemo(() => {
     const set = new Set<string>();

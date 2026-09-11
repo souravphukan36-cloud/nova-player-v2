@@ -184,6 +184,36 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
       { time: 98, text: 'This could be the end of everything...' },
       { time: 105, text: 'So why don\'t we go somewhere only we know?' }
     ]
+  },
+  {
+    id: 'tg-anuv-jo-tum-mere-ho',
+    title: 'Jo Tum Mere Ho',
+    artist: 'Anuv Jain',
+    album: 'Jo Tum Mere Ho - Single',
+    duration: 259,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA',
+    synthPreset: 'acoustic',
+    genre: 'Indie Acoustic / Romantic',
+    folder: 'NOVA Private Library / Anuv Jain',
+    year: 2024,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 5,
+    isFavorite: true,
+    dateAdded: 1789068141000,
+    lyrics: [
+      { time: 0, text: '♪ (Delicate acoustic picking & romantic guitar chords) ♪' },
+      { time: 14, text: 'Jo tum mere ho, toh main kuch bhi nahi...' },
+      { time: 30, text: 'Tere bina ab toh jeena nahi...' },
+      { time: 48, text: 'Haule se muskura do ek dafa...' },
+      { time: 65, text: '♪ (Acoustic rhythm cadence & soothing vocal melody) ♪' },
+      { time: 92, text: 'Teri aankhon mein basi hai meri har subah...' },
+      { time: 120, text: 'Jo tum mere ho, har gham se juda...' },
+      { time: 155, text: '♪ (Emotional vocal build & gentle acoustic guitar harmonics) ♪' },
+      { time: 190, text: 'Saath chalenge hum wahan, jahan aasmaan mile...' },
+      { time: 225, text: 'Jo tum mere ho...' }
+    ]
   }
 ];
 
@@ -289,8 +319,14 @@ class TelegramCloudService {
   }
 
   // Get singer-wise grouped shelves (Anuv Jain, The Local Train)
-  public getSingerWiseShelves(searchQuery?: string, selectedSinger?: string): CloudArtistShelf[] {
-    let filtered = this.cloudTracks;
+  public getSingerWiseShelves(searchQuery?: string, selectedSinger?: string, sourceTracks?: Track[]): CloudArtistShelf[] {
+    let filtered = (sourceTracks && sourceTracks.length > 0)
+      ? sourceTracks.filter(t => t.id.startsWith('tg-') || t.audioUrl?.includes('/telegram/'))
+      : this.cloudTracks;
+
+    if (filtered.length === 0) {
+      filtered = this.cloudTracks;
+    }
 
     if (searchQuery && searchQuery.trim().length > 0) {
       const q = searchQuery.toLowerCase().trim();

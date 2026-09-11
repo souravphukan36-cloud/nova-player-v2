@@ -184,8 +184,22 @@ class AudioEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
+    if (this.audioElement) {
+      this.audioElement.muted = this.isMuted;
+      this.audioElement.volume = this.isMuted ? 0 : Math.max(0.2, this.volume || 0.85);
+
+      // Prime HTML5 Audio element inside user gesture so future play() calls are never blocked
+      if (!this.audioElement.src || this.audioElement.src === '') {
+        this.audioElement.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        this.audioElement.play().then(() => {
+          if (this.audioElement?.src.startsWith('data:audio/wav')) {
+            this.audioElement.pause();
+          }
+        }).catch(() => {});
+      }
+    }
     if (this.mainGain && this.ctx) {
-      this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime);
+      this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : Math.max(0.2, this.volume), this.ctx.currentTime);
     }
   }
 
@@ -196,12 +210,9 @@ class AudioEngine {
 
   public async playTrack(track: Track, startTime: number = 0, crossfadeSecs: number = 0) {
     this.init();
+    // Non-blocking resume to preserve user interaction gesture token for HTML5 Audio play()
     if (this.ctx && this.ctx.state === 'suspended') {
-      try {
-        await this.ctx.resume();
-      } catch (err) {
-        console.warn('Could not resume AudioContext:', err);
-      }
+      this.ctx.resume().catch(() => {});
     }
 
     this.currentTrack = track;
@@ -236,14 +247,14 @@ class AudioEngine {
 
         if (streamUrl && !isSame) {
           this.audioElement.src = streamUrl;
-          this.audioElement.load();
         }
-        if (startTime > 0) {
+
+        if (startTime > 0 && !isNaN(startTime)) {
           try {
             this.audioElement.currentTime = startTime;
           } catch {}
         }
-        this.audioElement.volume = this.isMuted ? 0 : this.volume;
+        this.audioElement.volume = this.isMuted ? 0 : Math.max(0.2, this.volume || 0.85);
         this.audioElement.muted = this.isMuted;
 
         try {
@@ -253,7 +264,7 @@ class AudioEngine {
           if (e?.name === 'NotAllowedError') {
             console.log('User interaction required to start audio playback');
           } else if (e?.name === 'AbortError') {
-            // Track skipped before load
+            // Track switched before current loaded
           } else {
             // Attempt reload once
             try {
@@ -754,3 +765,18 @@ class AudioEngine {
 }
 
 export const audioEngine = new AudioEngine();
+
+// Auto-unlock hardware audio on first user touch/click/keypress across Android, iOS, and desktop browsers
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    try {
+      audioEngine.ensureAudioUnlocked();
+    } catch {}
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+  };
+  window.addEventListener('click', unlockAudio, { passive: true, once: true });
+  window.addEventListener('touchstart', unlockAudio, { passive: true, once: true });
+  window.addEventListener('keydown', unlockAudio, { passive: true, once: true });
+}
