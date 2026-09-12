@@ -20,6 +20,7 @@ import {
 } from '../services/storageDb';
 import { notificationService } from '../services/notificationService';
 import { telegramCloudService } from '../services/telegramCloudService';
+import { lyricsService } from '../services/lyricsService';
 
 interface PlayerContextType {
   tracks: Track[];
@@ -87,7 +88,12 @@ interface PlayerContextType {
   setReverb: (val: number) => void;
   setStereoWidening: (val: number) => void;
   toggleDolbyAtmos: () => void;
+  setDolbyProfile: (profile: 'cinema' | 'music' | 'vocal') => void;
+  setDolbyDialogueClarity: (val: number) => void;
   toggleEightDAudio: () => void;
+  setEightDSpeed: (speed: 'slow' | 'medium' | 'fast') => void;
+  setEightDDistance: (dist: 'near' | 'medium' | 'far') => void;
+  setEightDMode: (mode: 'orbit' | 'pendulum') => void;
   toggleEQEnabled: () => void;
 
   // Sleep Timer
@@ -190,7 +196,12 @@ const DEFAULT_EQ: EqualizerState = {
   reverb: 20,
   stereoWidening: 45,
   dolbyAtmos: true,
+  dolbyProfile: 'cinema',
+  dolbyDialogueClarity: 70,
   eightDAudio: false,
+  eightDSpeed: 'medium',
+  eightDDistance: 'medium',
+  eightDMode: 'orbit',
 };
 
 const PlayerContext = createContext<PlayerContextType | null>(null);
@@ -754,6 +765,16 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     audioEngine.playTrack(track, 0, settingsRef.current.crossfadeSecs);
     incrementPlayCount(track.id);
+
+    // Auto-resolve synchronized lyrics if missing
+    if (!track.lyrics || track.lyrics.length === 0) {
+      lyricsService.getLyricsForTrack(track.title, track.artist, track.duration).then(resolvedLyrics => {
+        if (resolvedLyrics && resolvedLyrics.length > 0) {
+          setCurrentTrack(prev => (prev && prev.id === track.id ? { ...prev, lyrics: resolvedLyrics } : prev));
+          setTracks(prevTracks => prevTracks.map(t => t.id === track.id ? { ...t, lyrics: resolvedLyrics } : t));
+        }
+      }).catch(() => {});
+    }
   };
 
   const togglePlayPause = () => {
@@ -1004,8 +1025,28 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setEqualizer(prev => ({ ...prev, dolbyAtmos: !prev.dolbyAtmos }));
   };
 
+  const setDolbyProfile = (dolbyProfile: 'cinema' | 'music' | 'vocal') => {
+    setEqualizer(prev => ({ ...prev, dolbyProfile }));
+  };
+
+  const setDolbyDialogueClarity = (dolbyDialogueClarity: number) => {
+    setEqualizer(prev => ({ ...prev, dolbyDialogueClarity }));
+  };
+
   const toggleEightDAudio = () => {
     setEqualizer(prev => ({ ...prev, eightDAudio: !prev.eightDAudio }));
+  };
+
+  const setEightDSpeed = (eightDSpeed: 'slow' | 'medium' | 'fast') => {
+    setEqualizer(prev => ({ ...prev, eightDSpeed }));
+  };
+
+  const setEightDDistance = (eightDDistance: 'near' | 'medium' | 'far') => {
+    setEqualizer(prev => ({ ...prev, eightDDistance }));
+  };
+
+  const setEightDMode = (eightDMode: 'orbit' | 'pendulum') => {
+    setEqualizer(prev => ({ ...prev, eightDMode }));
   };
 
   const toggleEQEnabled = () => {
@@ -1241,7 +1282,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setReverb,
     setStereoWidening,
     toggleDolbyAtmos,
+    setDolbyProfile,
+    setDolbyDialogueClarity,
     toggleEightDAudio,
+    setEightDSpeed,
+    setEightDDistance,
+    setEightDMode,
     toggleEQEnabled,
 
     startSleepTimer,

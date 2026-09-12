@@ -988,7 +988,7 @@ export const SettingsTab: React.FC = () => {
 
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-white/40 pt-1 border-t border-white/10">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>100% Offline • Zero Tracking • Local Storage</span>
+            <span>Cloud Streaming & Local Playback • Zero Tracking • Studio Audio</span>
           </div>
         </div>
       </div>

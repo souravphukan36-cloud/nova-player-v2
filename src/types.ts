@@ -59,7 +59,12 @@ export interface EqualizerState {
   reverb: number; // 0 to 100
   stereoWidening: number; // 0 to 100
   dolbyAtmos: boolean;
-  eightDAudio: boolean; // Dynamic 8D spatial binaural audio effect
+  dolbyProfile?: 'cinema' | 'music' | 'vocal'; // Dolby soundstage profile
+  dolbyDialogueClarity?: number; // 0 to 100
+  eightDAudio: boolean; // Dynamic 360° / 8D spatial binaural audio effect
+  eightDSpeed?: 'slow' | 'medium' | 'fast';
+  eightDDistance?: 'near' | 'medium' | 'far';
+  eightDMode?: 'orbit' | 'pendulum';
 }
 
 export type ShuffleMode = 'off' | 'all';

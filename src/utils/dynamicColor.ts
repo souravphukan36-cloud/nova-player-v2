@@ -67,7 +67,17 @@ const DEFAULT_PALETTE: DynamicPalette = {
   border: 'rgba(16, 185, 129, 0.3)'
 };
 
-export const DEFAULT_FALLBACK_ART = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+export const DEFAULT_FALLBACK_ART = '/covers/choo-lo.jpg';
+
+export const KNOWN_TRACK_COVERS: Record<string, string> = {
+  'tg-anuv-arz-kiya-hai': '/covers/arz-kiya-hai.jpg',
+  'tg-local-train-aaoge-tum-kabhi': '/covers/aaoge-tum-kabhi.jpg',
+  'tg-local-train-choo-lo': '/covers/choo-lo.jpg',
+  'tg-garvit-kaahe-mose': '/covers/kaahe-mose.jpg',
+  'tg-pritam-raabta': '/covers/raabta.jpg',
+  'tg-keane-somewhere-only-we-know': '/covers/somewhere-only-we-know.jpg',
+  'tg-anuv-jo-tum-mere-ho': '/covers/jo-tum-mere-ho.jpg',
+};
 
 export function isCoverArtImage(url?: string | null): boolean {
   if (!url) return false;
@@ -80,11 +90,69 @@ export function isCoverArtImage(url?: string | null): boolean {
   );
 }
 
+export function getTrackCoverArt(track?: Partial<Track> | null): string {
+  if (!track) return DEFAULT_FALLBACK_ART;
+
+  if (track.id && KNOWN_TRACK_COVERS[track.id]) {
+    return KNOWN_TRACK_COVERS[track.id];
+  }
+
+  const title = (track.title || '').toLowerCase();
+  if (title.includes('arz kiya') || title.includes('arz')) {
+    return '/covers/arz-kiya-hai.jpg';
+  }
+  if (title.includes('aaoge') || title.includes('kabhi')) {
+    return '/covers/aaoge-tum-kabhi.jpg';
+  }
+  if (title.includes('choo lo') || title.includes('choo')) {
+    return '/covers/choo-lo.jpg';
+  }
+  if (title.includes('kaahe mose') || title.includes('kaahe')) {
+    return '/covers/kaahe-mose.jpg';
+  }
+  if (title.includes('raabta')) {
+    return '/covers/raabta.jpg';
+  }
+  if (title.includes('somewhere only we know') || title.includes('somewhere')) {
+    return '/covers/somewhere-only-we-know.jpg';
+  }
+  if (title.includes('jo tum mere ho')) {
+    return '/covers/jo-tum-mere-ho.jpg';
+  }
+
+  if (track.coverArt) {
+    if (track.coverArt.includes('images.unsplash.com')) {
+      // If title matched above, it would have returned. For any other track, check artist
+      const artist = (track.artist || '').toLowerCase();
+      if (artist.includes('anuv')) return '/covers/anuv-jain-artist.jpg';
+      if (artist.includes('local train')) return '/covers/the-local-train-artist.jpg';
+    }
+    return getResolvedCoverArt(track.coverArt);
+  }
+
+  return DEFAULT_FALLBACK_ART;
+}
+
 export function getResolvedCoverArt(url?: string | null): string {
   if (!url) return DEFAULT_FALLBACK_ART;
   if (url.startsWith('linear-gradient') || url.startsWith('radial-gradient')) {
     return url;
   }
+  // Check for unsplash replacement
+  if (url.includes('images.unsplash.com')) {
+    if (url.includes('photo-1518709268805-4e9042af9f23')) return '/covers/arz-kiya-hai.jpg';
+    if (url.includes('photo-1511671782779-c97d3d27a1d4')) return '/covers/aaoge-tum-kabhi.jpg';
+    if (url.includes('photo-1465847899084')) return '/covers/the-local-train-artist.jpg';
+  }
+  // Check for telegram file_id shortcuts to ensure 100% fast instant local rendering
+  if (url.includes('BCEBwPUmly') || url.includes('arz-kiya-hai')) return '/covers/arz-kiya-hai.jpg';
+  if (url.includes('BCLba3K3vi') || url.includes('aaoge-tum-kabhi')) return '/covers/aaoge-tum-kabhi.jpg';
+  if (url.includes('VHWYNBEJ_i') || url.includes('AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn') || url.includes('choo-lo')) return '/covers/choo-lo.jpg';
+  if (url.includes('qEdV_mpw1') || url.includes('AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhV') || url.includes('kaahe-mose')) return '/covers/kaahe-mose.jpg';
+  if (url.includes('qFGvSgVq_6') || url.includes('AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_ot') || url.includes('raabta')) return '/covers/raabta.jpg';
+  if (url.includes('qJrxdBQOWh') || url.includes('AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aEL') || url.includes('somewhere-only-we-know')) return '/covers/somewhere-only-we-know.jpg';
+  if (url.includes('qMDbAUB0e5') || url.includes('AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mT') || url.includes('jo-tum-mere-ho')) return '/covers/jo-tum-mere-ho.jpg';
+
   return resolveImageUrl(url);
 }
 

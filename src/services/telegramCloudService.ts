@@ -23,7 +23,7 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
     album: 'Arz Kiya Hai - Single',
     duration: 305,
     format: 'mp3',
-    coverArt: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
+    coverArt: '/covers/arz-kiya-hai.jpg',
     audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ',
     synthPreset: 'acoustic',
     genre: 'Indie Acoustic / Poetry',
@@ -50,7 +50,7 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
     album: 'Aalas Ka Pedh',
     duration: 264,
     format: 'm4a',
-    coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+    coverArt: '/covers/aaoge-tum-kabhi.jpg',
     audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ',
     synthPreset: 'acoustic',
     genre: 'Hindi Indie Rock',
@@ -220,23 +220,23 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
 
 export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> = {
   'Anuv Jain': {
-    photoUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
-    bio: 'Soulful indie acoustic singer-songwriter known for Arz Kiya Hai, Baarishein, and lyrical storytelling.'
+    photoUrl: '/covers/anuv-jain-artist.jpg',
+    bio: 'Soulful indie acoustic singer-songwriter known for Arz Kiya Hai, Jo Tum Mere Ho, Baarishein, and lyrical storytelling.'
   },
   'The Local Train': {
-    photoUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800&auto=format&fit=crop&q=80',
+    photoUrl: '/covers/the-local-train-artist.jpg',
     bio: 'Iconic Indian rock band renowned for Choo Lo, Aaoge Tum Kabhi, and energetic live soundscapes.'
   },
   'Garvit Soni, Priyansh Srivastava': {
-    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E',
+    photoUrl: '/covers/kaahe-mose.jpg',
     bio: 'Soulful contemporary Hindi indie music and expressive classical fusion melodies.'
   },
   'Pritam, Shreya Ghoshal, Arijit Singh': {
-    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA',
+    photoUrl: '/covers/raabta.jpg',
     bio: 'Timeless romantic melodies and chart-topping Bollywood masterpieces featuring soulful vocal power.'
   },
   'Keane': {
-    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E',
+    photoUrl: '/covers/somewhere-only-we-know.jpg',
     bio: 'Legendary English alternative rock band known for piano-driven anthems like Somewhere Only We Know and Everybody\'s Changing.'
   }
 };

@@ -19,7 +19,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
 import { telegramCloudService, CloudArtistShelf } from '../services/telegramCloudService';
-import { DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
+import { DEFAULT_FALLBACK_ART, getResolvedCoverArt, getTrackCoverArt } from '../utils/dynamicColor';
 
 export const CloudTab: React.FC = () => {
   const { 
@@ -358,10 +358,15 @@ export const CloudTab: React.FC = () => {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <img 
-                      src={shelf.photoUrl} 
+                      src={shelf.photoUrl || getTrackCoverArt(shelf.tracks[0])} 
                       alt={shelf.artist}
                       className="w-14 h-14 rounded-2xl object-cover border border-white/20 shadow-lg"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.onerror = null;
+                        img.src = getTrackCoverArt(shelf.tracks[0]);
+                      }}
                     />
                     <div>
                       <div className="flex items-center gap-2">
@@ -445,7 +450,7 @@ export const CloudTab: React.FC = () => {
                           {/* Cover Thumbnail */}
                           <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-neutral-800">
                             <img 
-                              src={track.coverArt || DEFAULT_FALLBACK_ART} 
+                              src={getTrackCoverArt(track)} 
                               alt={track.title}
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"

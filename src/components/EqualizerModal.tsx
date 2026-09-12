@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Sliders, Volume2, Sparkles, Check, Headphones, Radio } from 'lucide-react';
+import { ChevronDown, Sliders, Volume2, Sparkles, Check, Headphones, Radio, RotateCcw, Compass, Zap, Disc, Mic } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { EQPreset } from '../types';
 
@@ -174,6 +174,76 @@ const EQBandColumn: React.FC<{
   );
 };
 
+// Real-time 360° Binaural Radar Visualizer
+const RadarVisualizer: React.FC<{ active: boolean; mode: 'orbit' | 'pendulum' }> = ({ active, mode }) => {
+  const [angle, setAngle] = React.useState(0);
+  const [pan, setPan] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!active) return;
+    const handleAngle = (e: any) => {
+      if (e.detail) {
+        setAngle(e.detail.angle);
+        setPan(e.detail.pan);
+      }
+    };
+    window.addEventListener('nova-360-angle', handleAngle);
+    return () => window.removeEventListener('nova-360-angle', handleAngle);
+  }, [active]);
+
+  if (!active) return null;
+
+  // Calculate radar point on 100x100 box with center (50, 50)
+  const radius = 35;
+  const x = mode === 'pendulum' 
+    ? 50 + pan * radius 
+    : 50 + Math.sin(angle) * radius;
+  const y = mode === 'pendulum'
+    ? 50 - Math.abs(Math.cos(angle)) * (radius * 0.4)
+    : 50 - Math.cos(angle) * radius;
+
+  const deg = Math.round((angle * (180 / Math.PI)) % 360);
+
+  return (
+    <div className="relative w-40 h-40 mx-auto my-3 flex items-center justify-center select-none">
+      {/* Concentric radar rings */}
+      <div className="absolute inset-0 rounded-full border border-purple-500/20 animate-ping opacity-20 pointer-events-none" />
+      <div className="absolute inset-2 rounded-full border border-purple-500/25 bg-purple-950/20" />
+      <div className="absolute inset-6 rounded-full border border-dashed border-purple-500/35" />
+      <div className="absolute inset-10 rounded-full border border-purple-500/20" />
+
+      {/* Axis crosshairs */}
+      <div className="absolute w-full h-[1px] bg-purple-500/20" />
+      <div className="absolute h-full w-[1px] bg-purple-500/20" />
+
+      {/* Direction indicators */}
+      <span className="absolute top-1 text-[8px] font-mono text-purple-300/70 font-bold">FRONT</span>
+      <span className="absolute bottom-1 text-[8px] font-mono text-purple-300/70 font-bold">BEHIND</span>
+      <span className="absolute left-1 text-[8px] font-mono text-purple-300/70 font-bold">L</span>
+      <span className="absolute right-1 text-[8px] font-mono text-purple-300/70 font-bold">R</span>
+
+      {/* Center Listener Head */}
+      <div className="relative z-10 w-11 h-11 rounded-full bg-purple-900/90 border border-purple-400/60 flex flex-col items-center justify-center shadow-lg shadow-purple-950/80">
+        <Headphones className="w-5 h-5 text-purple-200" />
+        <span className="text-[7px] font-extrabold text-purple-300 tracking-tighter">LISTENER</span>
+      </div>
+
+      {/* Orbiting Sound Source */}
+      <div 
+        className="absolute w-5 h-5 -ml-2.5 -mt-2.5 rounded-full bg-purple-400 shadow-lg shadow-purple-400/90 transition-all duration-75 flex items-center justify-center pointer-events-none z-20"
+        style={{ left: `${x}%`, top: `${y}%` }}
+      >
+        <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+      </div>
+
+      {/* Degree readout */}
+      <div className="absolute bottom-1 right-1 text-[9px] font-mono text-purple-300 font-bold bg-purple-950/90 px-1.5 py-0.5 rounded border border-purple-500/40 shadow">
+        {deg}°
+      </div>
+    </div>
+  );
+};
+
 export const EqualizerModal: React.FC = () => {
   const {
     equalizer,
@@ -186,7 +256,12 @@ export const EqualizerModal: React.FC = () => {
     setReverb,
     setStereoWidening,
     toggleDolbyAtmos,
+    setDolbyProfile,
+    setDolbyDialogueClarity,
     toggleEightDAudio,
+    setEightDSpeed,
+    setEightDDistance,
+    setEightDMode,
     toggleEQEnabled,
     settings,
   } = usePlayer();
@@ -329,21 +404,21 @@ export const EqualizerModal: React.FC = () => {
           </div>
         </div>
 
-        {/* 8D Spatial Audio Feature Card */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-neutral-900/90 border border-purple-500/30 shadow-xl space-y-3">
+        {/* 360° / 8D Spatial Audio Engine Card */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-neutral-900/90 border border-purple-500/40 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
-                <Headphones className="w-5 h-5" />
+                <Compass className="w-5 h-5 animate-spin" style={{ animationDuration: '8s' }} />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">8D Spatial Orbit Audio</h4>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono">
-                    Surround LFO
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">360° / 8D Spatial Audio</h4>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-200 font-mono font-bold">
+                    Binaural Engine
                   </span>
                 </div>
-                <p className="text-[11px] text-white/60">360° Circular motion around your head (Best with headphones)</p>
+                <p className="text-[11px] text-white/60">360° dynamic spatial orbit with pinna head-shadow filter</p>
               </div>
             </div>
 
@@ -351,16 +426,201 @@ export const EqualizerModal: React.FC = () => {
               onClick={toggleEightDAudio}
               className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${
                 equalizer.eightDAudio 
-                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' 
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/40 scale-105' 
                   : 'bg-white/10 text-white/60 hover:text-white'
               }`}
             >
               {equalizer.eightDAudio ? 'ACTIVE' : 'OFF'}
             </button>
           </div>
+
+          {/* Interactive options when 8D Audio is turned on */}
+          {equalizer.eightDAudio ? (
+            <div className="space-y-4 pt-2 border-t border-purple-500/20 animate-in fade-in duration-300">
+              {/* Live 360° Radar */}
+              <RadarVisualizer active={equalizer.eightDAudio} mode={equalizer.eightDMode || 'orbit'} />
+
+              {/* Mode Switcher */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-purple-300/80">Motion Trajectory</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setEightDMode('orbit')}
+                    className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      (equalizer.eightDMode || 'orbit') === 'orbit'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                    }`}
+                  >
+                    <Disc className="w-3.5 h-3.5" />
+                    <span>360° Orbit</span>
+                  </button>
+                  <button
+                    onClick={() => setEightDMode('pendulum')}
+                    className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      equalizer.eightDMode === 'pendulum'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                    }`}
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    <span>180° Pendulum</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Speed Switcher */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-purple-300/80">Rotation Speed</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['slow', 'medium', 'fast'] as const).map((spd) => (
+                    <button
+                      key={spd}
+                      onClick={() => setEightDSpeed(spd)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-bold capitalize transition-all ${
+                        (equalizer.eightDSpeed || 'medium') === spd
+                          ? 'bg-purple-500 text-white shadow-md'
+                          : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                      }`}
+                    >
+                      {spd === 'slow' ? 'Slow (12s)' : spd === 'medium' ? 'Normal (6s)' : 'Fast (3s)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Soundstage Distance / Depth */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-purple-300/80">Virtual Soundstage Depth</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['near', 'medium', 'far'] as const).map((dist) => (
+                    <button
+                      key={dist}
+                      onClick={() => setEightDDistance(dist)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-bold capitalize transition-all ${
+                        (equalizer.eightDDistance || 'medium') === dist
+                          ? 'bg-purple-500 text-white shadow-md'
+                          : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                      }`}
+                    >
+                      {dist === 'near' ? 'In-Ear' : dist === 'medium' ? 'Balanced' : 'Concert'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[11px] text-purple-300/50 italic">
+              Tap ACTIVE above to simulate immersive 360° audio circling your head.
+            </p>
+          )}
         </div>
 
-        {/* NOVA Advanced Effects: Bass Boost, Reverb, Stereo Widening, Dolby Atmos */}
+        {/* Dolby Atmos Cinema & Multiband Soundstage Card */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-neutral-900/90 border border-cyan-500/30 shadow-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Dolby Atmos Simulation</h4>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold">
+                    Spatial HDR
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/60">Multiband studio dynamic compression & dialogue clarity</p>
+              </div>
+            </div>
+
+            <button
+              onClick={toggleDolbyAtmos}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all ${
+                equalizer.dolbyAtmos
+                  ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/40 scale-105'
+                  : 'bg-white/10 text-white/60 hover:text-white'
+              }`}
+            >
+              {equalizer.dolbyAtmos ? 'ACTIVE' : 'OFF'}
+            </button>
+          </div>
+
+          {equalizer.dolbyAtmos && (
+            <div className="space-y-4 pt-2 border-t border-cyan-500/20 animate-in fade-in duration-300">
+              {/* Profile Switcher */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-cyan-300/80">Atmos Sound Profile</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setDolbyProfile('cinema')}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all ${
+                      (equalizer.dolbyProfile || 'cinema') === 'cinema'
+                        ? 'bg-cyan-400 text-black shadow-md'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                    }`}
+                  >
+                    Cinema
+                  </button>
+                  <button
+                    onClick={() => setDolbyProfile('music')}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all ${
+                      equalizer.dolbyProfile === 'music'
+                        ? 'bg-cyan-400 text-black shadow-md'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                    }`}
+                  >
+                    Music
+                  </button>
+                  <button
+                    onClick={() => setDolbyProfile('vocal')}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all ${
+                      equalizer.dolbyProfile === 'vocal'
+                        ? 'bg-cyan-400 text-black shadow-md'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                    }`}
+                  >
+                    Vocal
+                  </button>
+                </div>
+              </div>
+
+              {/* Profile Description */}
+              <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20 text-[11px] text-cyan-200">
+                {(equalizer.dolbyProfile || 'cinema') === 'cinema' && (
+                  <span>🎬 <b>Cinema Profile:</b> Expansive sub-bass weight, open panoramic soundstage, and theatrical dynamic range compression.</span>
+                )}
+                {equalizer.dolbyProfile === 'music' && (
+                  <span>🎵 <b>Music Profile:</b> Punchy low-end transients, crisp presence air, and studio master compression.</span>
+                )}
+                {equalizer.dolbyProfile === 'vocal' && (
+                  <span>🎙️ <b>Vocal Profile:</b> Direct center channel dialogue isolation and high vocal articulation.</span>
+                )}
+              </div>
+
+              {/* Dialogue Clarity Enhancer Slider */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-cyan-200 flex items-center gap-1.5">
+                    <Mic className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Dialogue & Vocal Clarity</span>
+                  </span>
+                  <span className="font-mono text-cyan-400 font-bold">{equalizer.dolbyDialogueClarity ?? 70}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={equalizer.dolbyDialogueClarity ?? 70}
+                  onChange={(e) => setDolbyDialogueClarity(parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer accent-cyan-400"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* NOVA Acoustic Enhancements: Bass Boost, Reverb, Stereo Widening */}
         <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-white/60 flex items-center gap-1.5">
@@ -425,39 +685,26 @@ export const EqualizerModal: React.FC = () => {
               className="w-full h-1.5 bg-white/20 rounded-lg cursor-pointer accent-purple-400"
             />
           </div>
-
-          {/* Dolby Atmos Simulation Toggle */}
-          <div className="flex items-center justify-between pt-3 border-t border-white/10">
-            <div>
-              <p className="text-xs font-semibold text-white">Dolby Atmos Simulation</p>
-              <p className="text-[11px] text-white/50">Cinema multi-channel simulation</p>
-            </div>
-            <button
-              onClick={toggleDolbyAtmos}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                equalizer.dolbyAtmos
-                  ? 'bg-cyan-500 text-black shadow-md'
-                  : 'bg-white/10 text-white/50'
-              }`}
-            >
-              {equalizer.dolbyAtmos ? 'ON' : 'OFF'}
-            </button>
-          </div>
         </div>
 
-        {/* Apply & Reset button */}
-        <div className="flex items-center gap-3 pt-2">
+        {/* Real-time status & Quick Reset Actions (No intrusive Apply button) */}
+        <div className="flex items-center justify-between px-2 pt-1 text-xs text-white/50">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>All adjustments apply instantly in real time</span>
+          </div>
           <button
-            onClick={() => setEQPreset('Normal')}
-            className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors active:scale-95"
+            onClick={() => {
+              setEQPreset('Normal');
+              frequencies.forEach((_, idx) => setEQBand(idx, 0));
+              setBassBoost(0);
+              setReverb(0);
+              setStereoWidening(0);
+            }}
+            className="flex items-center gap-1 py-1 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
           >
-            Reset to Flat
-          </button>
-          <button
-            onClick={() => setEqualizerOpen(false)}
-            className="flex-1 py-3 rounded-2xl text-xs font-bold text-black shadow-xl transition-transform active:scale-95 bg-emerald-400 hover:bg-emerald-300"
-          >
-            Apply & Close
+            <RotateCcw className="w-3 h-3" />
+            <span>Reset All</span>
           </button>
         </div>
       </div>

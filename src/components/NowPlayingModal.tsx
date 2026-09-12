@@ -30,7 +30,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
-import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
+import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt, getTrackCoverArt } from '../utils/dynamicColor';
 
 export const NowPlayingModal: React.FC = () => {
   const {
@@ -165,10 +165,10 @@ export const NowPlayingModal: React.FC = () => {
       }}
     >
       {/* Dynamic Background: Fullscreen Backdrop or Material You Ambient Mesh Glow */}
-      {npConfig.layoutStyle === 'immersive-backdrop' && currentTrack.coverArt ? (
+      {npConfig.layoutStyle === 'immersive-backdrop' ? (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <img 
-            src={currentTrack.coverArt} 
+            src={getTrackCoverArt(currentTrack)} 
             alt="Backdrop" 
             className="w-full h-full object-cover blur-2xl scale-125 opacity-40 transition-all duration-700"
             referrerPolicy="no-referrer"
@@ -351,23 +351,19 @@ export const NowPlayingModal: React.FC = () => {
                       className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
                     >
                       <div 
-                        className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold text-white overflow-hidden shadow"
-                        style={{ background: track.coverArt }}
+                        className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold text-white overflow-hidden shadow bg-neutral-800"
                       >
-                        {isCoverArtImage(track.coverArt) ? (
-                          <img 
-                            src={track.coverArt} 
-                            alt="" 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const img = e.currentTarget as HTMLImageElement;
-                              img.onerror = null;
-                              img.src = DEFAULT_FALLBACK_ART;
-                            }}
-                          />
-                        ) : (
-                          isCurrent && isPlaying ? '▶' : idx + 1
-                        )}
+                        <img 
+                          src={getTrackCoverArt(track)} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.onerror = null;
+                            img.src = DEFAULT_FALLBACK_ART;
+                          }}
+                        />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className={`text-xs font-semibold truncate ${isCurrent ? 'text-white' : 'text-white/80'}`}
@@ -416,7 +412,7 @@ export const NowPlayingModal: React.FC = () => {
                     <div className="w-3/5 h-3/5 rounded-full border border-neutral-800/60 flex items-center justify-center">
                       <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
                         <img 
-                          src={getResolvedCoverArt(currentTrack.coverArt)} 
+                          src={getTrackCoverArt(currentTrack)} 
                           alt={currentTrack.title} 
                           className="w-full h-full object-cover" 
                           referrerPolicy="no-referrer"
@@ -438,27 +434,17 @@ export const NowPlayingModal: React.FC = () => {
                   npConfig.layoutStyle === 'immersive-backdrop' ? 'shadow-black/80' : ''
                 }`}
               >
-                {isCoverArtImage(currentTrack.coverArt) ? (
-                  <img
-                    src={getResolvedCoverArt(currentTrack.coverArt)}
-                    alt={currentTrack.title}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const img = e.currentTarget as HTMLImageElement;
-                      img.onerror = null;
-                      img.src = DEFAULT_FALLBACK_ART;
-                    }}
-                  />
-                ) : (
-                  <div 
-                    className="w-full h-full flex flex-col items-center justify-center p-6 text-center"
-                    style={{ background: currentTrack.coverArt || '#1e1e24' }}
-                  >
-                    <Music className="w-16 h-16 text-white/40 mb-3" />
-                    <span className="text-sm font-bold text-white/80 line-clamp-1">{currentTrack.album}</span>
-                  </div>
-                )}
+                <img
+                  src={getTrackCoverArt(currentTrack)}
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    img.onerror = null;
+                    img.src = DEFAULT_FALLBACK_ART;
+                  }}
+                />
               </div>
             )}
 

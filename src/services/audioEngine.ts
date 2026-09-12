@@ -22,6 +22,12 @@ class AudioEngine {
   // Media element for local/external audio files
   private audioElement: HTMLAudioElement | null = null;
   private mediaSourceNode: MediaElementAudioSourceNode | null = null;
+  private dspInput: GainNode | null = null;
+  private dolbyPreLow: BiquadFilterNode | null = null;
+  private dolbyPreHigh: BiquadFilterNode | null = null;
+  private dolbyDialogue: BiquadFilterNode | null = null;
+  private dolbyCompressor: DynamicsCompressorNode | null = null;
+  private headShadowFilter: BiquadFilterNode | null = null;
 
   // Procedural synth player state for default tracks
   private synthInterval: number | null = null;
@@ -107,6 +113,34 @@ class AudioEngine {
       this.analyser.fftSize = 256;
       this.analyser.smoothingTimeConstant = 0.82;
 
+      // Master DSP Input node
+      this.dspInput = this.ctx.createGain();
+      this.dspInput.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+      // Dolby Atmos processing nodes
+      this.dolbyPreLow = this.ctx.createBiquadFilter();
+      this.dolbyPreLow.type = 'lowshelf';
+      this.dolbyPreLow.frequency.value = 65;
+      this.dolbyPreLow.gain.value = 0;
+
+      this.dolbyPreHigh = this.ctx.createBiquadFilter();
+      this.dolbyPreHigh.type = 'highshelf';
+      this.dolbyPreHigh.frequency.value = 11500;
+      this.dolbyPreHigh.gain.value = 0;
+
+      this.dolbyDialogue = this.ctx.createBiquadFilter();
+      this.dolbyDialogue.type = 'peaking';
+      this.dolbyDialogue.frequency.value = 2400;
+      this.dolbyDialogue.Q.value = 1.3;
+      this.dolbyDialogue.gain.value = 0;
+
+      this.dolbyCompressor = this.ctx.createDynamicsCompressor();
+      this.dolbyCompressor.threshold.value = 0;
+      this.dolbyCompressor.knee.value = 14;
+      this.dolbyCompressor.ratio.value = 1;
+      this.dolbyCompressor.attack.value = 0.012;
+      this.dolbyCompressor.release.value = 0.22;
+
       // 10-band Audiophile EQ frequencies: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz
       const frequencies = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
       this.eqFilters = frequencies.map((freq, idx) => {
@@ -129,6 +163,11 @@ class AudioEngine {
       this.bassBoostFilter.type = 'lowshelf';
       this.bassBoostFilter.frequency.value = 80;
       this.bassBoostFilter.gain.value = 0;
+
+      // Head-Shadow pinna filter for 360° behind-the-head acoustic attenuation
+      this.headShadowFilter = this.ctx.createBiquadFilter();
+      this.headShadowFilter.type = 'lowpass';
+      this.headShadowFilter.frequency.value = 20000;
 
       // Stereo Widening Panner (where supported)
       if (this.ctx.createStereoPanner) {
@@ -155,13 +194,22 @@ class AudioEngine {
       this.reverbFeedback.connect(delay);
       delayFilter.connect(this.reverbGain);
 
-      // Connect filter chain:
-      // Source -> BassBoost -> EQ[0] -> EQ[1] -> EQ[2] -> EQ[3] -> EQ[4] -> (Reverb split) -> MainGain -> Analyser -> Destination
+      // Connect DSP chain:
+      // dspInput -> dolbyPreLow -> dolbyPreHigh -> dolbyDialogue -> dolbyCompressor -> bassBoost -> EQ[0..9] -> headShadow -> stereoPanner -> (reverb split) -> mainGain -> analyser -> destination
+      this.dspInput.connect(this.dolbyPreLow);
+      this.dolbyPreLow.connect(this.dolbyPreHigh);
+      this.dolbyPreHigh.connect(this.dolbyDialogue);
+      this.dolbyDialogue.connect(this.dolbyCompressor);
+      this.dolbyCompressor.connect(this.bassBoostFilter);
+
       let lastNode: AudioNode = this.bassBoostFilter;
       for (const filter of this.eqFilters) {
         lastNode.connect(filter);
         lastNode = filter;
       }
+
+      lastNode.connect(this.headShadowFilter);
+      lastNode = this.headShadowFilter;
 
       if (this.stereoPanner) {
         lastNode.connect(this.stereoPanner);
@@ -177,6 +225,7 @@ class AudioEngine {
 
       // Prepare HTML5 Audio for uploaded and cloud files
       this.audioElement = new Audio();
+      this.audioElement.crossOrigin = 'anonymous';
       this.audioElement.preload = 'auto';
       this.audioElement.setAttribute('playsinline', 'true');
       this.audioElement.setAttribute('webkit-playsinline', 'true');
@@ -574,29 +623,108 @@ class AudioEngine {
 
     // Reverb / Acoustic Space
     if (this.reverbGain) {
-      const revGain = eq.enabled ? (eq.reverb / 100) * 0.48 : 0;
+      const extra8DReverb = (eq.enabled && eq.eightDAudio && eq.eightDDistance === 'far') ? 0.08 : 0;
+      const revGain = eq.enabled ? ((eq.reverb / 100) * 0.48 + extra8DReverb) : 0;
       this.reverbGain.gain.setTargetAtTime(revGain, now, 0.05);
     }
 
-    // 8D Audio Dynamic Spatial Panning or Stereo Widening
+    // Dolby Atmos Multiband Soundstage & Dialogue Clarity
+    const dolbyActive = eq.enabled && eq.dolbyAtmos;
+    const profile = eq.dolbyProfile || 'cinema';
+    const dialogueAmount = eq.dolbyDialogueClarity ?? 60;
+
+    if (this.dolbyPreLow && this.dolbyPreHigh && this.dolbyDialogue && this.dolbyCompressor) {
+      if (dolbyActive) {
+        if (profile === 'cinema') {
+          // Cinema Profile: Sub-bass resonance, airy high-end, wide dynamic control
+          this.dolbyPreLow.gain.setTargetAtTime(4.2, now, 0.05);
+          this.dolbyPreHigh.gain.setTargetAtTime(3.8, now, 0.05);
+          this.dolbyDialogue.gain.setTargetAtTime(1.5 + (dialogueAmount / 100) * 3.5, now, 0.05);
+          this.dolbyCompressor.threshold.setTargetAtTime(-20, now, 0.05);
+          this.dolbyCompressor.ratio.setTargetAtTime(3.6, now, 0.05);
+        } else if (profile === 'music') {
+          // Music Profile: Tight punchy mid-bass, crisp presence, dynamic groove
+          this.dolbyPreLow.gain.setTargetAtTime(3.0, now, 0.05);
+          this.dolbyPreHigh.gain.setTargetAtTime(3.2, now, 0.05);
+          this.dolbyDialogue.gain.setTargetAtTime(1.2 + (dialogueAmount / 100) * 2.8, now, 0.05);
+          this.dolbyCompressor.threshold.setTargetAtTime(-16, now, 0.05);
+          this.dolbyCompressor.ratio.setTargetAtTime(2.6, now, 0.05);
+        } else {
+          // Vocal / Speech Profile: Maximum vocal articulation, clear speech intimacy
+          this.dolbyPreLow.gain.setTargetAtTime(1.2, now, 0.05);
+          this.dolbyPreHigh.gain.setTargetAtTime(2.0, now, 0.05);
+          this.dolbyDialogue.gain.setTargetAtTime(3.5 + (dialogueAmount / 100) * 4.5, now, 0.05);
+          this.dolbyCompressor.threshold.setTargetAtTime(-18, now, 0.05);
+          this.dolbyCompressor.ratio.setTargetAtTime(3.2, now, 0.05);
+        }
+      } else {
+        // Flat Dolby bypass
+        this.dolbyPreLow.gain.setTargetAtTime(0, now, 0.05);
+        this.dolbyPreHigh.gain.setTargetAtTime(0, now, 0.05);
+        this.dolbyDialogue.gain.setTargetAtTime(0, now, 0.05);
+        this.dolbyCompressor.threshold.setTargetAtTime(0, now, 0.05);
+        this.dolbyCompressor.ratio.setTargetAtTime(1, now, 0.05);
+      }
+    }
+
+    // 360° / 8D Dynamic Binaural Spatial Audio Engine
     if (this.eightDInterval) {
       clearInterval(this.eightDInterval);
       this.eightDInterval = null;
     }
 
-    if (this.stereoPanner) {
-      if (eq.enabled && eq.eightDAudio) {
-        // Active 8D dynamic binaural spatial panning
-        this.eightDInterval = window.setInterval(() => {
-          if (!this.stereoPanner || !this.ctx) return;
-          this.eightDAngle += 0.08;
-          // Smooth sinusoidal 8D spatial motion around the listener's head
-          const pan = Math.sin(this.eightDAngle) * 0.85;
-          this.stereoPanner.pan.setTargetAtTime(pan, this.ctx.currentTime, 0.04);
-        }, 50);
-      } else {
+    if (eq.enabled && eq.eightDAudio && this.stereoPanner) {
+      const speed = eq.eightDSpeed || 'medium';
+      const distance = eq.eightDDistance || 'medium';
+      const mode = eq.eightDMode || 'orbit';
+
+      const speedIncrement = speed === 'slow' ? 0.03 : speed === 'fast' ? 0.09 : 0.055;
+      const depthMultiplier = distance === 'near' ? 0.65 : distance === 'far' ? 0.96 : 0.82;
+
+      this.eightDInterval = window.setInterval(() => {
+        if (!this.stereoPanner || !this.ctx) return;
+        this.eightDAngle += speedIncrement;
+        if (this.eightDAngle > Math.PI * 2) {
+          this.eightDAngle -= Math.PI * 2;
+        }
+
+        let pan = 0;
+        if (mode === 'pendulum') {
+          // Pendulum mode: smooth 180° swing across left-center-right
+          pan = Math.sin(this.eightDAngle) * depthMultiplier;
+        } else {
+          // Orbit mode: full 360° circular trajectory with head-shadow frequency filtering
+          pan = Math.sin(this.eightDAngle) * depthMultiplier;
+          if (this.headShadowFilter) {
+            const cos = Math.cos(this.eightDAngle);
+            // When in front (cos >= 0), audio is unobstructed
+            // When behind (cos < 0), pinna attenuation filters high frequencies
+            const cutoff = cos >= 0 ? 20000 : 3800 + (cos + 1) * 8000;
+            this.headShadowFilter.frequency.setTargetAtTime(cutoff, this.ctx.currentTime, 0.04);
+          }
+        }
+
+        this.stereoPanner.pan.setTargetAtTime(pan, this.ctx.currentTime, 0.035);
+
+        // Notify UI components for real-time 360 visual radar
+        window.dispatchEvent(new CustomEvent('nova-360-angle', { 
+          detail: { 
+            angle: this.eightDAngle, 
+            pan, 
+            mode, 
+            speed, 
+            distance 
+          } 
+        }));
+      }, 40);
+    } else {
+      // Normal stereo widening & reset filters
+      if (this.stereoPanner) {
         const panAmount = eq.enabled ? (eq.stereoWidening / 100) * 0.25 : 0;
         this.stereoPanner.pan.setTargetAtTime(panAmount, now, 0.05);
+      }
+      if (this.headShadowFilter) {
+        this.headShadowFilter.frequency.setTargetAtTime(20000, now, 0.05);
       }
     }
   }
