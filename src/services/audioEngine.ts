@@ -223,9 +223,9 @@ class AudioEngine {
       this.mainGain.connect(this.analyser);
       this.analyser.connect(this.ctx.destination);
 
-      // Prepare HTML5 Audio for uploaded and cloud files
+      // Direct hardware HTML5 Audio routing for 100% reliable, loud, crystal-clear playback across all devices
+      // Without createMediaElementSource, audio plays directly to device DAC/speakers with zero CORS or AudioContext suspension blocks
       this.audioElement = new Audio();
-      this.audioElement.crossOrigin = 'anonymous';
       this.audioElement.preload = 'auto';
       this.audioElement.setAttribute('playsinline', 'true');
       this.audioElement.setAttribute('webkit-playsinline', 'true');
@@ -292,16 +292,6 @@ class AudioEngine {
         }
       });
 
-      // Route HTML5 Audio into Web Audio DSP Graph
-      // Enables real-time Equalizer, Bass Boost, 360° Spatial Audio, Dolby Atmos, and Visualizer
-      if (!this.mediaSourceNode && this.audioElement && this.dspInput) {
-        try {
-          this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
-          this.mediaSourceNode.connect(this.dspInput);
-        } catch (sourceErr) {
-          console.warn('Could not attach createMediaElementSource to DSP graph, playing via direct hardware audio:', sourceErr);
-        }
-      }
     } catch (err) {
       console.warn('AudioContext initialization error:', err);
     }
@@ -316,17 +306,7 @@ class AudioEngine {
     }
     if (this.audioElement) {
       this.audioElement.muted = this.isMuted;
-      this.audioElement.volume = this.isMuted ? 0 : Math.max(0.2, this.volume || 0.85);
-
-      // Prime HTML5 Audio element inside user gesture so future play() calls are never blocked
-      if (!this.audioElement.src || this.audioElement.src === '') {
-        this.audioElement.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-        this.audioElement.play().then(() => {
-          if (this.audioElement?.src.startsWith('data:audio/wav')) {
-            this.audioElement.pause();
-          }
-        }).catch(() => {});
-      }
+      this.audioElement.volume = this.isMuted ? 0 : Math.max(0.1, this.volume || 0.85);
     }
     if (this.mainGain && this.ctx) {
       this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : Math.max(0.2, this.volume), this.ctx.currentTime);
@@ -354,7 +334,7 @@ class AudioEngine {
     }).catch(() => {});
   }
 
-  public async playTrack(track: Track, startTime: number = 0, crossfadeSecs: number = 0) {
+  public playTrack(track: Track, startTime: number = 0, crossfadeSecs: number = 0) {
     this.init();
     this.requestWakeLock();
     // Non-blocking resume to preserve user interaction gesture token for HTML5 Audio play()
@@ -365,6 +345,7 @@ class AudioEngine {
     this.currentTrack = track;
     this.isPlaying = true;
     this.hasTriggeredEnded = false;
+    this.synthTime = startTime;
     if (this.audioElement) {
       this.audioElement.loop = false;
     }
@@ -373,122 +354,71 @@ class AudioEngine {
     if (this.mainGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.mainGain.gain.cancelScheduledValues(now);
-      this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : Math.max(0.2, this.volume), now);
+      this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : Math.max(0.1, this.volume), now);
     }
 
     // Update system Media Session (Android lock screen & notifications)
     this.updateMediaSession(track);
 
-    // 1. Check if stored in IndexedDB first for instant 0-second offline playback
+    // Resolve stream URL synchronously so HTML5 Audio play() triggers inside direct user click gesture
     let streamUrl = '';
-    try {
-      const storedBlob = await getStoredAudio(track.id);
-      if (storedBlob) {
-        streamUrl = URL.createObjectURL(storedBlob);
-      }
-    } catch {}
-
-    if (!streamUrl) {
-      if (track.file) {
-        streamUrl = URL.createObjectURL(track.file);
-      } else if (track.audioUrl) {
-        streamUrl = await resolveAudioStreamUrlAsync(track.audioUrl);
-      }
+    if (track.file) {
+      streamUrl = URL.createObjectURL(track.file);
+    } else if (track.audioUrl) {
+      streamUrl = resolveAudioStreamUrl(track.audioUrl);
     }
 
-    if (streamUrl) {
-      // Local, offline IndexedDB or Telegram CDN audio playback
+    if (streamUrl && this.audioElement) {
       this.stopSynth();
 
-      if (this.ctx && this.ctx.state === 'suspended') {
+      const targetUrl = streamUrl.startsWith('/') && typeof window !== 'undefined'
+        ? `${window.location.origin}${streamUrl}`
+        : streamUrl;
+
+      if (this.audioElement.src !== targetUrl) {
+        this.audioElement.src = targetUrl;
+      }
+
+      if (startTime > 0 && !isNaN(startTime)) {
         try {
-          await this.ctx.resume();
+          this.audioElement.currentTime = startTime;
         } catch {}
       }
 
-      if (this.mainGain && this.ctx) {
-        this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : Math.max(0.2, this.volume || 0.85), this.ctx.currentTime);
-      }
+      this.audioElement.muted = this.isMuted;
+      this.audioElement.volume = this.isMuted ? 0 : Math.max(0.1, this.volume || 0.85);
 
-      if (this.audioElement) {
-        const targetUrl = streamUrl.startsWith('/') && typeof window !== 'undefined'
-          ? `${window.location.origin}${streamUrl}`
-          : streamUrl;
-
-        if (this.audioElement.src !== targetUrl) {
-          this.audioElement.src = targetUrl;
-          try {
-            this.audioElement.load();
-          } catch {}
-        }
-
-        if (startTime > 0 && !isNaN(startTime)) {
-          try {
-            this.audioElement.currentTime = startTime;
-          } catch {}
-        }
-        this.audioElement.volume = this.isMuted ? 0 : Math.max(0.2, this.volume || 0.85);
-        this.audioElement.muted = this.isMuted;
-
-        try {
-          await this.audioElement.play();
-        } catch (e: any) {
+      const playPromise = this.audioElement.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e: any) => {
           console.warn('HTML5 audio play error:', e);
           if (e?.name === 'NotAllowedError') {
             console.log('User interaction required to start audio playback');
-          } else if (e?.name === 'AbortError') {
-            // Track switched before current loaded
-          } else {
-            // Attempt reload with fresh local proxy query
-            try {
-              const fileId = extractFileId(track.audioUrl);
-              if (fileId) {
-                const retryUrl = typeof window !== 'undefined'
-                  ? `${window.location.origin}/api/telegram/audio?file_id=${encodeURIComponent(fileId)}&retry=1`
-                  : `/api/telegram/audio?file_id=${encodeURIComponent(fileId)}&retry=1`;
-                this.audioElement.src = retryUrl;
-                this.audioElement.load();
-                await this.audioElement.play();
-                return;
-              }
-              if (streamUrl) {
-                this.audioElement.src = targetUrl;
-                await this.audioElement.play();
-              }
-            } catch (err2) {
-              console.warn('Audio retry failed:', err2);
+          } else if (e?.name !== 'AbortError') {
+            // Attempt retry
+            const fileId = extractFileId(track.audioUrl);
+            if (fileId && this.audioElement) {
+              const retryUrl = `${window.location.origin}/api/telegram/audio?file_id=${encodeURIComponent(fileId)}&retry=1`;
+              this.audioElement.src = retryUrl;
+              this.audioElement.play().catch(() => {});
             }
           }
-        }
-      }
-    } else {
-      // Check if stored in IndexedDB first
-      let storedBlob: Blob | null = null;
-      try {
-        storedBlob = await getStoredAudio(track.id);
-      } catch {
-        // ignore
+        });
       }
 
-      if (storedBlob && this.audioElement) {
-        this.stopSynth();
-        this.audioElement.src = URL.createObjectURL(storedBlob);
-        this.audioElement.currentTime = startTime;
-        this.audioElement.volume = this.isMuted ? 0 : this.volume;
-        this.audioElement.muted = this.isMuted;
-        try {
-          await this.audioElement.play();
-        } catch (e) {
-          console.warn('IndexedDB audio play error', e);
-          this.startSynth(track, startTime);
+      // Check IndexedDB in background without blocking current playback
+      getStoredAudio(track.id).then(storedBlob => {
+        if (storedBlob && this.currentTrack?.id === track.id && this.audioElement && this.audioElement.error) {
+          this.audioElement.src = URL.createObjectURL(storedBlob);
+          this.audioElement.play().catch(() => {});
         }
-      } else {
-        // Procedural Web Audio playback
-        if (this.audioElement) {
-          this.audioElement.pause();
-        }
-        this.startSynth(track, startTime);
+      }).catch(() => {});
+    } else if (!track.file && !track.audioUrl) {
+      // Procedural Web Audio playback for synth-only tracks
+      if (this.audioElement) {
+        this.audioElement.pause();
       }
+      this.startSynth(track, startTime);
     }
   }
 
@@ -507,12 +437,14 @@ class AudioEngine {
   }
 
   public isCurrentTrackLoaded(): boolean {
-    return Boolean(
-      this.audioElement &&
-      this.audioElement.src &&
-      this.audioElement.src.length > 5 &&
-      !this.audioElement.src.endsWith('/')
-    );
+    if (!this.audioElement || !this.audioElement.src || !this.currentTrack) return false;
+    const src = this.audioElement.src;
+    if (src.startsWith('data:') || src.endsWith('/') || src.length < 5) return false;
+    const fileId = extractFileId(this.currentTrack.audioUrl);
+    if (fileId && src.includes(fileId)) return true;
+    if (this.currentTrack.audioUrl && src.includes(this.currentTrack.audioUrl)) return true;
+    if (this.currentTrack.file && src.startsWith('blob:')) return true;
+    return false;
   }
 
   public resume() {
@@ -523,26 +455,27 @@ class AudioEngine {
       this.ctx.resume().catch(() => {});
     }
 
-    // Guarantee volume is audible
+    // Guarantee volume is audible and unmuted
     if (this.audioElement) {
       this.audioElement.muted = this.isMuted;
       this.audioElement.volume = this.isMuted ? 0 : Math.max(0.1, this.volume || 0.85);
     }
 
     if (this.isCurrentTrackLoaded() && !this.isSynthPlaying) {
-      if (this.synthTime > 0) {
+      if (this.synthTime > 0 && this.audioElement && Math.abs(this.audioElement.currentTime - this.synthTime) > 1) {
         try {
-          this.audioElement!.currentTime = this.synthTime;
-        } catch {
-          // ignore
-        }
+          this.audioElement.currentTime = this.synthTime;
+        } catch {}
       }
-      this.audioElement!.play().catch((err) => {
-        console.warn('audioElement.play() failed in resume, re-triggering playTrack:', err);
-        if (this.currentTrack) {
-          this.playTrack(this.currentTrack, this.synthTime || 0);
-        }
-      });
+      const p = this.audioElement!.play();
+      if (p !== undefined) {
+        p.catch((err) => {
+          console.warn('audioElement.play() failed in resume, re-triggering playTrack:', err);
+          if (this.currentTrack) {
+            this.playTrack(this.currentTrack, this.synthTime || 0);
+          }
+        });
+      }
     } else if (this.currentTrack.file || this.currentTrack.audioUrl) {
       this.playTrack(this.currentTrack, this.synthTime || 0);
     } else {
