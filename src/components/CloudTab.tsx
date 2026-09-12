@@ -45,7 +45,7 @@ export const CloudTab: React.FC = () => {
   const [tempBotToken, setTempBotToken] = useState(channelConfig.botToken);
   const [tempChannelId, setTempChannelId] = useState(channelConfig.channelId);
 
-  // Auto-sync automatically on component mount
+  // Auto-sync automatically on component mount and on real-time track updates
   useEffect(() => {
     let isMounted = true;
     telegramCloudService.autoFetchTracks().then((fetched) => {
@@ -54,10 +54,18 @@ export const CloudTab: React.FC = () => {
       }
     }).catch(() => {});
 
+    const handleUpdate = (e: any) => {
+      if (isMounted && Array.isArray(e.detail) && e.detail.length > 0) {
+        addTracks(e.detail);
+      }
+    };
+    window.addEventListener('nova-cloud-tracks-updated', handleUpdate);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('nova-cloud-tracks-updated', handleUpdate);
     };
-  }, []);
+  }, [addTracks]);
 
   // Helper to find live track in player state
   const getLiveTrack = (track: Track): Track => {

@@ -215,10 +215,47 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
       { time: 190, text: 'Saath chalenge hum wahan, jahan aasmaan mile...' },
       { time: 225, text: 'Jo tum mere ho...' }
     ]
+  },
+  {
+    id: 'tg-arijit-dil-jhoom',
+    title: 'Dil Jhoom',
+    artist: 'Arijit Singh, Mithoon',
+    album: 'Gadar 2',
+    duration: 304,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA',
+    synthPreset: 'acoustic',
+    genre: 'Romantic / Hindi Soul',
+    folder: 'NOVA Private Library / Arijit Singh',
+    year: 2023,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 18,
+    isFavorite: true,
+    dateAdded: 1789218954000,
+    lyrics: [
+      { time: 0, text: '♪ (Acoustic guitar and soulful strings intro) ♪' },
+      { time: 14, text: 'Main jhoom jhoom jhoom jhoom taan...' },
+      { time: 32, text: 'Dil jhoom jhoom jhoom jhoom taan...' },
+      { time: 50, text: 'Tere ishq mein yeh dil jhoom jhoom taan...' },
+      { time: 75, text: '♪ (Arijit Singh soulful romantic melody) ♪' },
+      { time: 105, text: 'Tu hi mera armaan hai, tu hi mera sahara...' },
+      { time: 140, text: 'Tere bina ab jeena nahi gavara...' },
+      { time: 175, text: '♪ (Lush orchestral crescendo & chorus) ♪' },
+      { time: 210, text: 'Dil jhoom jhoom jhoom jhoom taan...' }
+    ]
   }
 ];
 
 export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> = {
+  'Arijit Singh': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E',
+    bio: 'India\'s most beloved playback singer and musical maestro known for heartfelt romantic ballads and legendary soulful vocals.'
+  },
+  'Arijit Singh, Mithoon': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E',
+    bio: 'India\'s most beloved playback singer and musical maestro known for heartfelt romantic ballads and legendary soulful vocals.'
+  },
   'Anuv Jain': {
     photoUrl: '/covers/anuv-jain-artist.jpg',
     bio: 'Soulful indie acoustic singer-songwriter known for Arz Kiya Hai, Jo Tum Mere Ho, Baarishein, and lyrical storytelling.'
@@ -255,6 +292,21 @@ class TelegramCloudService {
   constructor() {
     this.loadSavedConfig();
     this.loadSavedTracks();
+
+    if (typeof window !== 'undefined') {
+      // Auto-poll telegram tracks every 6 seconds in background
+      setTimeout(() => {
+        this.autoFetchTracks().catch(() => {});
+      }, 1000);
+
+      setInterval(() => {
+        this.autoFetchTracks().catch(() => {});
+      }, 6000);
+
+      window.addEventListener('focus', () => {
+        this.autoFetchTracks().catch(() => {});
+      });
+    }
   }
 
   private loadSavedConfig() {
@@ -381,10 +433,14 @@ class TelegramCloudService {
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.tracks) && data.tracks.length > 0) {
+          const countChanged = this.cloudTracks.length !== data.tracks.length;
           this.cloudTracks = data.tracks;
           try {
             localStorage.setItem(STORAGE_KEY_CLOUD_TRACKS, JSON.stringify(data.tracks));
           } catch {}
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('nova-cloud-tracks-updated', { detail: data.tracks }));
+          }
           return data.tracks;
         }
       }

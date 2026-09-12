@@ -479,6 +479,19 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return merged;
           });
 
+          // Keep queue up-to-date with new cloud tracks
+          setQueue(prev => {
+            const queueIds = new Set(prev.map(t => t.id));
+            const toAdd = cloudTracks.filter(c => !queueIds.has(c.id));
+            if (toAdd.length > 0) {
+              return [...prev, ...toAdd];
+            }
+            return prev.map(p => {
+              const fresh = cloudTracks.find(c => c.id === p.id);
+              return fresh ? { ...p, ...fresh } : p;
+            });
+          });
+
           // Ensure current track is refreshed with fresh coverArt, audioUrl and singer details
           setCurrentTrack(prev => {
             if (!prev) return cloudTracks[0];
@@ -503,12 +516,32 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     window.addEventListener('focus', handleFocusOrVisible);
     document.addEventListener('visibilitychange', handleFocusOrVisible);
 
-    // Periodic check every 12 seconds
-    const interval = setInterval(syncTelegramCloud, 12000);
+    // Listen to real-time custom event when background polling detects new uploaded tracks
+    const handleTracksUpdated = (e: any) => {
+      const updatedList = e.detail as Track[];
+      if (Array.isArray(updatedList) && updatedList.length > 0) {
+        setTracks(prev => {
+          const localTracks = prev.filter(t => t.file || !t.id.startsWith('tg-'));
+          const cloudIds = new Set(updatedList.map(c => c.id));
+          const filteredLocal = localTracks.filter(l => !cloudIds.has(l.id));
+          return [...updatedList, ...filteredLocal];
+        });
+        setQueue(prev => {
+          const queueIds = new Set(prev.map(t => t.id));
+          const toAdd = updatedList.filter(c => !queueIds.has(c.id));
+          return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+        });
+      }
+    };
+    window.addEventListener('nova-cloud-tracks-updated', handleTracksUpdated);
+
+    // Periodic background check every 6 seconds
+    const interval = setInterval(syncTelegramCloud, 6000);
 
     return () => {
       window.removeEventListener('focus', handleFocusOrVisible);
       document.removeEventListener('visibilitychange', handleFocusOrVisible);
+      window.removeEventListener('nova-cloud-tracks-updated', handleTracksUpdated);
       clearInterval(interval);
     };
   }, []);

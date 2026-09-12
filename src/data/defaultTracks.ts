@@ -208,6 +208,36 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 190, text: 'Saath chalenge hum wahan, jahan aasmaan mile...' },
       { time: 225, text: 'Jo tum mere ho...' }
     ]
+  },
+  {
+    id: 'tg-arijit-dil-jhoom',
+    title: 'Dil Jhoom',
+    artist: 'Arijit Singh, Mithoon',
+    album: 'Gadar 2',
+    duration: 304,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA',
+    synthPreset: 'acoustic',
+    genre: 'Romantic / Hindi Soul',
+    folder: 'NOVA Private Library / Arijit Singh',
+    year: 2023,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 18,
+    lastPlayed: Date.now() - 60000,
+    isFavorite: true,
+    dateAdded: 1789218954000,
+    lyrics: [
+      { time: 0, text: '♪ (Acoustic guitar and soulful strings intro) ♪' },
+      { time: 14, text: 'Main jhoom jhoom jhoom jhoom taan...' },
+      { time: 32, text: 'Dil jhoom jhoom jhoom jhoom taan...' },
+      { time: 50, text: 'Tere ishq mein yeh dil jhoom jhoom taan...' },
+      { time: 75, text: '♪ (Arijit Singh soulful romantic melody) ♪' },
+      { time: 105, text: 'Tu hi mera armaan hai, tu hi mera sahara...' },
+      { time: 140, text: 'Tere bina ab jeena nahi gavara...' },
+      { time: 175, text: '♪ (Lush orchestral crescendo & chorus) ♪' },
+      { time: 210, text: 'Dil jhoom jhoom jhoom jhoom taan...' }
+    ]
   }
 ];
 
@@ -217,7 +247,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Favourites',
     description: 'Tracks you loved with a heart',
     coverArt: 'linear-gradient(135deg, #EC4899 0%, #EF4444 100%)',
-    trackIds: ['tg-anuv-jo-tum-mere-ho', 'tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
+    trackIds: ['tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -227,7 +257,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Recently Played',
     description: 'Your recent listening sessions',
     coverArt: 'linear-gradient(135deg, #7C6EFF 0%, #4F46E5 100%)',
-    trackIds: ['tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose'],
+    trackIds: ['tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -237,7 +267,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'NOVA Telegram Cloud',
     description: 'Cloud vault tracks streamed from NOVA Private Library',
     coverArt: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)',
-    trackIds: ['tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
+    trackIds: ['tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 10,
     updatedAt: Date.now()

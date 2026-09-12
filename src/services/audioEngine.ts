@@ -292,8 +292,16 @@ class AudioEngine {
         }
       });
 
-      // Direct hardware HTML5 Audio routing for 100% reliable, loud, crystal-clear playback across all devices
-      // Do NOT attach createMediaElementSource by default as browser CORS / cross-origin policies silence audio on mobile
+      // Route HTML5 Audio into Web Audio DSP Graph
+      // Enables real-time Equalizer, Bass Boost, 360° Spatial Audio, Dolby Atmos, and Visualizer
+      if (!this.mediaSourceNode && this.audioElement && this.dspInput) {
+        try {
+          this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
+          this.mediaSourceNode.connect(this.dspInput);
+        } catch (sourceErr) {
+          console.warn('Could not attach createMediaElementSource to DSP graph, playing via direct hardware audio:', sourceErr);
+        }
+      }
     } catch (err) {
       console.warn('AudioContext initialization error:', err);
     }
@@ -391,14 +399,27 @@ class AudioEngine {
     if (streamUrl) {
       // Local, offline IndexedDB or Telegram CDN audio playback
       this.stopSynth();
-      if (this.audioElement) {
-        const currentSrc = this.audioElement.src;
-        const isSame = currentSrc === streamUrl || 
-                       (streamUrl && currentSrc.endsWith(streamUrl)) ||
-                       (streamUrl && streamUrl.startsWith('/') && currentSrc.includes(streamUrl));
 
-        if (streamUrl && !isSame) {
-          this.audioElement.src = streamUrl;
+      if (this.ctx && this.ctx.state === 'suspended') {
+        try {
+          await this.ctx.resume();
+        } catch {}
+      }
+
+      if (this.mainGain && this.ctx) {
+        this.mainGain.gain.setValueAtTime(this.isMuted ? 0 : Math.max(0.2, this.volume || 0.85), this.ctx.currentTime);
+      }
+
+      if (this.audioElement) {
+        const targetUrl = streamUrl.startsWith('/') && typeof window !== 'undefined'
+          ? `${window.location.origin}${streamUrl}`
+          : streamUrl;
+
+        if (this.audioElement.src !== targetUrl) {
+          this.audioElement.src = targetUrl;
+          try {
+            this.audioElement.load();
+          } catch {}
         }
 
         if (startTime > 0 && !isNaN(startTime)) {
@@ -418,20 +439,20 @@ class AudioEngine {
           } else if (e?.name === 'AbortError') {
             // Track switched before current loaded
           } else {
-            // Attempt reload with fresh Telegram file_path resolution
+            // Attempt reload with fresh local proxy query
             try {
               const fileId = extractFileId(track.audioUrl);
               if (fileId) {
-                const freshPath = await resolveTelegramFilePath(fileId, true);
-                if (freshPath) {
-                  const directUrl = `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${freshPath}`;
-                  this.audioElement.src = directUrl;
-                  await this.audioElement.play();
-                  return;
-                }
+                const retryUrl = typeof window !== 'undefined'
+                  ? `${window.location.origin}/api/telegram/audio?file_id=${encodeURIComponent(fileId)}&retry=1`
+                  : `/api/telegram/audio?file_id=${encodeURIComponent(fileId)}&retry=1`;
+                this.audioElement.src = retryUrl;
+                this.audioElement.load();
+                await this.audioElement.play();
+                return;
               }
               if (streamUrl) {
-                this.audioElement.src = streamUrl;
+                this.audioElement.src = targetUrl;
                 await this.audioElement.play();
               }
             } catch (err2) {

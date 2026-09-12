@@ -440,21 +440,46 @@ function prewarmAllTracks() {
 async function fetchTelegramUpdates(customToken?: string) {
   const tokenToUse = customToken || TELEGRAM_BOT_TOKEN;
   try {
-    const url = `https://api.telegram.org/bot${tokenToUse}/getUpdates?allowed_updates=["channel_post","message"]&limit=100&offset=${lastTelegramUpdateId + 1}`;
+    const url = `https://api.telegram.org/bot${tokenToUse}/getUpdates?allowed_updates=["channel_post","message","edited_channel_post","edited_message"]&limit=100&offset=${lastTelegramUpdateId + 1}`;
     const res = await fetch(url);
     if (!res.ok) return;
     const data = await res.json() as any;
-    if (data.ok && Array.isArray(data.result)) {
+    let updatesList: any[] = [];
+    if (data.ok && Array.isArray(data.result) && data.result.length > 0) {
+      updatesList = data.result;
+    } else {
+      // Fallback: check recent updates without offset to guarantee any recent channel post is captured
+      try {
+        const fallbackUrl = `https://api.telegram.org/bot${tokenToUse}/getUpdates?allowed_updates=["channel_post","message","edited_channel_post","edited_message"]&limit=50&offset=-50`;
+        const fbRes = await fetch(fallbackUrl);
+        if (fbRes.ok) {
+          const fbData = await fbRes.json() as any;
+          if (fbData.ok && Array.isArray(fbData.result)) {
+            updatesList = fbData.result;
+          }
+        }
+      } catch {}
+    }
+
+    if (updatesList.length > 0) {
       let hasUpdates = false;
-      for (const item of data.result) {
+      for (const item of updatesList) {
         if (item.update_id && item.update_id > lastTelegramUpdateId) {
           lastTelegramUpdateId = item.update_id;
           hasUpdates = true;
         }
-        const msg = item.channel_post || item.message;
+        const msg = item.channel_post || item.message || item.edited_channel_post || item.edited_message;
         if (!msg) continue;
-        const audio = msg.audio || msg.document;
-        if (audio && (audio.mime_type?.startsWith('audio/') || audio.file_name?.match(/\.(mp3|flac|wav|m4a|aac|ogg)$/i))) {
+        const audio = msg.audio || msg.document || msg.voice;
+        const isAudio = audio && (
+          audio.mime_type?.startsWith('audio/') ||
+          audio.mime_type === 'application/ogg' ||
+          audio.mime_type === 'video/mp4' ||
+          audio.file_name?.match(/\.(mp3|flac|wav|m4a|aac|ogg|opus|wma|mp4)$/i) ||
+          Boolean(msg.voice)
+        );
+
+        if (isAudio) {
           const fileId = audio.file_id;
           const fileUniqueId = audio.file_unique_id || '';
           
@@ -472,13 +497,14 @@ async function fetchTelegramUpdates(customToken?: string) {
             const filePath = await resolveTelegramFilePath(fileId);
             if (filePath) {
               fileMimeCache[filePath] = mime;
-              const rawPerformer = audio.performer || 'Indie Artist';
-              const rawTitle = audio.title || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio';
+              const rawCaption = msg.caption || '';
+              const rawPerformer = audio.performer || (rawCaption.includes('-') ? rawCaption.split('-')[0].trim() : 'Indie Artist');
+              const rawTitle = audio.title || (rawCaption.includes('-') ? rawCaption.split('-')[1].trim() : (rawCaption || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio'));
               const { title, artist } = cleanAudioMetadata(rawTitle, rawPerformer);
               const ext = (mime === 'audio/mp4' || audio.file_name?.endsWith('.m4a')) ? 'm4a' : 'mp3';
 
               // Unique Track ID
-              const uniqueTrackId = `tg-${fileUniqueId || 'song-' + msg.message_id || fileId.slice(-12)}`;
+              const uniqueTrackId = `tg-${fileUniqueId || 'song-' + (msg.message_id || Date.now()) || fileId.slice(-12)}`;
 
               // Cover art: use Telegram audio thumbnail if available, or fallback
               const thumbFileId = audio.thumbnail?.file_id || audio.thumb?.file_id;
@@ -489,7 +515,7 @@ async function fetchTelegramUpdates(customToken?: string) {
                 coverArt = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
               }
 
-              dynamicTracks.push({
+              const newTrack = {
                 id: uniqueTrackId,
                 fileId,
                 filePath,
@@ -511,7 +537,12 @@ async function fetchTelegramUpdates(customToken?: string) {
                 lyrics: [
                   { time: 0, text: `♪ Now Playing ${title} by ${artist} ♪` }
                 ]
-              });
+              };
+
+              dynamicTracks.push(newTrack);
+              hasUpdates = true;
+              console.log(`[Telegram Sync] Discovered new track: "${title}" by "${artist}" (fileId: ${fileId})`);
+              prewarmTrackCache(fileId, filePath);
             }
           }
         }

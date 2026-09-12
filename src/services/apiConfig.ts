@@ -19,13 +19,15 @@ export const DEFAULT_TELEGRAM_PATH_CACHE: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_6.m4a',
   'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_18.mp3',
   'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'music/file_10.m4a',
+  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'music/file_27.m4a',
 
   // Verified Cover Art Thumbnails
   'AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E': 'thumbnails/file_5',
   'AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E': 'thumbnails/file_1.jpg',
   'AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA': 'thumbnails/file_7.jpg',
   'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_19.jpg',
-  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_11.jpg'
+  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_11.jpg',
+  'AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E': 'thumbnails/file_28.jpg'
 };
 
 const STORAGE_CACHE_KEY = 'nova_tg_resolved_paths_v2';
@@ -85,34 +87,44 @@ export function getApiBaseUrl(): string {
  */
 export function resolveAudioStreamUrl(url: string | undefined): string {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+  // Keep valid absolute or local URLs as is
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  const fileId = extractFileId(url);
-  if (fileId) {
-    const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
-    if (cachedPath) {
-      return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
+  // If already pointing to our Express server proxy, keep it (optimal caching, range requests, CORS headers)
+  if (url.startsWith('/api/telegram/audio')) {
+    return url;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // If it's pointing to telegram direct CDN, convert to local proxy to avoid CORS/content-disposition issues
+    const fileId = extractFileId(url);
+    if (fileId) {
+      return `/api/telegram/audio?file_id=${fileId}`;
     }
+    return url;
+  }
+  const fileId = extractFileId(url) || (url.startsWith('CQAC') ? url : null);
+  if (fileId) {
+    return `/api/telegram/audio?file_id=${fileId}`;
   }
   return url;
 }
 
 /**
  * Asynchronous Audio URL Resolver
- * Resolves fresh file path from Telegram Bot API if missing or expired, guarantees 100% playable stream
+ * Resolves high-speed streaming audio URL, keeping server proxy for 100% reliable CORS and disk cache playback
  */
 export async function resolveAudioStreamUrlAsync(url: string | undefined): Promise<string> {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  const fileId = extractFileId(url);
+  if (url.startsWith('/api/telegram/audio')) {
+    return url;
+  }
+  const fileId = extractFileId(url) || (url.startsWith('CQAC') ? url : null);
   if (fileId) {
-    const filePath = await resolveTelegramFilePath(fileId);
-    if (filePath) {
-      return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${filePath}`;
-    }
+    return `/api/telegram/audio?file_id=${fileId}`;
   }
   return resolveAudioStreamUrl(url);
 }
