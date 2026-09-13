@@ -269,6 +269,36 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 210, text: 'Khaiyo na do naina mori...' },
       { time: 240, text: 'Piya ke milan ki aas...' }
     ]
+  },
+  {
+    id: 'tg-AgADFSEAAuafMVU',
+    title: 'Kaise Hua',
+    artist: 'Vishal Mishra, Manoj Muntashir',
+    album: 'Kabir Singh',
+    duration: 234,
+    format: 'm4a',
+    coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E',
+    synthPreset: 'acoustic',
+    genre: 'Bollywood / Romantic Melodic',
+    folder: 'NOVA Private Library / Vishal Mishra',
+    year: 2019,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 5,
+    lastPlayed: Date.now() - 10000,
+    isFavorite: true,
+    dateAdded: 1789280000000,
+    lyrics: [
+      { time: 0, text: '♪ (Acoustic guitar melody & soft pads) ♪' },
+      { time: 15, text: 'Hansta rehta hoon tujhse milkar kyu aajkal...' },
+      { time: 35, text: 'Badle badle hain mere tevar kyu aajkal...' },
+      { time: 55, text: 'Aankhein meri har jagah dhoondhe tujhe bewajah...' },
+      { time: 75, text: 'Ye main hoon ya koi aur hai meri tarah...' },
+      { time: 95, text: 'Kaise hua, kaise hua, tu itna zaroori kaise hua...' },
+      { time: 120, text: '♪ (Acoustic guitar crescendo & strings swell) ♪' },
+      { time: 150, text: 'Baatein dilon ki khud-ba-khud hone lagi...' },
+      { time: 180, text: 'Kaise hua, kaise hua, tu itna zaroori kaise hua...' }
+    ]
   }
 ];
 
@@ -278,7 +308,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Favourites',
     description: 'Tracks you loved with a heart',
     coverArt: 'linear-gradient(135deg, #EC4899 0%, #EF4444 100%)',
-    trackIds: ['tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
+    trackIds: ['tg-AgADFSEAAuafMVU', 'tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -288,7 +318,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Recently Played',
     description: 'Your recent listening sessions',
     coverArt: 'linear-gradient(135deg, #7C6EFF 0%, #4F46E5 100%)',
-    trackIds: ['tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose'],
+    trackIds: ['tg-AgADFSEAAuafMVU', 'tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -298,7 +328,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'NOVA Telegram Cloud',
     description: 'Cloud vault tracks streamed from NOVA Private Library',
     coverArt: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)',
-    trackIds: ['tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
+    trackIds: ['tg-AgADFSEAAuafMVU', 'tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 10,
     updatedAt: Date.now()

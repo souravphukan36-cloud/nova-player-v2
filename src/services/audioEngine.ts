@@ -269,13 +269,14 @@ class AudioEngine {
         if (this.currentTrack && this.audioElement && !this.audioElement.src.includes('api.telegram.org')) {
           const fileId = extractFileId(this.currentTrack.audioUrl);
           if (fileId) {
-            const cachedPath = DEFAULT_TELEGRAM_PATH_CACHE[fileId];
-            if (cachedPath) {
-              const directCdnUrl = `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
-              console.log('Falling back to direct Telegram CDN stream:', directCdnUrl);
-              this.audioElement.src = directCdnUrl;
-              this.audioElement.play().catch(err => console.warn('Direct Telegram CDN fallback error:', err));
-            }
+            resolveTelegramFilePath(fileId).then(cachedPath => {
+              if (cachedPath && this.audioElement && !this.audioElement.src.includes('api.telegram.org')) {
+                const directCdnUrl = `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
+                console.log('Falling back to direct Telegram CDN stream:', directCdnUrl);
+                this.audioElement.src = directCdnUrl;
+                this.audioElement.play().catch(err => console.warn('Direct Telegram CDN fallback error:', err));
+              }
+            }).catch(() => {});
           }
         }
       });

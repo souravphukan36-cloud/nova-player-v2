@@ -309,6 +309,37 @@ const BASE_TRACKS = [
       { time: 210, text: 'Khaiyo na do naina mori...' },
       { time: 240, text: 'Piya ke milan ki aas...' }
     ]
+  },
+  {
+    id: 'tg-AgADFSEAAuafMVU',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E',
+    filePath: 'music/file_33.m4a',
+    title: 'Kaise Hua',
+    artist: 'Vishal Mishra, Manoj Muntashir',
+    album: 'Kabir Singh',
+    duration: 234,
+    format: 'm4a',
+    coverArt: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E',
+    synthPreset: 'acoustic',
+    genre: 'Bollywood / Romantic Melodic',
+    folder: 'NOVA Private Library / Vishal Mishra',
+    year: 2019,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 5,
+    isFavorite: true,
+    dateAdded: 1789280000000,
+    lyrics: [
+      { time: 0, text: '♪ (Acoustic guitar melody & soft pads) ♪' },
+      { time: 15, text: 'Hansta rehta hoon tujhse milkar kyu aajkal...' },
+      { time: 35, text: 'Badle badle hain mere tevar kyu aajkal...' },
+      { time: 55, text: 'Aankhein meri har jagah dhoondhe tujhe bewajah...' },
+      { time: 75, text: 'Ye main hoon ya koi aur hai meri tarah...' },
+      { time: 95, text: 'Kaise hua, kaise hua, tu itna zaroori kaise hua...' },
+      { time: 120, text: '♪ (Acoustic guitar crescendo & strings swell) ♪' },
+      { time: 150, text: 'Baatein dilon ki khud-ba-khud hone lagi...' },
+      { time: 180, text: 'Kaise hua, kaise hua, tu itna zaroori kaise hua...' }
+    ]
   }
 ];
 

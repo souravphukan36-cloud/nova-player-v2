@@ -73,3 +73,15 @@ input[type=range]:active::-webkit-slider-thumb {
   height: 140px;
 }
 
+/* 60fps/120fps smooth scrolling & hardware acceleration */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.gpu-accelerate {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
