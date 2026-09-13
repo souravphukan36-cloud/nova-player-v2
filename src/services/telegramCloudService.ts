@@ -244,10 +244,48 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
       { time: 175, text: '♪ (Lush orchestral crescendo & chorus) ♪' },
       { time: 210, text: 'Dil jhoom jhoom jhoom jhoom taan...' }
     ]
+  },
+  {
+    id: 'tg-nadaan-parinde',
+    title: 'Nadaan Parinde',
+    artist: 'Mohit Chauhan, A.R. Rahman',
+    album: 'Rockstar',
+    duration: 384,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ',
+    synthPreset: 'acoustic',
+    genre: 'Sufi Rock / Bollywood',
+    folder: 'NOVA Private Library / Mohit Chauhan',
+    year: 2011,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 12,
+    isFavorite: true,
+    dateAdded: 1789222257000,
+    lyrics: [
+      { time: 0, text: '♪ (Distorted guitar rift and heavy rock drums prelude) ♪' },
+      { time: 20, text: 'O naadan parindey ghar aaja...' },
+      { time: 42, text: 'Ghar aaja, ghar aaja, ghar aaja...' },
+      { time: 65, text: 'Kyun des bides firaaey tu?' },
+      { time: 90, text: 'Kyun ulti reet chalaaey tu?' },
+      { time: 120, text: '♪ (Rock crescendo & electric guitar solo) ♪' },
+      { time: 160, text: 'Kaaga re kaaga mori itni araj tose...' },
+      { time: 185, text: 'Chun chun khaaiyo maans...' },
+      { time: 210, text: 'Khaiyo na do naina mori...' },
+      { time: 240, text: 'Piya ke milan ki aas...' }
+    ]
   }
 ];
 
 export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> = {
+  'Mohit Chauhan, A.R. Rahman': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    bio: 'Renowned Indian singer celebrated for soulful ballads, timeless Bollywood classics, and Silk Route classics.'
+  },
+  'Mohit Chauhan': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    bio: 'Renowned Indian singer celebrated for soulful ballads, timeless Bollywood classics, and Silk Route classics.'
+  },
   'Arijit Singh': {
     photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E',
     bio: 'India\'s most beloved playback singer and musical maestro known for heartfelt romantic ballads and legendary soulful vocals.'

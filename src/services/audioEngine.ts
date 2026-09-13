@@ -5,7 +5,8 @@ import {
   resolveAudioStreamUrlAsync, 
   resolveTelegramFilePath, 
   extractFileId, 
-  DEFAULT_TELEGRAM_BOT_TOKEN 
+  DEFAULT_TELEGRAM_BOT_TOKEN,
+  DEFAULT_TELEGRAM_PATH_CACHE 
 } from './apiConfig';
 
 class AudioEngine {
@@ -264,6 +265,19 @@ class AudioEngine {
 
       this.audioElement.addEventListener('error', (e) => {
         console.warn('Audio element error:', this.audioElement?.error, e);
+        // Automatic fallback: If local server proxy fails (e.g. user running static client from GitHub), stream directly from Telegram Bot API CDN
+        if (this.currentTrack && this.audioElement && !this.audioElement.src.includes('api.telegram.org')) {
+          const fileId = extractFileId(this.currentTrack.audioUrl);
+          if (fileId) {
+            const cachedPath = DEFAULT_TELEGRAM_PATH_CACHE[fileId];
+            if (cachedPath) {
+              const directCdnUrl = `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
+              console.log('Falling back to direct Telegram CDN stream:', directCdnUrl);
+              this.audioElement.src = directCdnUrl;
+              this.audioElement.play().catch(err => console.warn('Direct Telegram CDN fallback error:', err));
+            }
+          }
+        }
       });
 
       this.audioElement.addEventListener('loadedmetadata', () => {

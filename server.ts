@@ -246,6 +246,69 @@ const BASE_TRACKS = [
       { time: 190, text: 'Saath chalenge hum wahan, jahan aasmaan mile...' },
       { time: 225, text: 'Jo tum mere ho...' }
     ]
+  },
+  {
+    id: 'tg-arijit-dil-jhoom',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA',
+    filePath: 'music/file_27.m4a',
+    title: 'Dil Jhoom',
+    artist: 'Arijit Singh, Mithoon',
+    album: 'Gadar 2',
+    duration: 304,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA',
+    synthPreset: 'acoustic',
+    genre: 'Romantic / Hindi Soul',
+    folder: 'NOVA Private Library / Arijit Singh',
+    year: 2023,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 18,
+    isFavorite: true,
+    dateAdded: 1789218954000,
+    lyrics: [
+      { time: 0, text: '♪ (Acoustic guitar and soulful strings intro) ♪' },
+      { time: 14, text: 'Main jhoom jhoom jhoom jhoom taan...' },
+      { time: 32, text: 'Dil jhoom jhoom jhoom jhoom taan...' },
+      { time: 50, text: 'Tere ishq mein yeh dil jhoom jhoom taan...' },
+      { time: 75, text: '♪ (Arijit Singh soulful romantic melody) ♪' },
+      { time: 105, text: 'Tu hi mera armaan hai, tu hi mera sahara...' },
+      { time: 140, text: 'Tere bina ab jeena nahi gavara...' },
+      { time: 175, text: '♪ (Lush orchestral crescendo & chorus) ♪' },
+      { time: 210, text: 'Dil jhoom jhoom jhoom jhoom taan...' }
+    ]
+  },
+  {
+    id: 'tg-nadaan-parinde',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ',
+    filePath: 'music/file_29.m4a',
+    title: 'Nadaan Parinde',
+    artist: 'Mohit Chauhan, A.R. Rahman',
+    album: 'Rockstar',
+    duration: 384,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ',
+    synthPreset: 'acoustic',
+    genre: 'Sufi Rock / Bollywood',
+    folder: 'NOVA Private Library / Mohit Chauhan',
+    year: 2011,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 12,
+    isFavorite: true,
+    dateAdded: 1789222257000,
+    lyrics: [
+      { time: 0, text: '♪ (Distorted guitar rift and heavy rock drums prelude) ♪' },
+      { time: 20, text: 'O naadan parindey ghar aaja...' },
+      { time: 42, text: 'Ghar aaja, ghar aaja, ghar aaja...' },
+      { time: 65, text: 'Kyun des bides firaaey tu?' },
+      { time: 90, text: 'Kyun ulti reet chalaaey tu?' },
+      { time: 120, text: '♪ (Rock crescendo & electric guitar solo) ♪' },
+      { time: 160, text: 'Kaaga re kaaga mori itni araj tose...' },
+      { time: 185, text: 'Chun chun khaaiyo maans...' },
+      { time: 210, text: 'Khaiyo na do naina mori...' },
+      { time: 240, text: 'Piya ke milan ki aas...' }
+    ]
   }
 ];
 
@@ -293,8 +356,12 @@ const filePathCache: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_6.m4a',
   'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_8.mp3',
   'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'music/file_10.m4a',
+  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'music/file_27.m4a',
+  'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ': 'music/file_29.m4a',
   'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_9.jpg',
-  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_11.jpg'
+  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_11.jpg',
+  'AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E': 'thumbnails/file_28.jpg',
+  'AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA': 'thumbnails/file_30.jpg'
 };
 
 // Explicit MIME type mapping for high-fidelity audio playback across Chrome/Android/iOS
@@ -306,13 +373,17 @@ const fileMimeCache: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'audio/mp4',  // Raabta (.m4a)
   'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'audio/mpeg', // Somewhere Only We Know (.mp3)
   'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'audio/mp4',  // Jo Tum Mere Ho (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'audio/mp4',  // Dil Jhoom (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ': 'audio/mp4',  // Nadaan Parinde (.m4a)
   'music/file_2': 'audio/mpeg',
   'music/file_3': 'audio/mp4',
   'music/file_4': 'audio/mp4',
   'music/file_0.mp3': 'audio/mpeg',
   'music/file_6.m4a': 'audio/mp4',
   'music/file_8.mp3': 'audio/mpeg',
-  'music/file_10.m4a': 'audio/mp4'
+  'music/file_10.m4a': 'audio/mp4',
+  'music/file_27.m4a': 'audio/mp4',
+  'music/file_29.m4a': 'audio/mp4'
 };
 
 // Intelligent metadata cleaner for uploaded audio files

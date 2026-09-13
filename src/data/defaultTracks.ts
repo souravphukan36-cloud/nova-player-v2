@@ -238,6 +238,37 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 175, text: '♪ (Lush orchestral crescendo & chorus) ♪' },
       { time: 210, text: 'Dil jhoom jhoom jhoom jhoom taan...' }
     ]
+  },
+  {
+    id: 'tg-nadaan-parinde',
+    title: 'Nadaan Parinde',
+    artist: 'Mohit Chauhan, A.R. Rahman',
+    album: 'Rockstar',
+    duration: 384,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ',
+    synthPreset: 'acoustic',
+    genre: 'Sufi Rock / Bollywood',
+    folder: 'NOVA Private Library / Mohit Chauhan',
+    year: 2011,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 12,
+    lastPlayed: Date.now() - 30000,
+    isFavorite: true,
+    dateAdded: 1789222257000,
+    lyrics: [
+      { time: 0, text: '♪ (Distorted guitar rift and heavy rock drums prelude) ♪' },
+      { time: 20, text: 'O naadan parindey ghar aaja...' },
+      { time: 42, text: 'Ghar aaja, ghar aaja, ghar aaja...' },
+      { time: 65, text: 'Kyun des bides firaaey tu?' },
+      { time: 90, text: 'Kyun ulti reet chalaaey tu?' },
+      { time: 120, text: '♪ (Rock crescendo & electric guitar solo) ♪' },
+      { time: 160, text: 'Kaaga re kaaga mori itni araj tose...' },
+      { time: 185, text: 'Chun chun khaaiyo maans...' },
+      { time: 210, text: 'Khaiyo na do naina mori...' },
+      { time: 240, text: 'Piya ke milan ki aas...' }
+    ]
   }
 ];
 
@@ -247,7 +278,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Favourites',
     description: 'Tracks you loved with a heart',
     coverArt: 'linear-gradient(135deg, #EC4899 0%, #EF4444 100%)',
-    trackIds: ['tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
+    trackIds: ['tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-anuv-arz-kiya-hai', 'tg-local-train-choo-lo', 'tg-local-train-aaoge-tum-kabhi', 'tg-keane-somewhere-only-we-know'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -257,7 +288,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'Recently Played',
     description: 'Your recent listening sessions',
     coverArt: 'linear-gradient(135deg, #7C6EFF 0%, #4F46E5 100%)',
-    trackIds: ['tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose'],
+    trackIds: ['tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
     updatedAt: Date.now()
@@ -267,7 +298,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     name: 'NOVA Telegram Cloud',
     description: 'Cloud vault tracks streamed from NOVA Private Library',
     coverArt: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)',
-    trackIds: ['tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
+    trackIds: ['tg-nadaan-parinde', 'tg-arijit-dil-jhoom', 'tg-anuv-jo-tum-mere-ho', 'tg-keane-somewhere-only-we-know', 'tg-pritam-raabta', 'tg-garvit-kaahe-mose', 'tg-local-train-choo-lo', 'tg-anuv-arz-kiya-hai', 'tg-local-train-aaoge-tum-kabhi'],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 10,
     updatedAt: Date.now()
