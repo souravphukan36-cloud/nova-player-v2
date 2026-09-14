@@ -468,6 +468,34 @@ export const DEFAULT_TRACKS: Track[] = [
       { time: 110, text: '♪ (Thom Yorke soaring falsetto and crescendo) ♪' },
       { time: 140, text: 'Blame it on the satellite that beams me home...' }
     ]
+  },
+  {
+    id: 'tg-AgADXiEAAk4ySFU',
+    title: 'Muntazir',
+    artist: 'Danyal Zafar, Momina Mustehsan',
+    album: 'Coke Studio Season 10',
+    duration: 337,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAytqqD9DzXNipCMghwHw5QWvrvY2SgACXiEAAk4ySFW2JA0cD87dSgEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMraqg_Q81zYqQjIIcB8OUFr672NkoAAl4hAAJOMkhVtiQNHA_O3Uo9BA',
+    synthPreset: 'acoustic',
+    genre: 'Pop / Coke Studio',
+    folder: 'NOVA Private Library / Danyal Zafar, Momina Mustehsan',
+    year: 2017,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 18,
+    lastPlayed: Date.now() - 400000,
+    isFavorite: true,
+    dateAdded: 1789411140000,
+    lyrics: [
+      { time: 0, text: '♪ (Acoustic guitar strums and strings intro) ♪' },
+      { time: 20, text: 'Jaise baarish ki boondein...' },
+      { time: 42, text: 'Girti hain zameen par...' },
+      { time: 65, text: 'Tera intezaar karta raha dil mera...' },
+      { time: 90, text: '♪ (Momina & Danyal harmonic duet) ♪' },
+      { time: 130, text: 'Tu jo mila toh mili yeh zindagi...' },
+      { time: 165, text: 'Tu na mila toh kuch bhi nahi...' }
+    ]
   }
 ];
 
@@ -492,7 +520,8 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
       'tg-arijit-dil-jhoom',
       'tg-nadaan-parinde',
       'tg-AgADFSEAAuafMVU',
-      'tg-radiohead-black-star'
+      'tg-radiohead-black-star',
+      'tg-AgADXiEAAk4ySFU'
     ],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 30,
@@ -504,6 +533,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
     description: 'Your recent listening sessions',
     coverArt: 'linear-gradient(135deg, #7C6EFF 0%, #4F46E5 100%)',
     trackIds: [
+      'tg-AgADXiEAAk4ySFU',
       'tg-AgADFSEAAuafMVU',
       'tg-sajid-wajid-surili-akhiyon-wale',
       'tg-banjaare-bairan',
@@ -521,7 +551,7 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
   {
     id: 'playlist-indie',
     name: 'NOVA Telegram Cloud',
-    description: 'Complete 16-track cloud vault streamed with instant disk caching',
+    description: 'Complete 17-track cloud vault streamed with instant disk caching',
     coverArt: 'linear-gradient(135deg, #10B981 0%, #065F46 100%)',
     trackIds: [
       'tg-anuv-arz-kiya-hai',
@@ -539,7 +569,8 @@ export const INITIAL_PLAYLISTS: Playlist[] = [
       'tg-arijit-dil-jhoom',
       'tg-nadaan-parinde',
       'tg-AgADFSEAAuafMVU',
-      'tg-radiohead-black-star'
+      'tg-radiohead-black-star',
+      'tg-AgADXiEAAk4ySFU'
     ],
     isBuiltIn: true,
     createdAt: Date.now() - 86400000 * 10,

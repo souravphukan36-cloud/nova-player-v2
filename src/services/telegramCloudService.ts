@@ -1,6 +1,7 @@
 import { Track, TelegramChannelConfig } from '../types';
 import { saveTrackWithAudio } from './storageDb';
 import { getApiBaseUrl, resolveAudioStreamUrl } from './apiConfig';
+import { DEFAULT_TRACKS } from '../data/defaultTracks';
 
 const STORAGE_KEY_CONFIG = 'nova_telegram_channel_config';
 const STORAGE_KEY_CLOUD_TRACKS = 'nova_cloud_channel_tracks_v2';
@@ -14,268 +15,8 @@ export interface CloudArtistShelf {
   totalDuration: number;
 }
 
-// Exactly the 3 songs uploaded to the Telegram bot channel
-export const INITIAL_CLOUD_TRACKS: Track[] = [
-  {
-    id: 'tg-anuv-arz-kiya-hai',
-    title: 'Arz Kiya Hai',
-    artist: 'Anuv Jain',
-    album: 'Arz Kiya Hai - Single',
-    duration: 305,
-    format: 'mp3',
-    coverArt: '/covers/arz-kiya-hai.jpg',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ',
-    synthPreset: 'acoustic',
-    genre: 'Indie Acoustic / Poetry',
-    folder: 'NOVA Private Library / Anuv Jain',
-    year: 2026,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 14,
-    isFavorite: true,
-    dateAdded: 1788838410000,
-    lyrics: [
-      { time: 0, text: '♪ (Gentle acoustic fingerpicking & warm ambiance) ♪' },
-      { time: 14, text: 'Arz kiya hai...' },
-      { time: 30, text: 'Yeh dil ki baatein, yeh ansuni raatein...' },
-      { time: 55, text: 'Haule se dheeme se mujhko gale laga lo na' },
-      { time: 80, text: '♪ (Emotional vocal crescendo & warm harmonies) ♪' },
-      { time: 115, text: 'Alvida na kehna, paas mere hi rehna...' },
-      { time: 145, text: 'Khwabon ki iss dhoop mein tera saaya ban jaaun' }
-    ]
-  },
-  {
-    id: 'tg-local-train-aaoge-tum-kabhi',
-    title: 'Aaoge Tum Kabhi',
-    artist: 'The Local Train',
-    album: 'Aalas Ka Pedh',
-    duration: 264,
-    format: 'm4a',
-    coverArt: '/covers/aaoge-tum-kabhi.jpg',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ',
-    synthPreset: 'acoustic',
-    genre: 'Hindi Indie Rock',
-    folder: 'NOVA Private Library / The Local Train',
-    year: 2026,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 22,
-    isFavorite: true,
-    dateAdded: 1788838410000,
-    lyrics: [
-      { time: 0, text: '♪ (Driving indie drum cadence & melodic electric guitar) ♪' },
-      { time: 16, text: 'Aaoge tum kabhi, meri jaan keh rahi...' },
-      { time: 32, text: 'Guzregi yeh raat bhi, subah nayi aayegi...' },
-      { time: 52, text: '♪ (Rock chorus opens with soaring vocal resonance) ♪' },
-      { time: 70, text: 'Saansein yeh rukti nahi, yaadein yeh mitti nahi...' },
-      { time: 95, text: 'Khwaab jo dekhe the humne saath mil kar' },
-      { time: 120, text: '♪ (Blistering guitar solo & thumping rhythm section) ♪' },
-      { time: 160, text: 'Aaoge tum kabhi... laut ke yahin...' }
-    ]
-  },
-  {
-    id: 'tg-local-train-choo-lo',
-    title: 'Choo Lo',
-    artist: 'The Local Train',
-    album: 'Aalas Ka Pedh',
-    duration: 233,
-    format: 'm4a',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA',
-    synthPreset: 'acoustic',
-    genre: 'Hindi Indie Rock',
-    folder: 'NOVA Private Library / The Local Train',
-    year: 2026,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 35,
-    isFavorite: true,
-    dateAdded: 1788886613000,
-    lyrics: [
-      { time: 0, text: '♪ (Signature indie rock guitar arpeggio prelude) ♪' },
-      { time: 14, text: 'Khada hoon aaj bhi wahin, ke dil phir beqarar hai...' },
-      { time: 28, text: 'Kaisi hai yeh berukhi, na jaane kaisa pyaar hai...' },
-      { time: 42, text: '♪ (Bass and drums drop with intense energy) ♪' },
-      { time: 50, text: 'Choo lo jo mujhe tum kabhi, kho na jaaun main raat-din...' },
-      { time: 68, text: 'Nazron mein tum ho basey, keh do na yeh sach hai...' },
-      { time: 88, text: 'Jaane kyu yeh dooriyan badh gayi hain darmiyaan' },
-      { time: 104, text: '♪ (Raman Negi vocal power & soaring rock guitar riff) ♪' },
-      { time: 135, text: 'Choo lo jo mujhe tum kabhi... kho na jaaun main...' }
-    ]
-  },
-  {
-    id: 'tg-garvit-kaahe-mose',
-    title: 'Kaahe Mose',
-    artist: 'Garvit Soni, Priyansh Srivastava',
-    album: 'SambalpuriStar.In - Kaahe Mose',
-    duration: 219,
-    format: 'mp3',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA',
-    synthPreset: 'acoustic',
-    genre: 'Hindi Soul / Indie',
-    folder: 'NOVA Private Library / Garvit Soni, Priyansh Srivastava',
-    year: 2026,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 15,
-    isFavorite: true,
-    dateAdded: 1788943704000,
-    lyrics: [
-      { time: 0, text: '♪ (Soulful Indian Contemporary Prelude) ♪' },
-      { time: 15, text: 'Kaahe mose naina milaye re...' },
-      { time: 45, text: 'Palchhin tore sang laage jiya...' },
-      { time: 75, text: '♪ (Soulful Indian Classical & Contemporary Fusion) ♪' }
-    ]
-  },
-  {
-    id: 'tg-pritam-raabta',
-    title: 'Raabta (Kehte Hain Khuda Ne)',
-    artist: 'Pritam, Shreya Ghoshal, Arijit Singh',
-    album: 'Agent Vinod',
-    duration: 290,
-    format: 'm4a',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ',
-    synthPreset: 'acoustic',
-    genre: 'Romantic / Hindi Soul',
-    folder: 'NOVA Private Library / Pritam, Shreya Ghoshal, Arijit Singh',
-    year: 2026,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 20,
-    isFavorite: true,
-    dateAdded: 1788954302000,
-    lyrics: [
-      { time: 0, text: '♪ (Kehte hain khuda ne iss jahan mein sabhi ke liye) ♪' },
-      { time: 15, text: 'Kehte hain khuda ne iss jahan mein sabhi ke liye...' },
-      { time: 32, text: 'Kisi na kisi ko hai banaya har kisi ke liye...' },
-      { time: 48, text: 'Tera milna hai uss rab ka ishaara maanu...' },
-      { time: 68, text: 'Kuch toh hai tujhse raabta, kuch toh hai tujhse raabta...' },
-      { time: 95, text: 'Kaise hum jaane hume kya pata, kuch toh hai tujhse raabta...' },
-      { time: 120, text: '♪ (Soulful vocal harmonies by Arijit Singh & Shreya Ghoshal) ♪' },
-      { time: 150, text: 'Meherbani jaate jaate mujhpe kar gaya...' }
-    ]
-  },
-  {
-    id: 'tg-keane-somewhere-only-we-know',
-    title: 'Somewhere Only We Know',
-    artist: 'Keane',
-    album: 'Hopes and Fears',
-    duration: 237,
-    format: 'mp3',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA',
-    synthPreset: 'acoustic',
-    genre: 'Piano Rock / Indie Pop',
-    folder: 'NOVA Private Library / Keane',
-    year: 2004,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 1,
-    isFavorite: true,
-    dateAdded: 1788950000000,
-    lyrics: [
-      { time: 0, text: '♪ (Distinctive driving piano chord riff) ♪' },
-      { time: 14, text: 'I walked across an empty land...' },
-      { time: 21, text: 'I knew the pathway like the back of my hand' },
-      { time: 28, text: 'I felt the earth beneath my feet' },
-      { time: 35, text: 'Sat by the river and it made me complete' },
-      { time: 42, text: 'Oh simple thing, where have you gone?' },
-      { time: 49, text: "I'm getting old and I need something to rely on" },
-      { time: 56, text: 'So tell me when you gonna let me in' },
-      { time: 63, text: "I'm getting tired and I need somewhere to begin" },
-      { time: 70, text: '♪ (Soaring piano and vocal harmony crescendo) ♪' },
-      { time: 84, text: 'And if you have a minute why don\'t we go...' },
-      { time: 91, text: 'Talk about it somewhere only we know?' },
-      { time: 98, text: 'This could be the end of everything...' },
-      { time: 105, text: 'So why don\'t we go somewhere only we know?' }
-    ]
-  },
-  {
-    id: 'tg-anuv-jo-tum-mere-ho',
-    title: 'Jo Tum Mere Ho',
-    artist: 'Anuv Jain',
-    album: 'Jo Tum Mere Ho - Single',
-    duration: 259,
-    format: 'm4a',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA',
-    synthPreset: 'acoustic',
-    genre: 'Indie Acoustic / Romantic',
-    folder: 'NOVA Private Library / Anuv Jain',
-    year: 2024,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 5,
-    isFavorite: true,
-    dateAdded: 1789068141000,
-    lyrics: [
-      { time: 0, text: '♪ (Delicate acoustic picking & romantic guitar chords) ♪' },
-      { time: 14, text: 'Jo tum mere ho, toh main kuch bhi nahi...' },
-      { time: 30, text: 'Tere bina ab toh jeena nahi...' },
-      { time: 48, text: 'Haule se muskura do ek dafa...' },
-      { time: 65, text: '♪ (Acoustic rhythm cadence & soothing vocal melody) ♪' },
-      { time: 92, text: 'Teri aankhon mein basi hai meri har subah...' },
-      { time: 120, text: 'Jo tum mere ho, har gham se juda...' },
-      { time: 155, text: '♪ (Emotional vocal build & gentle acoustic guitar harmonics) ♪' },
-      { time: 190, text: 'Saath chalenge hum wahan, jahan aasmaan mile...' },
-      { time: 225, text: 'Jo tum mere ho...' }
-    ]
-  },
-  {
-    id: 'tg-arijit-dil-jhoom',
-    title: 'Dil Jhoom',
-    artist: 'Arijit Singh, Mithoon',
-    album: 'Gadar 2',
-    duration: 304,
-    format: 'm4a',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA',
-    synthPreset: 'acoustic',
-    genre: 'Romantic / Hindi Soul',
-    folder: 'NOVA Private Library / Arijit Singh',
-    year: 2023,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 18,
-    isFavorite: true,
-    dateAdded: 1789218954000,
-    lyrics: [
-      { time: 0, text: '♪ (Acoustic guitar and soulful strings intro) ♪' },
-      { time: 14, text: 'Main jhoom jhoom jhoom jhoom taan...' },
-      { time: 32, text: 'Dil jhoom jhoom jhoom jhoom taan...' },
-      { time: 50, text: 'Tere ishq mein yeh dil jhoom jhoom taan...' },
-      { time: 75, text: '♪ (Arijit Singh soulful romantic melody) ♪' },
-      { time: 105, text: 'Tu hi mera armaan hai, tu hi mera sahara...' },
-      { time: 140, text: 'Tere bina ab jeena nahi gavara...' },
-      { time: 175, text: '♪ (Lush orchestral crescendo & chorus) ♪' },
-      { time: 210, text: 'Dil jhoom jhoom jhoom jhoom taan...' }
-    ]
-  },
-  {
-    id: 'tg-nadaan-parinde',
-    title: 'Nadaan Parinde',
-    artist: 'Mohit Chauhan, A.R. Rahman',
-    album: 'Rockstar',
-    duration: 384,
-    format: 'm4a',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E',
-    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ',
-    synthPreset: 'acoustic',
-    genre: 'Sufi Rock / Bollywood',
-    folder: 'NOVA Private Library / Mohit Chauhan',
-    year: 2011,
-    bitRate: '320 kbps (Telegram Cloud Master)',
-    playCount: 12,
-    isFavorite: true,
-    dateAdded: 1789222257000,
-    lyrics: [
-      { time: 0, text: '♪ (Distorted guitar rift and heavy rock drums prelude) ♪' },
-      { time: 20, text: 'O naadan parindey ghar aaja...' },
-      { time: 42, text: 'Ghar aaja, ghar aaja, ghar aaja...' },
-      { time: 65, text: 'Kyun des bides firaaey tu?' },
-      { time: 90, text: 'Kyun ulti reet chalaaey tu?' },
-      { time: 120, text: '♪ (Rock crescendo & electric guitar solo) ♪' },
-      { time: 160, text: 'Kaaga re kaaga mori itni araj tose...' },
-      { time: 185, text: 'Chun chun khaaiyo maans...' },
-      { time: 210, text: 'Khaiyo na do naina mori...' },
-      { time: 240, text: 'Piya ke milan ki aas...' }
-    ]
-  }
-];
+// Master cloud tracks initialized directly from DEFAULT_TRACKS so all 17 songs are always included
+export const INITIAL_CLOUD_TRACKS: Track[] = DEFAULT_TRACKS;
 
 export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> = {
   'Mohit Chauhan, A.R. Rahman': {
@@ -313,6 +54,38 @@ export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> 
   'Keane': {
     photoUrl: '/covers/somewhere-only-we-know.jpg',
     bio: 'Legendary English alternative rock band known for piano-driven anthems like Somewhere Only We Know and Everybody\'s Changing.'
+  },
+  'Vishal Mishra, Manoj Muntashir': {
+    photoUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+    bio: 'Soul-stirring Indian composer and vocalist celebrated for heartfelt cinematic masterpieces like Kaise Hua.'
+  },
+  'Rahat Fateh Ali Khan, Sunidhi Chauhan, Sajid-Wajid': {
+    photoUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80',
+    bio: 'Legendary Sufi master paired with Bollywood powerhouse vocals in the iconic romantic anthem Surili Akhiyon Wale.'
+  },
+  'Banjaare': {
+    photoUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800&auto=format&fit=crop&q=80',
+    bio: 'Raw, emotive indie acoustic collective known for heartfelt folklore and soul-captivating acoustic rhythm.'
+  },
+  'Kaavish, Quratulain Balouch': {
+    photoUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80',
+    bio: 'Critically acclaimed Pakistani classical-contemporary ensemble behind the timeless Coke Studio ballad Faasle.'
+  },
+  'Redbone': {
+    photoUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&auto=format&fit=crop&q=80',
+    bio: 'Iconic 1970s Native American funk-rock legends celebrated worldwide for Come And Get Your Love.'
+  },
+  'Maan Panu': {
+    photoUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&auto=format&fit=crop&q=80',
+    bio: 'Atmospheric Punjabi indie artist blending melancholic acoustic melodies with raw, evocative poetry.'
+  },
+  'Radiohead': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAylqpnC8-JAwkvon3xFDem37HNtO1gACPiIAAuafOVVi9bQJQxKslQEAB20AAz0E',
+    bio: 'Legendary British alternative rock innovators renowned worldwide for The Bends and OK Computer.'
+  },
+  'Danyal Zafar, Momina Mustehsan': {
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAytqqD9DzXNipCMghwHw5QWvrvY2SgACXiEAAk4ySFW2JA0cD87dSgEAB20AAz0E',
+    bio: 'Coke Studio sensation bringing intricate guitar fingerpicking and ethereal vocal duets in the hit song Muntazir.'
   }
 };
 
@@ -382,6 +155,9 @@ class TelegramCloudService {
           const existingIds = new Set(updated.map((t: Track) => t.id));
           const newFromInitial = INITIAL_CLOUD_TRACKS.filter(t => !existingIds.has(t.id));
           this.cloudTracks = [...updated, ...newFromInitial];
+          try {
+            localStorage.setItem(STORAGE_KEY_CLOUD_TRACKS, JSON.stringify(this.cloudTracks));
+          } catch {}
           return;
         }
       }

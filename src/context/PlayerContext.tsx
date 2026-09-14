@@ -372,6 +372,68 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }).catch(() => {});
   }, []);
 
+  // Sync server tracks and listen to live Telegram cloud sync events
+  useEffect(() => {
+    const syncFromCloud = async () => {
+      try {
+        const res = await fetch('/api/telegram/tracks');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
+            setTracks(prev => {
+              const prevMap = new Map(prev.map(t => [t.id, t]));
+              let added = false;
+              for (const t of data.tracks) {
+                if (!prevMap.has(t.id)) {
+                  prevMap.set(t.id, t);
+                  added = true;
+                }
+              }
+              if (added) {
+                const merged = Array.from(prevMap.values());
+                try {
+                  localStorage.setItem('nova_tracks', JSON.stringify(merged));
+                } catch {}
+                return merged;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch {}
+    };
+
+    syncFromCloud();
+
+    const handleCloudUpdate = (e: CustomEvent<Track[]>) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setTracks(prev => {
+          const prevMap = new Map(prev.map(t => [t.id, t]));
+          let added = false;
+          for (const t of e.detail) {
+            if (!prevMap.has(t.id)) {
+              prevMap.set(t.id, t);
+              added = true;
+            }
+          }
+          if (added) {
+            const merged = Array.from(prevMap.values());
+            try {
+              localStorage.setItem('nova_tracks', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          }
+          return prev;
+        });
+      }
+    };
+
+    window.addEventListener('nova-cloud-tracks-updated' as any, handleCloudUpdate);
+    return () => {
+      window.removeEventListener('nova-cloud-tracks-updated' as any, handleCloudUpdate);
+    };
+  }, []);
+
   // Offline track download handler
   const downloadTrack = async (track: Track): Promise<boolean> => {
     setIsDownloading(track.id);
