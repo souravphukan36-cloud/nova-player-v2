@@ -21,6 +21,43 @@ try {
   console.warn('Cache directory creation notice:', e);
 }
 
+function detectAudioContentType(filePath: string): string {
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(12);
+    fs.readSync(fd, buf, 0, 12, 0);
+    fs.closeSync(fd);
+    // Check for ID3 or MP3 sync word
+    if (buf.subarray(0, 3).toString() === 'ID3' || (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0)) {
+      return 'audio/mpeg';
+    }
+    // Check for MP4 / M4A (ftyp box at offset 4)
+    if (buf.subarray(4, 8).toString() === 'ftyp') {
+      return 'audio/mp4';
+    }
+  } catch {}
+  return filePath.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4';
+}
+
+function findAudioCacheFile(fileId?: string, filePath?: string): { path: string; contentType: string } | null {
+  const ids: string[] = [];
+  if (fileId) ids.push(fileId);
+  if (filePath) ids.push(filePath);
+
+  for (const id of ids) {
+    const hash = crypto.createHash('md5').update(id).digest('hex');
+    const m4aPath = path.join(AUDIO_CACHE_DIR, `${hash}.m4a`);
+    const mp3Path = path.join(AUDIO_CACHE_DIR, `${hash}.mp3`);
+    if (fs.existsSync(m4aPath)) {
+      return { path: m4aPath, contentType: detectAudioContentType(m4aPath) };
+    }
+    if (fs.existsSync(mp3Path)) {
+      return { path: mp3Path, contentType: detectAudioContentType(mp3Path) };
+    }
+  }
+  return null;
+}
+
 function getAudioCachePath(fileId: string, filePath?: string): string {
   const hash = crypto.createHash('md5').update(fileId || filePath || 'audio').digest('hex');
   const isM4a = (filePath && (filePath.endsWith('.m4a') || filePath.includes('file_3') || filePath.includes('file_4') || filePath.includes('file_6'))) ||
@@ -287,7 +324,7 @@ const BASE_TRACKS = [
     album: 'Rockstar',
     duration: 384,
     format: 'm4a',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E',
     audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ',
     synthPreset: 'acoustic',
     genre: 'Sufi Rock / Bollywood',
@@ -339,6 +376,183 @@ const BASE_TRACKS = [
       { time: 120, text: '♪ (Acoustic guitar crescendo & strings swell) ♪' },
       { time: 150, text: 'Baatein dilon ki khud-ba-khud hone lagi...' },
       { time: 180, text: 'Kaise hua, kaise hua, tu itna zaroori kaise hua...' }
+    ]
+  },
+  {
+    id: 'tg-sajid-wajid-surili-akhiyon-wale',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMPaqdEbjkP-BkClAG8uhUChRhEYboAAioiAAJ43yBVc65XGg18R5g9BA',
+    filePath: 'music/file_14.m4a',
+    title: 'Surili Akhiyon Wale',
+    artist: 'Rahat Fateh Ali Khan, Sunidhi Chauhan, Sajid-Wajid',
+    album: 'Veer',
+    duration: 331,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAw9qp0RuOQ_4GQKUAby6FQKFGERhugACKiIAAnjfIFVzrlcaDXxHmAEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMPaqdEbjkP-BkClAG8uhUChRhEYboAAioiAAJ43yBVc65XGg18R5g9BA',
+    synthPreset: 'acoustic',
+    genre: 'Bollywood / Classical Romance',
+    folder: 'NOVA Private Library / Rahat Fateh Ali Khan',
+    year: 2010,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 16,
+    isFavorite: true,
+    dateAdded: 1789100000000,
+    lyrics: [
+      { time: 0, text: '♪ (Haunting acoustic sarangi & acoustic rhythm intro) ♪' },
+      { time: 18, text: 'Surili akhiyon wale, suna hai teri akhiyon se...' },
+      { time: 45, text: 'Behti hai neendein aur neendon mein sapne...' },
+      { time: 75, text: 'Kabhi toh kinaare pe, laa do hamare...' },
+      { time: 105, text: '♪ (Rahat Fateh Ali Khan soulful vocal improvisation) ♪' },
+      { time: 140, text: 'Tere bina jeena lage adhura...' },
+      { time: 180, text: 'Surili akhiyon wale...' }
+    ]
+  },
+  {
+    id: 'tg-banjaare-bairan',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMRaqdEciBcq_Oi6ITxKHZivW1iJFIAAmYiAAJ43yBVJY3mvGlpvE89BA',
+    filePath: 'music/file_17.mp3',
+    title: 'Bairan',
+    artist: 'Banjaare',
+    album: 'Bairan - Single',
+    duration: 151,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxFqp0RyIFyr86LohPEodmK9bWIkUgACZiIAAnjfIFUljea8aWm8TwEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMRaqdEciBcq_Oi6ITxKHZivW1iJFIAAmYiAAJ43yBVJY3mvGlpvE89BA',
+    synthPreset: 'acoustic',
+    genre: 'Indie Folk / Acoustic',
+    folder: 'NOVA Private Library / Banjaare',
+    year: 2024,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 19,
+    isFavorite: true,
+    dateAdded: 1789120000000,
+    lyrics: [
+      { time: 0, text: '♪ (Earthy acoustic guitar strumming & folk flute) ♪' },
+      { time: 15, text: 'Bairan hawaayein chhoo ke jo guzrein...' },
+      { time: 35, text: 'Yaadein purani dhoondhein rastey...' },
+      { time: 60, text: 'Kaisi yeh baatein, kaisi yeh yaadein...' },
+      { time: 90, text: '♪ (Uplifting acoustic folk percussion & harmonies) ♪' },
+      { time: 120, text: 'Bairan bani yeh ratiyaan saari...' }
+    ]
+  },
+  {
+    id: 'tg-kaavish-faasle',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMSaqdEc68fEiSv-jsP130j9ZTGCuMAAgshAAJSFSFVxnJpxksfpto9BA',
+    filePath: 'music/file_19.m4a',
+    title: 'Faasle',
+    artist: 'Kaavish, Quratulain Balouch',
+    album: 'Coke Studio Season 10',
+    duration: 311,
+    format: 'm4a',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxJqp0Rzrx8SJK_6Ow_XfSP1lMYK4wACCyEAAlIVIVXGcmnGSx-m2gEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMSaqdEc68fEiSv-jsP130j9ZTGCuMAAgshAAJSFSFVxnJpxksfpto9BA',
+    synthPreset: 'acoustic',
+    genre: 'Sufi / Semi-Classical',
+    folder: 'NOVA Private Library / Kaavish',
+    year: 2017,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 28,
+    isFavorite: true,
+    dateAdded: 1789150000000,
+    lyrics: [
+      { time: 0, text: '♪ (Gentle grand piano chord progression & warm cello) ♪' },
+      { time: 20, text: 'Faasle na rahein darmiyaan...' },
+      { time: 45, text: 'Kyun khoye se hain do jahaan...' },
+      { time: 75, text: '♪ (Quratulain Balouch soulful harmony entry) ♪' },
+      { time: 110, text: 'Tere bina ab saans na aaye...' },
+      { time: 150, text: 'Laut ke aaja, man behel jaaye...' },
+      { time: 195, text: '♪ (Stirring piano & acoustic vocal climax) ♪' },
+      { time: 240, text: 'Faasle mitt gaye...' }
+    ]
+  },
+  {
+    id: 'tg-redbone-come-and-get-your-love',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMUaqdEdKDph_plO7RTOtiXusbUqdoAAlwhAAJSFSFVOggH_w3abN89BA',
+    filePath: 'music/file_22.mp3',
+    title: 'Come And Get Your Love',
+    artist: 'Redbone',
+    album: 'Wovoka',
+    duration: 208,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxRqp0R0oOmH-mU7tFM62Je6xtSp2gACXCEAAlIVIVU6CAf_Ddps3wEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMUaqdEdKDph_plO7RTOtiXusbUqdoAAlwhAAJSFSFVOggH_w3abN89BA',
+    synthPreset: 'acoustic',
+    genre: 'Funk Rock / 70s Classic',
+    folder: 'NOVA Private Library / Redbone',
+    year: 1974,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 42,
+    isFavorite: true,
+    dateAdded: 1789180000000,
+    lyrics: [
+      { time: 0, text: "♪ (Hey! (Hey) What's the matter with your head, yeah) ♪" },
+      { time: 14, text: 'Come and get your love, come and get your love...' },
+      { time: 28, text: 'Come and get your love, come and get your love now!' },
+      { time: 45, text: '♪ (Iconic groovy bass riff & punchy drums) ♪' },
+      { time: 65, text: 'With a girl like you, with a girl like you...' },
+      { time: 90, text: "There is nothin' to say, go on and move on..." },
+      { time: 120, text: 'Come and get your love!' }
+    ]
+  },
+  {
+    id: 'tg-maan-panu-last-letter',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA',
+    filePath: 'music/file_24.mp3',
+    title: 'The Last Letter',
+    artist: 'Maan Panu',
+    album: 'The Last Letter - Single',
+    duration: 169,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxVqp0R0yw2nxW6DdC4QMa84sjR2bQACNB8AAlIVKVUC8T6X_8ujjAEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA',
+    synthPreset: 'acoustic',
+    genre: 'Punjabi Lo-fi / Melancholy',
+    folder: 'NOVA Private Library / Maan Panu',
+    year: 2023,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 11,
+    lastPlayed: Date.now() - 360000,
+    isFavorite: false,
+    dateAdded: 1789200000000,
+    lyrics: [
+      { time: 0, text: '♪ (Mellow lo-fi keys & vinyl crackle ambience) ♪' },
+      { time: 16, text: 'Aakhri khat tera padh ke ve sajna...' },
+      { time: 36, text: 'Akhiyan cho athru dul gaye...' },
+      { time: 60, text: 'Kitiyan si jo gallan pyaar diyan...' },
+      { time: 85, text: 'Pal vich saariyan bhul gaye...' },
+      { time: 115, text: '♪ (Atmospheric guitar line & deep bass groove) ♪' },
+      { time: 140, text: 'The last letter left on my desk...' }
+    ]
+  },
+  {
+    id: 'tg-radiohead-black-star',
+    fileId: 'CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA',
+    filePath: 'music/file_35.mp3',
+    title: 'Black Star',
+    artist: 'Radiohead',
+    album: 'The Bends',
+    duration: 247,
+    format: 'mp3',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAylqpnC8-JAwkvon3xFDem37HNtO1gACPiIAAuafOVVi9bQJQxKslQEAB20AAz0E',
+    audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA',
+    synthPreset: 'acoustic',
+    genre: 'Alternative Rock / 90s Grunge',
+    folder: 'NOVA Private Library / Radiohead',
+    year: 1995,
+    bitRate: '320 kbps (Telegram Cloud Master)',
+    playCount: 31,
+    lastPlayed: Date.now() - 500000,
+    isFavorite: true,
+    dateAdded: 1789300000000,
+    lyrics: [
+      { time: 0, text: "♪ (Tremolo guitar intro building into the famous riff) ♪" },
+      { time: 16, text: "I get home from work and you're still in bed..." },
+      { time: 32, text: 'I feel a bit sad so I lean down and kiss your head...' },
+      { time: 50, text: 'What are we coming to? What are we gonna do?' },
+      { time: 70, text: 'Blame it on the black star...' },
+      { time: 90, text: 'Blame it on the falling sky...' },
+      { time: 110, text: '♪ (Thom Yorke soaring falsetto and crescendo) ♪' },
+      { time: 140, text: 'Blame it on the satellite that beams me home...' }
     ]
   }
 ];
@@ -392,7 +606,8 @@ const filePathCache: Record<string, string> = {
   'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_9.jpg',
   'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_11.jpg',
   'AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E': 'thumbnails/file_28.jpg',
-  'AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA': 'thumbnails/file_30.jpg'
+  'AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E': 'thumbnails/file_59.jpg',
+  'AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA': 'thumbnails/file_59.jpg'
 };
 
 // Explicit MIME type mapping for high-fidelity audio playback across Chrome/Android/iOS
@@ -717,43 +932,20 @@ async function startServer() {
     let filePath = req.query.path as string;
     const fileId = req.query.file_id as string;
 
-    // If only file_id is provided, resolve file path first
-    if (!filePath && fileId) {
-      filePath = (await resolveTelegramFilePath(fileId)) || '';
-    }
-
     if (!filePath && !fileId) {
       res.status(400).send('Missing filePath or fileId');
       return;
     }
 
-    // Determine content-type based on explicit fileMimeCache, then filename/extension
-    let contentType = (fileId && fileMimeCache[fileId]) || (filePath && fileMimeCache[filePath]);
-    if (!contentType) {
-      const ext = filePath ? filePath.split('.').pop()?.toLowerCase() : '';
-      if (ext === 'm4a' || ext === 'mp4' || ext === 'aac' || (filePath && (filePath.includes('file_3') || filePath.includes('file_4') || filePath.includes('file_6')))) {
-        contentType = 'audio/mp4';
-      } else if (ext === 'flac') {
-        contentType = 'audio/flac';
-      } else if (ext === 'wav') {
-        contentType = 'audio/wav';
-      } else if (ext === 'ogg') {
-        contentType = 'audio/ogg';
-      } else {
-        contentType = 'audio/mpeg';
-      }
-    }
-
-    // 1. Check local disk cache (instant playback, 0 network latency, Spotify-grade speed)
-    const cachedFilePath = getAudioCachePath(fileId || filePath, filePath);
-
-    if (fs.existsSync(cachedFilePath)) {
+    // 1. FAST PATH: Check local disk cache first (instant playback, 0 network latency, Spotify-grade speed)
+    const cached = findAudioCacheFile(fileId, filePath);
+    if (cached && fs.existsSync(cached.path)) {
       try {
-        const stat = fs.statSync(cachedFilePath);
+        const stat = fs.statSync(cached.path);
         const fileSize = stat.size;
         const range = req.headers.range;
 
-        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Type', cached.contentType);
         res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
@@ -778,18 +970,45 @@ async function startServer() {
           res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
           res.setHeader('Content-Length', chunkSize);
 
-          const stream = fs.createReadStream(cachedFilePath, { start, end });
+          const stream = fs.createReadStream(cached.path, { start, end });
           stream.pipe(res);
           return;
         } else {
           res.status(200);
           res.setHeader('Content-Length', fileSize);
-          const stream = fs.createReadStream(cachedFilePath);
+          const stream = fs.createReadStream(cached.path);
           stream.pipe(res);
           return;
         }
       } catch (err) {
         console.warn('Error reading from disk cache, falling back to Telegram proxy:', err);
+      }
+    }
+
+    // If only file_id is provided, resolve file path first
+    if (!filePath && fileId) {
+      filePath = (await resolveTelegramFilePath(fileId)) || '';
+    }
+
+    if (!filePath) {
+      res.status(404).send('Audio file could not be resolved');
+      return;
+    }
+
+    // Determine content-type based on explicit fileMimeCache, then filename/extension
+    let contentType = (fileId && fileMimeCache[fileId]) || (filePath && fileMimeCache[filePath]);
+    if (!contentType) {
+      const ext = filePath ? filePath.split('.').pop()?.toLowerCase() : '';
+      if (ext === 'm4a' || ext === 'mp4' || ext === 'aac' || (filePath && (filePath.includes('file_3') || filePath.includes('file_4') || filePath.includes('file_6')))) {
+        contentType = 'audio/mp4';
+      } else if (ext === 'flac') {
+        contentType = 'audio/flac';
+      } else if (ext === 'wav') {
+        contentType = 'audio/wav';
+      } else if (ext === 'ogg') {
+        contentType = 'audio/ogg';
+      } else {
+        contentType = 'audio/mpeg';
       }
     }
 
@@ -828,13 +1047,14 @@ async function startServer() {
 
       // If full audio stream (status 200), save to disk cache in background
       if (statusCode === 200) {
-        const tempPath = `${cachedFilePath}.tmp.${Date.now()}`;
+        const diskTarget = getAudioCachePath(fileId || filePath, filePath);
+        const tempPath = `${diskTarget}.tmp.${Date.now()}`;
         const writeStream = fs.createWriteStream(tempPath);
         tgRes.pipe(writeStream);
         writeStream.on('finish', () => {
-          fs.rename(tempPath, cachedFilePath, (err) => {
+          fs.rename(tempPath, diskTarget, (err) => {
             if (!err) {
-              console.log(`[Spotify Cache Engine] Saved to disk cache: ${path.basename(cachedFilePath)}`);
+              console.log(`[Spotify Cache Engine] Saved to disk cache: ${path.basename(diskTarget)}`);
             }
           });
         });
@@ -962,6 +1182,10 @@ async function startServer() {
   async function preCacheAllTracks() {
     for (const track of dynamicTracks) {
       try {
+        const existingCache = findAudioCacheFile(track.fileId, track.filePath);
+        if (existingCache && fs.existsSync(existingCache.path)) {
+          continue;
+        }
         const cachedAudio = getAudioCachePath(track.fileId, track.filePath);
         if (!fs.existsSync(cachedAudio)) {
           let filePath = track.filePath;

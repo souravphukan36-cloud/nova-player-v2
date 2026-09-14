@@ -252,7 +252,7 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
     album: 'Rockstar',
     duration: 384,
     format: 'm4a',
-    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    coverArt: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E',
     audioUrl: '/api/telegram/audio?file_id=CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ',
     synthPreset: 'acoustic',
     genre: 'Sufi Rock / Bollywood',
@@ -279,11 +279,11 @@ export const INITIAL_CLOUD_TRACKS: Track[] = [
 
 export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> = {
   'Mohit Chauhan, A.R. Rahman': {
-    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E',
     bio: 'Renowned Indian singer celebrated for soulful ballads, timeless Bollywood classics, and Silk Route classics.'
   },
   'Mohit Chauhan': {
-    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA',
+    photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E',
     bio: 'Renowned Indian singer celebrated for soulful ballads, timeless Bollywood classics, and Silk Route classics.'
   },
   'Arijit Singh': {
