@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
+// 1. Injected Android Permissions and Cleartext in AndroidManifest.xml
 const manifestPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
 
 if (fs.existsSync(manifestPath)) {
@@ -32,9 +33,22 @@ if (fs.existsSync(manifestPath)) {
   console.log('AndroidManifest.xml not found yet, skipping injection.');
 }
 
+// 2. Configure android/variables.gradle to target Java 21 & Kotlin cleanly
+const variablesPath = path.join(__dirname, '..', 'android', 'variables.gradle');
+if (fs.existsSync(variablesPath)) {
+  let vars = fs.readFileSync(variablesPath, 'utf8');
+  console.log('Found variables.gradle:', vars);
+}
+
+// 3. Configure android/app/build.gradle with Java 21 compatibility & Kotlin
 const gradlePath = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
 if (fs.existsSync(gradlePath)) {
   let gradle = fs.readFileSync(gradlePath, 'utf8');
+
+  // Ensure Java 21 compile options
+  gradle = gradle.replace(/sourceCompatibility\s+JavaVersion\.\w+/g, 'sourceCompatibility JavaVersion.VERSION_21');
+  gradle = gradle.replace(/targetCompatibility\s+JavaVersion\.\w+/g, 'targetCompatibility JavaVersion.VERSION_21');
+
   if (!gradle.includes('resolutionStrategy')) {
     gradle += `
 
@@ -46,7 +60,7 @@ configurations.all {
     }
 }
 `;
-    fs.writeFileSync(gradlePath, gradle, 'utf8');
-    console.log('Added Kotlin stdlib force resolution to build.gradle.');
   }
+  fs.writeFileSync(gradlePath, gradle, 'utf8');
+  console.log('Updated build.gradle for Java 21 and Kotlin successfully.');
 }
