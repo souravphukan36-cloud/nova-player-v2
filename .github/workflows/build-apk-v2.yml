@@ -21,6 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Setup Java JDK 21
         uses: actions/setup-java@v4
@@ -28,8 +29,11 @@ jobs:
           distribution: 'zulu'
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Export Android SDK Environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          yes | sdkmanager --licenses || true
 
       - name: Install Project Dependencies
         run: |
@@ -45,6 +49,9 @@ jobs:
           npx cap add android || true
           node scripts/prepare-android.cjs
           npx cap sync android
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Build Debug APK
         run: |
