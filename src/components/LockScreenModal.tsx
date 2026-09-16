@@ -251,7 +251,7 @@ export const LockScreenModal: React.FC = () => {
               {/* Shuffle toggle */}
               <button
                 id="lock-btn-shuffle"
-                onClick={() => setShuffle(shuffle === 'none' ? 'all' : 'none')}
+                onClick={() => setShuffle(shuffle === 'off' ? 'all' : 'off')}
                 className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
                   shuffle === 'all' ? 'text-emerald-400' : 'text-white/40'
                 }`}
@@ -296,9 +296,9 @@ export const LockScreenModal: React.FC = () => {
               {/* Repeat toggle */}
               <button
                 id="lock-btn-repeat"
-                onClick={() => setRepeat(repeat === 'none' ? 'all' : repeat === 'all' ? 'one' : 'none')}
+                onClick={() => setRepeat(repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off')}
                 className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
-                  repeat !== 'none' ? 'text-emerald-400' : 'text-white/40'
+                  repeat !== 'off' ? 'text-emerald-400' : 'text-white/40'
                 }`}
                 title="Repeat Mode"
               >

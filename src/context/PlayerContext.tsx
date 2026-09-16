@@ -381,15 +381,27 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const data = await res.json();
           if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
             setTracks(prev => {
-              const prevMap = new Map(prev.map(t => [t.id, t]));
-              let added = false;
-              for (const t of data.tracks) {
-                if (!prevMap.has(t.id)) {
+              const prevMap = new Map<string, Track>(prev.map(t => [t.id, t]));
+              let modified = false;
+              for (const rawTrack of data.tracks) {
+                const t = rawTrack as Track;
+                const existing = prevMap.get(t.id);
+                if (!existing) {
                   prevMap.set(t.id, t);
-                  added = true;
+                  modified = true;
+                } else if (
+                  existing.title !== t.title || 
+                  existing.artist !== t.artist || 
+                  existing.coverArt !== t.coverArt ||
+                  existing.album !== t.album ||
+                  (t as any).hasCustomMetadata
+                ) {
+                  // Merge updated server metadata (title, artist, cover art, lyrics)
+                  prevMap.set(t.id, { ...existing, ...t });
+                  modified = true;
                 }
               }
-              if (added) {
+              if (modified) {
                 const merged = Array.from(prevMap.values());
                 try {
                   localStorage.setItem('nova_tracks', JSON.stringify(merged));
@@ -408,22 +420,27 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const handleCloudUpdate = (e: CustomEvent<Track[]>) => {
       if (e.detail && Array.isArray(e.detail)) {
         setTracks(prev => {
-          const prevMap = new Map(prev.map(t => [t.id, t]));
-          let added = false;
+          const prevMap = new Map<string, Track>(prev.map(t => [t.id, t]));
           for (const t of e.detail) {
-            if (!prevMap.has(t.id)) {
+            const existing = prevMap.get(t.id);
+            if (existing) {
+              prevMap.set(t.id, { ...existing, ...t });
+            } else {
               prevMap.set(t.id, t);
-              added = true;
             }
           }
-          if (added) {
-            const merged = Array.from(prevMap.values());
-            try {
-              localStorage.setItem('nova_tracks', JSON.stringify(merged));
-            } catch {}
-            return merged;
-          }
-          return prev;
+          const merged = Array.from(prevMap.values());
+          try {
+            localStorage.setItem('nova_tracks', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+
+        // Also update currently playing track if it was edited
+        setCurrentTrack(curr => {
+          if (!curr) return curr;
+          const match = e.detail.find(t => t.id === curr.id);
+          return match ? { ...curr, ...match } : curr;
         });
       }
     };
@@ -677,12 +694,31 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Setup AudioEngine callbacks and media keys
   useEffect(() => {
+    let hasPreloadedNext = false;
+
     audioEngine.setCallbacks(
       (time) => {
         currentTimeRef.current = time;
         setCurrentTime(time);
+
+        // Spotify-grade: Preload the next song 20s before track ends for zero buffer lag
+        const track = stateRef.current.currentTrack;
+        const dur = track?.duration || 0;
+        if (dur > 30 && time >= dur - 22 && !hasPreloadedNext) {
+          hasPreloadedNext = true;
+          const { queue, queueIndex, tracks } = stateRef.current;
+          const pool = queue.length > 0 ? queue : tracks;
+          if (pool.length > 1) {
+            const nextIdx = (queueIndex + 1) % pool.length;
+            const nextSong = pool[nextIdx];
+            if (nextSong) {
+              audioEngine.preloadNextTrack(nextSong);
+            }
+          }
+        }
       },
       () => {
+        hasPreloadedNext = false;
         handleTrackEnded();
       }
     );

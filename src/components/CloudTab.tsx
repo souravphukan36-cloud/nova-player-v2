@@ -14,12 +14,14 @@ import {
   CheckCircle2,
   FolderDown,
   Wifi,
-  RefreshCw
+  RefreshCw,
+  Lock
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
 import { telegramCloudService, CloudArtistShelf } from '../services/telegramCloudService';
 import { DEFAULT_FALLBACK_ART, getResolvedCoverArt, getTrackCoverArt } from '../utils/dynamicColor';
+import { NovaStudio } from './NovaStudio';
 
 export const CloudTab: React.FC = () => {
   const { 
@@ -39,6 +41,7 @@ export const CloudTab: React.FC = () => {
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
 
   // Telegram Config state
   const [channelConfig, setChannelConfig] = useState(() => telegramCloudService.getConfig());
@@ -283,6 +286,16 @@ export const CloudTab: React.FC = () => {
               title="Configure Telegram Bot Token & Channel"
             >
               <Settings2 className="w-4 h-4" />
+            </button>
+
+            <button
+              id="btn-open-nova-studio-cloud"
+              onClick={() => setIsStudioOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 active:scale-95 text-xs font-bold transition-all border border-emerald-500/30 shadow-md"
+              title="Open Private Creator Studio (Password Protected)"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Studio</span>
             </button>
           </div>
         </div>
@@ -618,6 +631,11 @@ export const CloudTab: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Nova Studio Creator Console Modal */}
+      {isStudioOpen && (
+        <NovaStudio onClose={() => setIsStudioOpen(false)} />
       )}
 
     </div>

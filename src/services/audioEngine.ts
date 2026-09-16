@@ -335,16 +335,31 @@ class AudioEngine {
 
   public preloadNextTrack(track: Track) {
     if (!track) return;
+    // Check IndexedDB offline cache first
     getStoredAudio(track.id).then(stored => {
-      if (stored) return; // already stored in IndexedDB offline
+      if (stored) return; // already stored locally in IndexedDB
+
       if (track.audioUrl) {
-        resolveAudioStreamUrlAsync(track.audioUrl).then(url => {
-          if (url && typeof window !== 'undefined') {
-            const preloader = new Audio();
-            preloader.preload = 'auto';
-            preloader.src = url;
+        try {
+          const streamUrl = resolveAudioStreamUrl(track.audioUrl);
+          const targetUrl = streamUrl.startsWith('/') && typeof window !== 'undefined'
+            ? `${window.location.origin}${streamUrl}`
+            : streamUrl;
+
+          if (!this.preloaderAudio) {
+            this.preloaderAudio = new Audio();
+            this.preloaderAudio.preload = 'auto';
+            this.preloaderAudio.volume = 0;
+            this.preloaderAudio.muted = true;
           }
-        }).catch(() => {});
+
+          if (this.preloaderAudio.src !== targetUrl) {
+            this.preloaderAudio.src = targetUrl;
+            this.preloaderAudio.load();
+          }
+        } catch (e) {
+          console.warn('Error pre-buffering track:', e);
+        }
       }
     }).catch(() => {});
   }

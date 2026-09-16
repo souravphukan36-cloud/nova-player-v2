@@ -11,7 +11,7 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
   const { settings } = usePlayer();
 
-  const tabs: { id: MainTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const tabs: { id: MainTab; label: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'cloud', label: 'Cloud', icon: Cloud },
     { id: 'library', label: 'Library', icon: Library },

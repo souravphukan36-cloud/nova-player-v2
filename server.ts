@@ -13,10 +13,12 @@ const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || '-1003542494794';
 const CACHE_DIR = path.join(process.cwd(), '.cache');
 const AUDIO_CACHE_DIR = path.join(CACHE_DIR, 'audio');
 const IMAGE_CACHE_DIR = path.join(CACHE_DIR, 'images');
+const UPLOADS_DIR = path.join(process.cwd(), '.cache', 'uploads');
 
 try {
   fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true });
   fs.mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 } catch (e) {
   console.warn('Cache directory creation notice:', e);
 }
@@ -588,10 +590,79 @@ const BASE_TRACKS = [
 ];
 
 // In-memory track store that can dynamically include any newly detected songs
-let dynamicTracks = [...BASE_TRACKS];
+let dynamicTracks: any[] = [...BASE_TRACKS];
 let lastTelegramUpdateId = 0;
 
 const TRACKS_DB_PATH = path.join(CACHE_DIR, 'tracks_db.json');
+const TRACKS_METADATA_PATH = path.join(CACHE_DIR, 'tracks_metadata.json');
+
+// Interface for custom track overrides (Step 1 Foundation)
+export interface TrackOverride {
+  title?: string;
+  artist?: string;
+  album?: string;
+  genre?: string;
+  year?: number;
+  coverArt?: string;
+  lyrics?: Array<{ time: number; text: string }>;
+  isFavorite?: boolean;
+  synthPreset?: string;
+  updatedAt?: number;
+}
+
+// In-memory store for track overrides: trackId -> TrackOverride
+let trackOverrides: Record<string, TrackOverride> = {};
+
+// Load persisted track overrides
+function loadTrackOverrides() {
+  try {
+    if (fs.existsSync(TRACKS_METADATA_PATH)) {
+      const raw = fs.readFileSync(TRACKS_METADATA_PATH, 'utf-8');
+      const data = JSON.parse(raw);
+      if (typeof data === 'object' && data !== null) {
+        trackOverrides = data;
+        console.log(`[Metadata Engine] Loaded ${Object.keys(trackOverrides).length} custom track overrides`);
+      }
+    }
+  } catch (e) {
+    console.warn('[Metadata Engine] Could not load tracks_metadata.json:', e);
+  }
+}
+
+// Save track overrides to disk
+function saveTrackOverrides() {
+  try {
+    fs.writeFileSync(TRACKS_METADATA_PATH, JSON.stringify(trackOverrides, null, 2), 'utf-8');
+    console.log(`[Metadata Engine] Saved ${Object.keys(trackOverrides).length} custom track overrides to disk`);
+  } catch (e) {
+    console.warn('[Metadata Engine] Could not save tracks_metadata.json:', e);
+  }
+}
+
+// Helper: Apply metadata overrides onto any track object
+function applyTrackOverrides(track: any): any {
+  if (!track || !track.id) return track;
+  const override = trackOverrides[track.id];
+  if (!override) return track;
+
+  return {
+    ...track,
+    title: override.title !== undefined && override.title.trim() !== '' ? override.title.trim() : track.title,
+    artist: override.artist !== undefined && override.artist.trim() !== '' ? override.artist.trim() : track.artist,
+    album: override.album !== undefined && override.album.trim() !== '' ? override.album.trim() : track.album,
+    genre: override.genre !== undefined && override.genre.trim() !== '' ? override.genre.trim() : track.genre,
+    year: override.year !== undefined ? override.year : track.year,
+    coverArt: override.coverArt !== undefined && override.coverArt.trim() !== '' ? override.coverArt.trim() : track.coverArt,
+    lyrics: override.lyrics !== undefined && Array.isArray(override.lyrics) && override.lyrics.length > 0 ? override.lyrics : track.lyrics,
+    isFavorite: override.isFavorite !== undefined ? override.isFavorite : track.isFavorite,
+    synthPreset: override.synthPreset !== undefined ? override.synthPreset : track.synthPreset,
+    hasCustomMetadata: true,
+    lastMetadataUpdated: override.updatedAt || undefined,
+  };
+}
+
+// Load metadata overrides right away
+loadTrackOverrides();
 
 // Load persisted tracks and offset on startup
 try {
@@ -953,23 +1024,35 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  // Serve custom user-uploaded files (album covers & audio tracks)
+  app.use('/api/uploads', express.static(UPLOADS_DIR, {
+    maxAge: '7d',
+    immutable: true,
+  }));
 
   // Health check
   app.get('/api/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', channelId: TELEGRAM_CHANNEL_ID, trackCount: dynamicTracks.length });
   });
 
-  // 1. Get all tracks from Telegram bot channel
+  // 1. Get all tracks from Telegram bot channel (with custom overrides applied)
   app.get('/api/telegram/tracks', async (req: Request, res: Response) => {
     // Check for any new updates in background
     await fetchTelegramUpdates();
     // Warm track cache in background for 0-second fast playback
     prewarmAllTracks();
+
+    // Map through dynamicTracks and apply any custom overrides
+    const finalizedTracks = dynamicTracks.map(t => applyTrackOverrides(t));
+
     res.json({
       success: true,
       channel: 'NOVA Private Library',
-      tracks: dynamicTracks,
+      tracks: finalizedTracks,
+      metadataOverridesCount: Object.keys(trackOverrides).length
     });
   });
 
@@ -977,11 +1060,227 @@ async function startServer() {
   app.post('/api/telegram/sync', async (req: Request, res: Response) => {
     const customToken = req.body?.botToken || req.query.bot_token as string;
     await fetchTelegramUpdates(customToken);
+    const finalizedTracks = dynamicTracks.map(t => applyTrackOverrides(t));
     res.json({
       success: true,
       count: dynamicTracks.length,
-      tracks: dynamicTracks,
+      tracks: finalizedTracks,
     });
+  });
+
+  // ==========================================
+  // METADATA OVERRIDE & STUDIO ENGINE (STEP 1)
+  // ==========================================
+
+  // Get all metadata overrides
+  app.get('/api/tracks/metadata', (req: Request, res: Response) => {
+    res.json({
+      success: true,
+      overrides: trackOverrides,
+      totalOverrides: Object.keys(trackOverrides).length
+    });
+  });
+
+  // Update a single track's metadata (Title, Artist, Album, CoverArt, Lyrics, etc.)
+  app.post('/api/tracks/metadata/update', (req: Request, res: Response) => {
+    const { trackId, title, artist, album, genre, year, coverArt, lyrics, synthPreset, isFavorite } = req.body || {};
+
+    if (!trackId) {
+      res.status(400).json({ success: false, error: 'trackId is required' });
+      return;
+    }
+
+    // Find the track in dynamicTracks
+    const track = dynamicTracks.find(t => t.id === trackId);
+    if (!track) {
+      res.status(404).json({ success: false, error: 'Track not found with given trackId' });
+      return;
+    }
+
+    const current = trackOverrides[trackId] || {};
+    const updated: TrackOverride = {
+      ...current,
+      updatedAt: Date.now()
+    };
+
+    if (title !== undefined) updated.title = String(title).trim();
+    if (artist !== undefined) updated.artist = String(artist).trim();
+    if (album !== undefined) updated.album = String(album).trim();
+    if (genre !== undefined) updated.genre = String(genre).trim();
+    if (year !== undefined) updated.year = Number(year) || undefined;
+    if (coverArt !== undefined) updated.coverArt = String(coverArt).trim();
+    if (synthPreset !== undefined) updated.synthPreset = String(synthPreset).trim();
+    if (isFavorite !== undefined) updated.isFavorite = Boolean(isFavorite);
+    if (lyrics !== undefined && Array.isArray(lyrics)) updated.lyrics = lyrics;
+
+    trackOverrides[trackId] = updated;
+    saveTrackOverrides();
+
+    // Return the updated track with overrides applied
+    const finalizedTrack = applyTrackOverrides(track);
+    console.log(`[Metadata Engine] Successfully updated track "${finalizedTrack.title}" (${trackId})`);
+
+    res.json({
+      success: true,
+      message: 'Metadata updated and persisted successfully',
+      track: finalizedTrack
+    });
+  });
+
+  // Reset a track's metadata back to its Telegram default
+  app.post('/api/tracks/metadata/reset', (req: Request, res: Response) => {
+    const { trackId } = req.body || {};
+    if (!trackId || !trackOverrides[trackId]) {
+      res.status(400).json({ success: false, error: 'No custom metadata override exists for this track' });
+      return;
+    }
+
+    delete trackOverrides[trackId];
+    saveTrackOverrides();
+
+    const track = dynamicTracks.find(t => t.id === trackId);
+    res.json({
+      success: true,
+      message: 'Track reverted back to Telegram original',
+      track
+    });
+  });
+
+  // Admin PIN Authentication endpoint (Default PIN: 7788 or custom environment key)
+  const ADMIN_PIN = process.env.NOVA_ADMIN_PIN || '7788';
+  app.post('/api/admin/login', (req: Request, res: Response) => {
+    const { pin } = req.body || {};
+    if (String(pin).trim() === ADMIN_PIN) {
+      res.json({ success: true, authorized: true, role: 'owner' });
+    } else {
+      res.status(401).json({ success: false, authorized: false, error: 'Incorrect Studio PIN' });
+    }
+  });
+
+  // Cache prewarm trigger for high-speed edge playback
+  app.post('/api/admin/prewarm', async (req: Request, res: Response) => {
+    const { fileId } = req.body || {};
+    if (fileId) {
+      prewarmTrackCache(fileId);
+      res.json({ success: true, message: `Prewarming file ${fileId}` });
+    } else {
+      prewarmAllTracks();
+      res.json({ success: true, message: `Prewarming all ${dynamicTracks.length} tracks in background` });
+    }
+  });
+
+  // Direct Image/Cover Art Upload from Gallery / PC
+  app.post('/api/admin/upload-image', (req: Request, res: Response) => {
+    try {
+      const { dataUrl, filename } = req.body || {};
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        res.status(400).json({ success: false, error: 'dataUrl is required' });
+        return;
+      }
+
+      // Format: data:image/jpeg;base64,....
+      const match = dataUrl.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+      if (!match) {
+        res.status(400).json({ success: false, error: 'Invalid base64 image data' });
+        return;
+      }
+
+      const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+      const base64Data = match[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      const uniqueHash = crypto.createHash('md5').update(buffer).digest('hex');
+      const savedFileName = `cover_${uniqueHash}.${ext}`;
+      const filePath = path.join(UPLOADS_DIR, savedFileName);
+
+      fs.writeFileSync(filePath, buffer);
+      console.log(`[Upload Engine] Saved new album cover art: ${savedFileName} (${buffer.length} bytes)`);
+
+      const publicUrl = `/api/uploads/${savedFileName}`;
+      res.json({
+        success: true,
+        url: publicUrl,
+        size: buffer.length,
+        filename: savedFileName
+      });
+    } catch (err: any) {
+      console.error('[Upload Engine] Image upload error:', err);
+      res.status(500).json({ success: false, error: err?.message || 'Failed to process image upload' });
+    }
+  });
+
+  // Direct Audio Track Upload from Device / PC
+  app.post('/api/admin/upload-audio', (req: Request, res: Response) => {
+    try {
+      const { dataUrl, title, artist, album, duration, coverArt } = req.body || {};
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        res.status(400).json({ success: false, error: 'Audio dataUrl is required' });
+        return;
+      }
+
+      const match = dataUrl.match(/^data:audio\/([a-zA-Z0-9+]+);base64,(.+)$/);
+      if (!match) {
+        res.status(400).json({ success: false, error: 'Invalid base64 audio data' });
+        return;
+      }
+
+      let rawExt = match[1];
+      let ext = 'mp3';
+      if (rawExt.includes('mp4') || rawExt.includes('m4a') || rawExt.includes('aac')) {
+        ext = 'm4a';
+      } else if (rawExt.includes('flac')) {
+        ext = 'flac';
+      } else if (rawExt.includes('wav')) {
+        ext = 'wav';
+      }
+
+      const base64Data = match[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+      const uniqueHash = crypto.createHash('md5').update(buffer).digest('hex');
+      const savedFileName = `audio_${uniqueHash}.${ext}`;
+      const filePath = path.join(UPLOADS_DIR, savedFileName);
+
+      fs.writeFileSync(filePath, buffer);
+      console.log(`[Upload Engine] Saved new custom audio track: ${savedFileName} (${buffer.length} bytes)`);
+
+      const trackTitle = (title && String(title).trim()) || 'Uploaded Master Track';
+      const trackArtist = (artist && String(artist).trim()) || 'Studio Master';
+      const newTrackId = `upload_${uniqueHash.slice(0, 10)}`;
+
+      const newTrack = {
+        id: newTrackId,
+        title: trackTitle,
+        artist: trackArtist,
+        album: (album && String(album).trim()) || 'Uploaded Singles',
+        duration: Number(duration) || 210,
+        format: ext as any,
+        coverArt: coverArt || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+        audioUrl: `/api/uploads/${savedFileName}`,
+        genre: 'Uploaded Master',
+        folder: `NOVA Studio / ${trackArtist}`,
+        year: new Date().getFullYear(),
+        bitRate: '320 kbps (Direct Studio Upload)',
+        playCount: 0,
+        isFavorite: false,
+        dateAdded: Date.now(),
+        lyrics: [
+          { time: 0, text: `♪ Now Playing ${trackTitle} by ${trackArtist} ♪` }
+        ]
+      };
+
+      // Add to dynamic tracks and persist
+      dynamicTracks.unshift(newTrack);
+      saveTracksDb();
+
+      res.json({
+        success: true,
+        message: 'New track uploaded and added to library!',
+        track: newTrack
+      });
+    } catch (err: any) {
+      console.error('[Upload Engine] Audio upload error:', err);
+      res.status(500).json({ success: false, error: err?.message || 'Failed to process audio upload' });
+    }
   });
 
   // 2. High-speed Audio Stream Proxy with Spotify-grade Disk Caching & Range support

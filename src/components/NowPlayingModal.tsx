@@ -283,7 +283,7 @@ export const NowPlayingModal: React.FC = () => {
               </button>
             </div>
             
-            <div className="flex-1 flex flex-col justify-center space-y-4 max-h-[380px] overflow-y-auto no-scrollbar py-8">
+            <div className="flex-1 flex flex-col justify-start space-y-5 max-h-[380px] overflow-y-auto no-scrollbar py-12 px-2 scroll-smooth">
               {currentTrack.lyrics && currentTrack.lyrics.length > 0 ? (
                 currentTrack.lyrics.map((lyric, idx) => {
                   const isActive = idx === activeLyricIndex;
@@ -292,12 +292,15 @@ export const NowPlayingModal: React.FC = () => {
                       key={idx}
                       ref={isActive ? activeLyricRef : undefined}
                       onClick={() => seek(lyric.time)}
-                      className={`block w-full text-center transition-all duration-300 font-medium ${
+                      className={`block w-full text-center transition-all duration-300 rounded-2xl py-2 px-3 ${
                         isActive
-                          ? 'text-lg sm:text-xl font-extrabold scale-105'
-                          : 'text-sm text-white/40 hover:text-white/70'
+                          ? 'text-xl sm:text-2xl font-black scale-[1.03] bg-white/[0.08] shadow-lg backdrop-blur-md'
+                          : 'text-base sm:text-lg font-bold text-white/35 hover:text-white/70 hover:bg-white/[0.02]'
                       }`}
-                      style={{ color: isActive ? (palette.primary || settings.accentColor) : undefined }}
+                      style={{ 
+                        color: isActive ? (palette.primary || settings.accentColor) : undefined,
+                        textShadow: isActive ? `0 0 20px ${palette.glow || 'rgba(124, 110, 255, 0.4)'}` : undefined
+                      }}
                     >
                       {lyric.text}
                     </button>

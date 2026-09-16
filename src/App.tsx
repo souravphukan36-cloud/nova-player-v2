@@ -17,6 +17,7 @@ import { SleepTimerModal } from './components/SleepTimerModal';
 import { FileScannerModal } from './components/FileScannerModal';
 import { CustomizerModal } from './components/CustomizerModal';
 import { CarModeModal } from './components/CarModeModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainTab, LibrarySubTab } from './types';
 
 const MainLayout: React.FC = () => {
@@ -139,8 +140,10 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <PlayerProvider>
-      <MainLayout />
-    </PlayerProvider>
+    <ErrorBoundary>
+      <PlayerProvider>
+        <MainLayout />
+      </PlayerProvider>
+    </ErrorBoundary>
   );
 }

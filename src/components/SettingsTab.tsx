@@ -24,10 +24,13 @@ import {
   FastForward,
   Zap,
   LayoutGrid,
-  Car
+  Car,
+  Lock,
+  Sparkles
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { notificationService } from '../services/notificationService';
+import { NovaStudio } from './NovaStudio';
 
 const ACCENT_COLORS = [
   { name: 'Electric Purple (Default)', value: '#7C6EFF' },
@@ -74,6 +77,7 @@ export const SettingsTab: React.FC = () => {
   const [cacheCleared, setCacheCleared] = useState(false);
   const [customHex, setCustomHex] = useState(settings.accentColor);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
 
   useEffect(() => {
     // Check notification permission
@@ -712,27 +716,27 @@ export const SettingsTab: React.FC = () => {
         {/* View Mode */}
         <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
           <div>
-            <span className="text-xs font-semibold text-white block">Display Density</span>
+            <span className="text-xs font-semibold text-white block">Display Layout</span>
             <span className="text-[11px] text-white/50">
-              {settings.libraryViewMode === 'comfortable' ? 'Comfortable spacing' : 'Compact high-density'}
+              {settings.libraryViewMode === 'grid' ? 'Grid square cards' : 'Vertical list view'}
             </span>
           </div>
           <div className="flex rounded-xl bg-white/10 p-1">
             <button
-              onClick={() => updateSettings?.({ libraryViewMode: 'compact' })}
+              onClick={() => updateSettings?.({ libraryViewMode: 'list' })}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                settings.libraryViewMode !== 'comfortable' ? 'bg-white text-black' : 'text-white/60'
+                settings.libraryViewMode === 'list' ? 'bg-white text-black' : 'text-white/60'
               }`}
             >
-              Compact
+              List
             </button>
             <button
-              onClick={() => updateSettings?.({ libraryViewMode: 'comfortable' })}
+              onClick={() => updateSettings?.({ libraryViewMode: 'grid' })}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                settings.libraryViewMode === 'comfortable' ? 'bg-white text-black' : 'text-white/60'
+                settings.libraryViewMode === 'grid' ? 'bg-white text-black' : 'text-white/60'
               }`}
             >
-              Comfortable
+              Grid
             </button>
           </div>
         </div>
@@ -990,8 +994,25 @@ export const SettingsTab: React.FC = () => {
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Cloud Streaming & Local Playback • Zero Tracking • Studio Audio</span>
           </div>
+
+          {/* Secure Creator Portal Entry for Sourav Phukan */}
+          <div className="pt-3 border-t border-white/10">
+            <button
+              onClick={() => setIsStudioOpen(true)}
+              className="w-full py-3 px-4 rounded-2xl bg-white/[0.05] hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-white/80 hover:text-emerald-400 transition-all flex items-center justify-center gap-2 group text-xs font-bold shadow-lg"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-400 group-hover:rotate-12 transition-transform" />
+              <span>Open NOVA Studio (Creator Console)</span>
+              <Lock className="w-3.5 h-3.5 text-white/40 ml-1" />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Render Nova Studio Modal when opened */}
+      {isStudioOpen && (
+        <NovaStudio onClose={() => setIsStudioOpen(false)} />
+      )}
 
       {/* Bottom spacer for miniplayer and bottom navigation */}
       <div className="h-28 w-full" aria-hidden="true" />
