@@ -1,6 +1,6 @@
 import { Track, TelegramChannelConfig } from '../types';
 import { saveTrackWithAudio } from './storageDb';
-import { getApiBaseUrl, resolveAudioStreamUrl } from './apiConfig';
+import { getApiBaseUrl, resolveAudioStreamUrl, isRunningInNativeApp } from './apiConfig';
 import { DEFAULT_TRACKS } from '../data/defaultTracks';
 
 const STORAGE_KEY_CONFIG = 'nova_telegram_channel_config';
@@ -105,14 +105,14 @@ class TelegramCloudService {
     this.loadSavedTracks();
 
     if (typeof window !== 'undefined') {
-      // Auto-poll telegram tracks every 6 seconds in background
+      // Auto-poll tracks gently on app open and then periodically
       setTimeout(() => {
         this.autoFetchTracks().catch(() => {});
-      }, 1000);
+      }, 1500);
 
       setInterval(() => {
         this.autoFetchTracks().catch(() => {});
-      }, 6000);
+      }, 30000);
 
       window.addEventListener('focus', () => {
         this.autoFetchTracks().catch(() => {});
@@ -262,65 +262,79 @@ class TelegramCloudService {
       console.warn('Auto fetch from /api/telegram/tracks failed, using direct Telegram sync:', e);
     }
 
-    // Direct Telegram fallback when running in APK or standalone offline clone
-    try {
-      const token = this.config.botToken || '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg';
-      const tgRes = await fetch(`https://api.telegram.org/bot${token}/getUpdates?allowed_updates=["channel_post","message"]&limit=100`);
-      if (tgRes.ok) {
-        const tgData = await tgRes.json();
-        if (tgData.ok && Array.isArray(tgData.result)) {
-          const newTracks: Track[] = [];
-          for (const item of tgData.result) {
-            const msg = item.channel_post || item.message;
-            if (!msg) continue;
-            const audio = msg.audio || msg.document;
-            if (audio && (audio.mime_type?.startsWith('audio/') || audio.file_name?.match(/\.(mp3|flac|wav|m4a|aac|ogg)$/i))) {
-              const fileId = audio.file_id;
-              const fileUniqueId = audio.file_unique_id || '';
-              const exists = this.cloudTracks.some(t => t.audioUrl?.includes(fileId) || (audio.title && t.title.toLowerCase() === audio.title.toLowerCase()));
-              if (!exists) {
-                const rawTitle = audio.title || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Track';
-                const rawArtist = audio.performer || 'Indie Artist';
-                const thumbFileId = audio.thumbnail?.file_id || audio.thumb?.file_id;
-                const coverArt = thumbFileId
-                  ? `/api/telegram/image?file_id=${thumbFileId}`
-                  : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+    // Direct Telegram fallback ONLY when running in APK/native or custom token configured
+    if (isRunningInNativeApp() || Boolean(this.config.botToken)) {
+      try {
+        const token = this.config.botToken || '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg';
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        let tgRes: Response;
+        try {
+          tgRes = await fetch(`https://api.telegram.org/bot${token}/getUpdates?allowed_updates=["channel_post","message"]&limit=100`, {
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timer);
+        }
 
-                const track: Track = {
-                  id: `tg-${fileUniqueId || 'song-' + (msg.message_id || Date.now())}`,
-                  title: rawTitle,
-                  artist: rawArtist,
-                  album: 'NOVA Private Library',
-                  duration: audio.duration || 240,
-                  format: (audio.file_name?.endsWith('.m4a') || audio.mime_type === 'audio/mp4') ? 'm4a' : 'mp3',
-                  coverArt,
-                  audioUrl: `/api/telegram/audio?file_id=${fileId}`,
-                  synthPreset: 'acoustic',
-                  genre: 'Telegram Cloud Music',
-                  folder: `NOVA Private Library / ${rawArtist}`,
-                  year: new Date().getFullYear(),
-                  bitRate: '320 kbps (Telegram Cloud Master)',
-                  playCount: 0,
-                  isFavorite: false,
-                  dateAdded: (msg.date || Math.floor(Date.now() / 1000)) * 1000,
-                  lyrics: [
-                    { time: 0, text: `♪ ${rawTitle} - ${rawArtist} ♪` }
-                  ]
-                };
-                newTracks.push(track);
+        if (tgRes.ok) {
+          const tgData = await tgRes.json();
+          if (tgData.ok && Array.isArray(tgData.result)) {
+            const newTracks: Track[] = [];
+            for (const item of tgData.result) {
+              const msg = item.channel_post || item.message;
+              if (!msg) continue;
+              const audio = msg.audio || msg.document;
+              if (audio && (audio.mime_type?.startsWith('audio/') || audio.file_name?.match(/\.(mp3|flac|wav|m4a|aac|ogg)$/i))) {
+                const fileId = audio.file_id;
+                const fileUniqueId = audio.file_unique_id || '';
+                const exists = this.cloudTracks.some(t => t.audioUrl?.includes(fileId) || (audio.title && t.title.toLowerCase() === audio.title.toLowerCase()));
+                if (!exists) {
+                  const rawTitle = audio.title || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Track';
+                  const rawArtist = audio.performer || 'Indie Artist';
+                  const thumbFileId = audio.thumbnail?.file_id || audio.thumb?.file_id;
+                  const coverArt = thumbFileId
+                    ? `/api/telegram/image?file_id=${thumbFileId}`
+                    : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+
+                  const track: Track = {
+                    id: `tg-${fileUniqueId || 'song-' + (msg.message_id || Date.now())}`,
+                    title: rawTitle,
+                    artist: rawArtist,
+                    album: 'NOVA Private Library',
+                    duration: audio.duration || 240,
+                    format: (audio.file_name?.endsWith('.m4a') || audio.mime_type === 'audio/mp4') ? 'm4a' : 'mp3',
+                    coverArt,
+                    audioUrl: `/api/telegram/audio?file_id=${fileId}`,
+                    synthPreset: 'acoustic',
+                    genre: 'Telegram Cloud Music',
+                    folder: `NOVA Private Library / ${rawArtist}`,
+                    year: new Date().getFullYear(),
+                    bitRate: '320 kbps (Telegram Cloud Master)',
+                    playCount: 0,
+                    isFavorite: false,
+                    dateAdded: (msg.date || Math.floor(Date.now() / 1000)) * 1000,
+                    lyrics: [
+                      { time: 0, text: `♪ ${rawTitle} - ${rawArtist} ♪` }
+                    ]
+                  };
+                  newTracks.push(track);
+                }
               }
             }
-          }
-          if (newTracks.length > 0) {
-            this.cloudTracks = [...this.cloudTracks, ...newTracks];
-            try {
-              localStorage.setItem(STORAGE_KEY_CLOUD_TRACKS, JSON.stringify(this.cloudTracks));
-            } catch {}
+            if (newTracks.length > 0) {
+              this.cloudTracks = [...this.cloudTracks, ...newTracks];
+              try {
+                localStorage.setItem(STORAGE_KEY_CLOUD_TRACKS, JSON.stringify(this.cloudTracks));
+              } catch {}
+            }
           }
         }
+      } catch (tgErr: any) {
+        if (tgErr?.name !== 'AbortError' && !tgErr?.message?.includes('aborted')) {
+          console.debug?.('Direct Telegram updates note:', tgErr?.message || tgErr);
+        }
       }
-    } catch (tgErr) {
-      console.warn('Direct Telegram updates fetch failed:', tgErr);
     }
 
     return this.cloudTracks;

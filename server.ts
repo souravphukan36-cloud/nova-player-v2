@@ -695,40 +695,41 @@ function saveTracksDb() {
 
 // Cache resolved Telegram file_paths so we don't spam getFile API
 const filePathCache: Record<string, string> = {
-  'CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ': 'music/file_66',
-  'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ': 'music/file_67',
-  'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'music/file_36.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'music/file_37.mp3',
-  'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_38.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_39.mp3',
-  'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'music/file_40.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'music/file_61.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ': 'music/file_62.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E': 'music/file_33.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMPaqdEbjkP-BkClAG8uhUChRhEYboAAioiAAJ43yBVc65XGg18R5g9BA': 'music/file_41.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMRaqdEciBcq_Oi6ITxKHZivW1iJFIAAmYiAAJ43yBVJY3mvGlpvE89BA': 'music/file_43.mp3',
-  'CQACAgUAAyEFAATTJi5KAAMSaqdEc68fEiSv-jsP130j9ZTGCuMAAgshAAJSFSFVxnJpxksfpto9BA': 'music/file_44.m4a',
-  'CQACAgUAAyEFAATTJi5KAAMUaqdEdKDph_plO7RTOtiXusbUqdoAAlwhAAJSFSFVOggH_w3abN89BA': 'music/file_45.mp3',
-  'CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA': 'music/file_46.mp3',
-  'CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA': 'music/file_63.mp3',
-  'CQACAgUAAyEFAATTJi5KAAMraqg_Q81zYqQjIIcB8OUFr672NkoAAl4hAAJOMkhVtiQNHA_O3Uo9BA': 'music/file_65.m4a',
+  // Verified Telegram Cloud Audio File Paths (Current Active CDN Mapping)
+  'CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ': 'music/file_70',     // Arz Kiya Hai (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ': 'music/file_71',     // Aaoge Tum Kabhi (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'music/file_72.m4a', // Choo Lo (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'music/file_73.mp3', // Kaahe Mose (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_74.m4a', // Raabta (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_75.mp3', // Somewhere Only We Know (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'music/file_76.m4a', // Jo Tum Mere Ho (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'music/file_77.m4a', // Dil Jhoom (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ': 'music/file_78.m4a', // Nadaan Parinde (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E': 'music/file_79.m4a', // Kaash Aisa Hota (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMPaqdEbjkP-BkClAG8uhUChRhEYboAAioiAAJ43yBVc65XGg18R5g9BA': 'music/file_80.m4a', // Surili Akhiyon Wale (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMRaqdEciBcq_Oi6ITxKHZivW1iJFIAAmYiAAJ43yBVJY3mvGlpvE89BA': 'music/file_81.mp3', // Bairan (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMSaqdEc68fEiSv-jsP130j9ZTGCuMAAgshAAJSFSFVxnJpxksfpto9BA': 'music/file_82.m4a', // Faasle (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMUaqdEdKDph_plO7RTOtiXusbUqdoAAlwhAAJSFSFVOggH_w3abN89BA': 'music/file_83.mp3', // Kaise Hua (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA': 'music/file_84.mp3', // Come And Get Your Love (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA': 'music/file_85.mp3', // Black Star (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMraqg_Q81zYqQjIIcB8OUFr672NkoAAl4hAAJOMkhVtiQNHA_O3Uo9BA': 'music/file_86.m4a', // Muntazir (.m4a)
 
-  // Image Thumbnails
-  'AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E': 'thumbnails/file_47.jpg',
-  'AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E': 'thumbnails/file_48.jpg',
-  'AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA': 'thumbnails/file_49.jpg',
-  'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_50.jpg',
-  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_51.jpg',
-  'AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E': 'thumbnails/file_58.jpg',
-  'AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E': 'thumbnails/file_59.jpg',
-  'AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA': 'thumbnails/file_30.jpg',
-  'AAMCBQADIQUABNMmLkoAAw9qp0RuOQ_4GQKUAby6FQKFGERhugACKiIAAnjfIFVzrlcaDXxHmAEAB20AAz0E': 'thumbnails/file_52.jpg',
-  'AAMCBQADIQUABNMmLkoAAxFqp0RyIFyr86LohPEodmK9bWIkUgACZiIAAnjfIFUljea8aWm8TwEAB20AAz0E': 'thumbnails/file_54.jpg',
-  'AAMCBQADIQUABNMmLkoAAxJqp0Rzrx8SJK_6Ow_XfSP1lMYK4wACCyEAAlIVIVXGcmnGSx-m2gEAB20AAz0E': 'thumbnails/file_55.jpg',
-  'AAMCBQADIQUABNMmLkoAAxRqp0R0oOmH-mU7tFM62Je6xtSp2gACXCEAAlIVIVU6CAf_Ddps3wEAB20AAz0E': 'thumbnails/file_56.jpg',
-  'AAMCBQADIQUABNMmLkoAAxVqp0R0yw2nxW6DdC4QMa84sjR2bQACNB8AAlIVKVUC8T6X_8ujjAEAB20AAz0E': 'thumbnails/file_57.jpg',
-  'AAMCBQADIQUABNMmLkoAAylqpnC8-JAwkvon3xFDem37HNtO1gACPiIAAuafOVVi9bQJQxKslQEAB20AAz0E': 'thumbnails/file_60.jpg',
-  'AAMCBQADIQUABNMmLkoAAytqqD9DzXNipCMghwHw5QWvrvY2SgACXiEAAk4ySFW2JA0cD87dSgEAB20AAz0E': 'thumbnails/file_64.jpg'
+  // Real Uploaded Song Picture / Thumbnails
+  'AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E': 'thumbnails/file_87.jpg',
+  'AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E': 'thumbnails/file_93.jpg',
+  'AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA': 'thumbnails/file_88.jpg',
+  'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': 'thumbnails/file_91.jpg',
+  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': 'thumbnails/file_92.jpg',
+  'AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E': 'thumbnails/file_90.jpg',
+  'AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E': 'thumbnails/file_89.jpg',
+  'AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA': 'thumbnails/file_89.jpg',
+  'AAMCBQADIQUABNMmLkoAAw9qp0RuOQ_4GQKUAby6FQKFGERhugACKiIAAnjfIFVzrlcaDXxHmAEAB20AAz0E': 'thumbnails/file_96.jpg',
+  'AAMCBQADIQUABNMmLkoAAxFqp0RyIFyr86LohPEodmK9bWIkUgACZiIAAnjfIFUljea8aWm8TwEAB20AAz0E': 'thumbnails/file_97.jpg',
+  'AAMCBQADIQUABNMmLkoAAxJqp0Rzrx8SJK_6Ow_XfSP1lMYK4wACCyEAAlIVIVXGcmnGSx-m2gEAB20AAz0E': 'thumbnails/file_94.jpg',
+  'AAMCBQADIQUABNMmLkoAAxRqp0R0oOmH-mU7tFM62Je6xtSp2gACXCEAAlIVIVU6CAf_Ddps3wEAB20AAz0E': 'thumbnails/file_98.jpg',
+  'AAMCBQADIQUABNMmLkoAAxVqp0R0yw2nxW6DdC4QMa84sjR2bQACNB8AAlIVKVUC8T6X_8ujjAEAB20AAz0E': 'thumbnails/file_95.jpg',
+  'AAMCBQADIQUABNMmLkoAAylqpnC8-JAwkvon3xFDem37HNtO1gACPiIAAuafOVVi9bQJQxKslQEAB20AAz0E': 'thumbnails/file_100.jpg',
+  'AAMCBQADIQUABNMmLkoAAytqqD9DzXNipCMghwHw5QWvrvY2SgACXiEAAk4ySFW2JA0cD87dSgEAB20AAz0E': 'thumbnails/file_99.jpg'
 };
 
 // Explicit MIME type mapping for high-fidelity audio playback across Chrome/Android/iOS
@@ -750,84 +751,71 @@ const fileMimeCache: Record<string, string> = {
   'CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA': 'audio/mpeg', // Come And Get Your Love (.mp3)
   'CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA': 'audio/mpeg', // Black Star (.mp3)
   'CQACAgUAAyEFAATTJi5KAAMraqg_Q81zYqQjIIcB8OUFr672NkoAAl4hAAJOMkhVtiQNHA_O3Uo9BA': 'audio/mp4',  // Muntazir (.m4a)
-  'music/file_66': 'audio/mpeg',
-  'music/file_67': 'audio/mp4',
-  'music/file_36.m4a': 'audio/mp4',
-  'music/file_37.mp3': 'audio/mpeg',
-  'music/file_38.m4a': 'audio/mp4',
-  'music/file_39.mp3': 'audio/mpeg',
-  'music/file_40.m4a': 'audio/mp4',
-  'music/file_61.m4a': 'audio/mp4',
-  'music/file_62.m4a': 'audio/mp4',
-  'music/file_33.m4a': 'audio/mp4',
-  'music/file_41.m4a': 'audio/mp4',
-  'music/file_43.mp3': 'audio/mpeg',
-  'music/file_44.m4a': 'audio/mp4',
-  'music/file_45.mp3': 'audio/mpeg',
-  'music/file_46.mp3': 'audio/mpeg',
-  'music/file_63.mp3': 'audio/mpeg',
-  'music/file_65.m4a': 'audio/mp4'
+  'music/file_70': 'audio/mpeg',
+  'music/file_71': 'audio/mp4',
+  'music/file_72.m4a': 'audio/mp4',
+  'music/file_73.mp3': 'audio/mpeg',
+  'music/file_74.m4a': 'audio/mp4',
+  'music/file_75.mp3': 'audio/mpeg',
+  'music/file_76.m4a': 'audio/mp4',
+  'music/file_77.m4a': 'audio/mp4',
+  'music/file_78.m4a': 'audio/mp4',
+  'music/file_79.m4a': 'audio/mp4',
+  'music/file_80.m4a': 'audio/mp4',
+  'music/file_81.mp3': 'audio/mpeg',
+  'music/file_82.m4a': 'audio/mp4',
+  'music/file_83.mp3': 'audio/mpeg',
+  'music/file_84.mp3': 'audio/mpeg',
+  'music/file_85.mp3': 'audio/mpeg',
+  'music/file_86.m4a': 'audio/mp4'
 };
 
-// Intelligent metadata cleaner for uploaded audio files
+// Intelligent metadata cleaner for uploaded audio files: respects existing title and performer!
 function cleanAudioMetadata(rawTitle: string, rawPerformer: string): { title: string; artist: string } {
-  let title = rawTitle || 'Telegram Audio';
-  let artist = rawPerformer || 'Indie Artist';
+  let title = (rawTitle || '').trim();
+  let artist = (rawPerformer || '').trim();
 
-  const knownArtists = [
-    'Anuv Jain',
-    'The Local Train',
-    'Keane',
-    'Arijit Singh',
-    'Prateek Kuhad',
-    'Pritam',
-    'Atif Aslam',
-    'Mohit Chauhan',
-    'Shreya Ghoshal',
-    'Garvit Soni',
-    'Priyansh Srivastava'
-  ];
-
-  for (const known of knownArtists) {
-    const re = new RegExp(`\\b${known}\\b`, 'i');
-    if (re.test(title) || re.test(artist)) {
-      artist = known;
-      title = title.replace(re, '').trim();
-      break;
-    }
-  }
-
-  // Remove junk like (M4A_128K), (Lyrics), [Official Audio], etc.
+  // Strip file extension if embedded in title
   title = title
-    .replace(/\(.*?\)/g, '')
-    .replace(/\[.*?\]/g, '')
-    .replace(/\b(lyrics|official audio|official video|full song|audio|hd|4k)\b/gi, '')
-    .replace(/[-_]/g, ' ')
+    .replace(/\.(mp3|flac|wav|m4a|aac|ogg|opus|mp4)$/i, '')
+    .replace(/\b(128kbps|320kbps|128k|320k|m4a_128k|mp3_320k|official audio|lyrics)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   if (!title) {
-    title = rawTitle.replace(/\(.*?\)/g, '').trim() || 'Telegram Audio';
+    title = 'Telegram Audio';
+  }
+  if (!artist) {
+    artist = 'Indie Artist';
   }
 
   return { title, artist };
 }
 
-async function resolveTelegramFilePath(fileId: string): Promise<string | null> {
-  if (filePathCache[fileId]) return filePathCache[fileId];
+async function resolveTelegramFilePath(fileId: string, forceFresh = false): Promise<string | null> {
+  if (!forceFresh && filePathCache[fileId]) return filePathCache[fileId];
   try {
-    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
-    if (res.ok) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+    let res: any;
+    try {
+      res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (res && res.ok) {
       const data = await res.json() as any;
       if (data.ok && data.result?.file_path) {
         filePathCache[fileId] = data.result.file_path;
         return data.result.file_path;
       }
     }
-  } catch (err) {
-    console.warn('Failed to resolve Telegram file path for', fileId, err);
+  } catch (err: any) {
+    if (err?.name !== 'AbortError' && !err?.message?.includes('aborted') && !err?.message?.includes('timeout')) {
+      console.warn('Failed to resolve Telegram file path for', fileId, err?.message || err);
+    }
   }
-  return null;
+  return filePathCache[fileId] || null;
 }
 
 const prewarmingSet = new Set<string>();
@@ -890,13 +878,38 @@ function prewarmAllTracks() {
   }, 1000);
 }
 
-// Helper: Query Telegram Bot API for new updates / files
-async function fetchTelegramUpdates(customToken?: string) {
+let isFetchingUpdates = false;
+let lastFetchTime = 0;
+
+// Helper: Query Telegram Bot API for new updates / files with fast timeout and non-blocking safety
+async function fetchTelegramUpdates(customToken?: string, force = false) {
+  const now = Date.now();
+  // Debounce background calls: don't hit Telegram if fetched within last 60 seconds unless forced
+  if (!force && now - lastFetchTime < 60000) {
+    return;
+  }
+  if (isFetchingUpdates) {
+    return;
+  }
+
   const tokenToUse = customToken || TELEGRAM_BOT_TOKEN;
+  isFetchingUpdates = true;
+  lastFetchTime = now;
+
   try {
     const url = `https://api.telegram.org/bot${tokenToUse}/getUpdates?allowed_updates=["channel_post","message","edited_channel_post","edited_message"]&limit=100&offset=${lastTelegramUpdateId + 1}`;
-    const res = await fetch(url);
-    if (!res.ok) return;
+    // 3.5-second timeout so it never blocks or causes long hanging connections
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+
+    let res: any;
+    try {
+      res = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!res || !res.ok) return;
     const data = await res.json() as any;
     let updatesList: any[] = [];
     if (data.ok && Array.isArray(data.result) && data.result.length > 0) {
@@ -905,12 +918,18 @@ async function fetchTelegramUpdates(customToken?: string) {
       // Fallback: check recent updates without offset to guarantee any recent channel post is captured
       try {
         const fallbackUrl = `https://api.telegram.org/bot${tokenToUse}/getUpdates?allowed_updates=["channel_post","message","edited_channel_post","edited_message"]&limit=50&offset=-50`;
-        const fbRes = await fetch(fallbackUrl);
-        if (fbRes.ok) {
-          const fbData = await fbRes.json() as any;
-          if (fbData.ok && Array.isArray(fbData.result)) {
-            updatesList = fbData.result;
+        const fbController = new AbortController();
+        const fbTimer = setTimeout(() => fbController.abort(), 3500);
+        try {
+          const fbRes = await fetch(fallbackUrl, { signal: fbController.signal });
+          if (fbRes.ok) {
+            const fbData = await fbRes.json() as any;
+            if (fbData.ok && Array.isArray(fbData.result)) {
+              updatesList = fbData.result;
+            }
           }
+        } finally {
+          clearTimeout(fbTimer);
         }
       } catch {}
     }
@@ -1005,8 +1024,12 @@ async function fetchTelegramUpdates(customToken?: string) {
         saveTracksDb();
       }
     }
-  } catch (err) {
-    console.warn('Could not poll Telegram updates:', err);
+  } catch (err: any) {
+    if (err?.name !== 'AbortError' && !err?.message?.includes('aborted') && !err?.message?.includes('timeout')) {
+      console.warn('Telegram updates check note:', err?.message || err);
+    }
+  } finally {
+    isFetchingUpdates = false;
   }
 }
 
@@ -1040,8 +1063,8 @@ async function startServer() {
 
   // 1. Get all tracks from Telegram bot channel (with custom overrides applied)
   app.get('/api/telegram/tracks', async (req: Request, res: Response) => {
-    // Check for any new updates in background
-    await fetchTelegramUpdates();
+    // Check for any new updates in background (non-blocking)
+    fetchTelegramUpdates().catch(() => {});
     // Warm track cache in background for 0-second fast playback
     prewarmAllTracks();
 
@@ -1397,62 +1420,86 @@ async function startServer() {
 
     // 2. Cache Miss: Stream from Telegram and write to local disk cache simultaneously
     prewarmTrackCache(fileId || '', filePath || '');
-    const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
 
-    const headers: Record<string, string> = {};
-    if (req.headers.range) {
-      headers['Range'] = req.headers.range;
-    }
-
-    https.get(telegramFileUrl, { headers }, (tgRes) => {
-      const statusCode = tgRes.statusCode || 200;
-
-      res.status(statusCode);
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
-      res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
-      res.setHeader('X-Cache-Status', 'MISS-STREAMING');
-
-      if (tgRes.headers['content-range']) {
-        res.setHeader('Content-Range', tgRes.headers['content-range']);
-      }
-      if (tgRes.headers['content-length']) {
-        res.setHeader('Content-Length', tgRes.headers['content-length']);
+    const streamFromTelegram = (pathCandidate: string, isRetry = false) => {
+      const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${pathCandidate}`;
+      const headers: Record<string, string> = {};
+      if (req.headers.range) {
+        headers['Range'] = req.headers.range;
       }
 
-      if (req.method === 'HEAD') {
-        res.end();
-        return;
-      }
+      https.get(telegramFileUrl, { headers }, (tgRes) => {
+        const statusCode = tgRes.statusCode || 200;
 
-      // If full audio stream (status 200), save to disk cache in background
-      if (statusCode === 200) {
-        const diskTarget = getAudioCachePath(fileId || filePath, filePath);
-        const tempPath = `${diskTarget}.tmp.${Date.now()}`;
-        const writeStream = fs.createWriteStream(tempPath);
-        tgRes.pipe(writeStream);
-        writeStream.on('finish', () => {
-          fs.rename(tempPath, diskTarget, (err) => {
-            if (!err) {
-              console.log(`[Spotify Cache Engine] Saved to disk cache: ${path.basename(diskTarget)}`);
+        // Auto-healing: If Telegram CDN returns 404, 403, or 410, refresh file_path from Telegram Bot API immediately
+        if ((statusCode === 404 || statusCode === 403 || statusCode === 410) && !isRetry && fileId) {
+          console.warn(`[Audio Stream Engine] Telegram returned ${statusCode} for ${pathCandidate}. Querying Bot API for refreshed path...`);
+          resolveTelegramFilePath(fileId, true).then((freshPath) => {
+            if (freshPath && freshPath !== pathCandidate) {
+              console.log(`[Audio Stream Engine] Refreshed path resolved: ${freshPath}. Retrying stream...`);
+              streamFromTelegram(freshPath, true);
+            } else {
+              if (!res.headersSent) {
+                res.status(statusCode).send('Audio stream not available');
+              }
+            }
+          }).catch(() => {
+            if (!res.headersSent) {
+              res.status(statusCode).send('Audio stream failed');
             }
           });
-        });
-        writeStream.on('error', () => {
-          try { fs.unlinkSync(tempPath); } catch {}
-        });
-      }
+          return;
+        }
 
-      tgRes.pipe(res);
-    }).on('error', (err) => {
-      console.error('Telegram streaming proxy error:', err);
-      if (!res.headersSent) {
-        res.status(502).send('Error streaming audio from Telegram');
-      }
-    });
+        res.status(statusCode);
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+        res.setHeader('X-Cache-Status', isRetry ? 'MISS-HEALED' : 'MISS-STREAMING');
+
+        if (tgRes.headers['content-range']) {
+          res.setHeader('Content-Range', tgRes.headers['content-range']);
+        }
+        if (tgRes.headers['content-length']) {
+          res.setHeader('Content-Length', tgRes.headers['content-length']);
+        }
+
+        if (req.method === 'HEAD') {
+          res.end();
+          return;
+        }
+
+        // If full audio stream (status 200), save to disk cache in background
+        if (statusCode === 200) {
+          const diskTarget = getAudioCachePath(fileId || pathCandidate, pathCandidate);
+          const tempPath = `${diskTarget}.tmp.${Date.now()}`;
+          const writeStream = fs.createWriteStream(tempPath);
+          tgRes.pipe(writeStream);
+          writeStream.on('finish', () => {
+            fs.rename(tempPath, diskTarget, (err) => {
+              if (!err) {
+                console.log(`[Spotify Cache Engine] Saved to disk cache: ${path.basename(diskTarget)}`);
+              }
+            });
+          });
+          writeStream.on('error', () => {
+            try { fs.unlinkSync(tempPath); } catch {}
+          });
+        }
+
+        tgRes.pipe(res);
+      }).on('error', (err) => {
+        console.error('Telegram streaming proxy error:', err);
+        if (!res.headersSent) {
+          res.status(502).send('Error streaming audio from Telegram');
+        }
+      });
+    };
+
+    streamFromTelegram(filePath);
   });
 
   // In-memory cache for fetched Telegram images to make album artwork load instantly
@@ -1492,52 +1539,69 @@ async function startServer() {
     }
 
     try {
-      const filePath = await resolveTelegramFilePath(fileId);
-      if (!filePath) {
+      const initialPath = await resolveTelegramFilePath(fileId);
+      if (!initialPath) {
         res.status(404).send('Image file not found on Telegram');
         return;
       }
 
-      const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
-      https.get(telegramFileUrl, (tgRes) => {
-        if (tgRes.statusCode !== 200) {
-          res.status(tgRes.statusCode || 404).send('Image not available');
-          return;
-        }
+      const fetchImage = (pathCandidate: string, isRetry = false) => {
+        const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${pathCandidate}`;
+        https.get(telegramFileUrl, (tgRes) => {
+          if ((tgRes.statusCode === 404 || tgRes.statusCode === 403) && !isRetry) {
+            resolveTelegramFilePath(fileId, true).then((fresh) => {
+              if (fresh && fresh !== pathCandidate) {
+                fetchImage(fresh, true);
+              } else {
+                if (!res.headersSent) res.status(tgRes.statusCode || 404).send('Image not available');
+              }
+            }).catch(() => {
+              if (!res.headersSent) res.status(tgRes.statusCode || 404).send('Image not available');
+            });
+            return;
+          }
 
-        let mimeType = 'image/jpeg';
-        const lowerPath = filePath.toLowerCase();
-        if (lowerPath.endsWith('.png')) {
-          mimeType = 'image/png';
-        } else if (lowerPath.endsWith('.webp')) {
-          mimeType = 'image/webp';
-        } else if (lowerPath.endsWith('.gif')) {
-          mimeType = 'image/gif';
-        } else {
-          mimeType = 'image/jpeg';
-        }
+          if (tgRes.statusCode !== 200) {
+            if (!res.headersSent) res.status(tgRes.statusCode || 404).send('Image not available');
+            return;
+          }
 
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+          let mimeType = 'image/jpeg';
+          const lowerPath = pathCandidate.toLowerCase();
+          if (lowerPath.endsWith('.png')) {
+            mimeType = 'image/png';
+          } else if (lowerPath.endsWith('.webp')) {
+            mimeType = 'image/webp';
+          } else if (lowerPath.endsWith('.gif')) {
+            mimeType = 'image/gif';
+          } else {
+            mimeType = 'image/jpeg';
+          }
 
-        const chunks: Buffer[] = [];
-        tgRes.on('data', (c) => chunks.push(c));
-        tgRes.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          imageMemoryCache.set(fileId, { buffer, mimeType });
-          try {
-            fs.writeFileSync(diskImagePath, buffer);
-          } catch {}
-          res.send(buffer);
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+
+          const chunks: Buffer[] = [];
+          tgRes.on('data', (c) => chunks.push(c));
+          tgRes.on('end', () => {
+            const buffer = Buffer.concat(chunks);
+            imageMemoryCache.set(fileId, { buffer, mimeType });
+            try {
+              fs.writeFileSync(diskImagePath, buffer);
+            } catch {}
+            if (!res.headersSent) res.send(buffer);
+          });
+        }).on('error', (err) => {
+          console.error('Telegram image proxy error:', err);
+          if (!res.headersSent) {
+            res.status(502).send('Error fetching image');
+          }
         });
-      }).on('error', (err) => {
-        console.error('Telegram image proxy error:', err);
-        if (!res.headersSent) {
-          res.status(502).send('Error fetching image');
-        }
-      });
+      };
+
+      fetchImage(initialPath);
     } catch (err) {
       console.error('Telegram image route exception:', err);
       if (!res.headersSent) {
@@ -1606,10 +1670,10 @@ async function startServer() {
     }
   }
 
-  // Start background periodic polling for Telegram bot updates (every 10s)
+  // Periodic background check for Telegram bot updates (every 60s)
   setInterval(() => {
     fetchTelegramUpdates().then(() => preCacheAllTracks()).catch(() => {});
-  }, 10000);
+  }, 60000);
   fetchTelegramUpdates().then(() => preCacheAllTracks()).catch(() => {});
 
   app.listen(PORT, '0.0.0.0', () => {
