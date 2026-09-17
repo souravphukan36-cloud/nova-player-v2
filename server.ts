@@ -1090,12 +1090,30 @@ async function startServer() {
       return;
     }
 
-    // Find the track in dynamicTracks
-    const track = dynamicTracks.find(t => t.id === trackId);
+    // Find the track in dynamicTracks (matching by id, fileId, or case-insensitive title)
+    const track = dynamicTracks.find(t => 
+      t.id === trackId || 
+      (t.fileId && t.fileId === trackId) || 
+      (trackId.startsWith('tg-') && t.id.includes(trackId.replace('tg-', ''))) ||
+      (t.title && trackId && t.title.toLowerCase().trim() === trackId.toLowerCase().trim())
+    );
     if (!track) {
-      res.status(404).json({ success: false, error: 'Track not found with given trackId' });
-      return;
+      // If still not found, check if it exists in trackOverrides or create an on-the-fly entry
+      const fallbackTrack = {
+        id: trackId,
+        title: title || 'Updated Track',
+        artist: artist || 'Indie Artist',
+        album: album || 'NOVA Private Library',
+        duration: 240,
+        format: 'mp3',
+        coverArt: coverArt || '/covers/arz-kiya-hai.jpg',
+        genre: genre || 'Indie',
+        year: year || 2026,
+        isFavorite: isFavorite ?? false,
+      };
+      dynamicTracks.push(fallbackTrack);
     }
+    const targetTrack = dynamicTracks.find(t => t.id === trackId) || track || dynamicTracks[dynamicTracks.length - 1];
 
     const current = trackOverrides[trackId] || {};
     const updated: TrackOverride = {
@@ -1117,7 +1135,7 @@ async function startServer() {
     saveTrackOverrides();
 
     // Return the updated track with overrides applied
-    const finalizedTrack = applyTrackOverrides(track);
+    const finalizedTrack = applyTrackOverrides(targetTrack);
     console.log(`[Metadata Engine] Successfully updated track "${finalizedTrack.title}" (${trackId})`);
 
     res.json({

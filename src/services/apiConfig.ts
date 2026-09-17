@@ -2,8 +2,8 @@
  * Direct Telegram Cloud CDN & API Resolution:
  * Enables 100% standalone audio streaming and image rendering across:
  * - Android APK (Capacitor WebView) on physical mobile phones
- * - Localhost development / offline clones (without requiring a custom .env file)
- * - Cloud & PWA environments
+ * - Web Browser & PWA environments
+ * - Localhost development / offline clones
  */
 
 export const DEFAULT_TELEGRAM_BOT_TOKEN = '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg';
@@ -48,7 +48,7 @@ export const DEFAULT_TELEGRAM_PATH_CACHE: Record<string, string> = {
   'AAMCBQADIQUABNMmLkoAAytqqD9DzXNipCMghwHw5QWvrvY2SgACXiEAAk4ySFW2JA0cD87dSgEAB20AAz0E': 'thumbnails/file_64.jpg'
 };
 
-const STORAGE_CACHE_KEY = 'nova_tg_resolved_paths_v2';
+const STORAGE_CACHE_KEY = 'nova_tg_resolved_paths_v3';
 let runtimeCache: Record<string, string> = { ...DEFAULT_TELEGRAM_PATH_CACHE };
 
 try {
@@ -58,20 +58,36 @@ try {
       runtimeCache = { ...DEFAULT_TELEGRAM_PATH_CACHE, ...JSON.parse(saved) };
     }
   }
-} catch {}
+} catch {
+  // fallback
+}
 
 function persistRuntimeCache() {
   try {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_CACHE_KEY, JSON.stringify(runtimeCache));
     }
-  } catch {}
+  } catch {
+    // ignore
+  }
+}
+
+export function isRunningInNativeApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'file:' ||
+    window.location.hostname === 'localhost' ||
+    (window as any).Capacitor !== undefined
+  );
 }
 
 export function extractFileId(url: string | undefined): string | null {
   if (!url) return null;
   const match = url.match(/[?&]file_id=([^&]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  if (match) return decodeURIComponent(match[1]);
+  if (url.startsWith('CQAC') || url.startsWith('AAMC')) return url;
+  return null;
 }
 
 export async function resolveTelegramFilePath(fileId: string, forceRefresh = false): Promise<string | null> {
@@ -101,27 +117,40 @@ export function getApiBaseUrl(): string {
 
 /**
  * Synchronous Audio URL Resolver
- * Instantly returns the direct Telegram CDN URL using pre-cached file paths
+ * In Android APK: Returns direct Telegram CDN URL (or local path) so it plays without backend server!
+ * In Web Browser: Uses local /api/telegram/audio proxy when available or direct CDN
  */
 export function resolveAudioStreamUrl(url: string | undefined): string {
   if (!url) return '';
-  // Keep valid absolute or local URLs as is
   if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  // If already pointing to our Express server proxy, keep it (optimal caching, range requests, CORS headers)
-  if (url.startsWith('/api/telegram/audio')) {
-    return url;
-  }
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    // If it's pointing to telegram direct CDN, convert to local proxy to avoid CORS/content-disposition issues
-    const fileId = extractFileId(url);
+
+  const fileId = extractFileId(url);
+  const inNative = isRunningInNativeApp();
+
+  // If in Android APK (Capacitor), direct Telegram CDN stream is 100% required because localhost backend doesn't exist
+  if (inNative) {
     if (fileId) {
-      return `/api/telegram/audio?file_id=${fileId}`;
+      const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
+      if (cachedPath) {
+        return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
+      }
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    // Fallback if fileId exists
+    if (fileId) {
+      return `https://api.telegram.org/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`;
     }
     return url;
   }
-  const fileId = extractFileId(url) || (url.startsWith('CQAC') ? url : null);
+
+  // Web Browser environment
+  if (url.startsWith('/api/telegram/audio')) {
+    return url;
+  }
   if (fileId) {
     return `/api/telegram/audio?file_id=${fileId}`;
   }
@@ -130,32 +159,41 @@ export function resolveAudioStreamUrl(url: string | undefined): string {
 
 /**
  * Asynchronous Audio URL Resolver
- * Resolves high-speed streaming audio URL, keeping server proxy for 100% reliable CORS and disk cache playback
  */
 export async function resolveAudioStreamUrlAsync(url: string | undefined): Promise<string> {
   if (!url) return '';
   if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  if (url.startsWith('/api/telegram/audio')) {
-    return url;
+
+  const fileId = extractFileId(url);
+  const inNative = isRunningInNativeApp();
+
+  if (inNative && fileId) {
+    const directPath = await resolveTelegramFilePath(fileId);
+    if (directPath) {
+      return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${directPath}`;
+    }
   }
-  const fileId = extractFileId(url) || (url.startsWith('CQAC') ? url : null);
-  if (fileId) {
-    return `/api/telegram/audio?file_id=${fileId}`;
-  }
+
   return resolveAudioStreamUrl(url);
 }
 
 /**
  * Image / Thumbnail URL Resolver
- * Instantly returns high-res artwork directly from Telegram CDN or external artwork
+ * Resolves local cover art paths, Telegram CDN artworks, or external images
  */
 export function resolveImageUrl(url: string | undefined): string {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
+
+  // If pointing to public covers folder (/covers/...)
+  if (url.startsWith('/covers/')) {
+    return url;
+  }
+
   const fileId = extractFileId(url);
   if (fileId) {
     const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
@@ -165,6 +203,10 @@ export function resolveImageUrl(url: string | undefined): string {
     // Background fetch to populate cache for future views
     resolveTelegramFilePath(fileId).catch(() => {});
   }
+
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
   return url;
 }
-

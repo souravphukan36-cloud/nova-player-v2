@@ -152,6 +152,16 @@ export function getResolvedCoverArt(url?: string | null): string {
   if (url.includes('qFGvSgVq_6') || url.includes('AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_ot') || url.includes('raabta')) return '/covers/raabta.jpg';
   if (url.includes('qJrxdBQOWh') || url.includes('AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aEL') || url.includes('somewhere-only-we-know')) return '/covers/somewhere-only-we-know.jpg';
   if (url.includes('qMDbAUB0e5') || url.includes('AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mT') || url.includes('jo-tum-mere-ho')) return '/covers/jo-tum-mere-ho.jpg';
+  if (url.includes('xZqpVCI2Lq0') || url.includes('AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP') || url.includes('dil-jhoom')) return '/covers/1892b4dece2ea307feba67edc4b8ce41.jpg';
+  if (url.includes('xdqp0R5rJybi7fY') || url.includes('AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7f') || url.includes('nadaan-parinde')) return '/covers/ae7a3b9620e25a5f35df754a91c5c8d4.jpg';
+  if (url.includes('w9qp0RuOQ') || url.includes('AAMCBQADIQUABNMmLkoAAw9qp0RuOQ_4GQK') || url.includes('surili-akhiyon')) return '/covers/3335e41433e97b490ea21118261efcc3.jpg';
+  if (url.includes('xFqp0RyIFyr') || url.includes('AAMCBQADIQUABNMmLkoAAxFqp0RyIFyr86L') || url.includes('bairan')) return '/covers/5182d03d59464225e0dc50a7c7e61da8.jpg';
+  if (url.includes('xJqp0Rzrx8S') || url.includes('AAMCBQADIQUABNMmLkoAAxJqp0Rzrx8SJK_') || url.includes('faasle')) return '/covers/5bb81c734ba97a38665516be493c8e72.jpg';
+  if (url.includes('xRqp0R0oOmH') || url.includes('AAMCBQADIQUABNMmLkoAAxRqp0R0oOmH-mU') || url.includes('come-and-get-your-love')) return '/covers/04557933087ef9462888e04100c9b5f0.jpg';
+  if (url.includes('xVqp0R0yw2n') || url.includes('AAMCBQADIQUABNMmLkoAAxVqp0R0yw2nxW6') || url.includes('last-letter')) return '/covers/aaoge-tum-kabhi.jpg';
+  if (url.includes('ylqpnC8-JAw') || url.includes('AAMCBQADIQUABNMmLkoAAylqpnC8-JAwkvon') || url.includes('black-star')) return '/covers/the-local-train-artist.jpg';
+  if (url.includes('ytqqD9DzXNi') || url.includes('AAMCBQADIQUABNMmLkoAAytqqD9DzXNipCM') || url.includes('let-down')) return '/covers/arz-kiya-hai.jpg';
+  if (url.includes('Kaise Hua') || url.includes('kaise-hua')) return '/covers/aaoge-tum-kabhi.jpg';
 
   return resolveImageUrl(url);
 }
