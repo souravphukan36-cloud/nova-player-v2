@@ -36,15 +36,16 @@ class NotificationService {
       return;
     }
 
-    const icon = (track.coverArt && (track.coverArt.startsWith('http') || track.coverArt.startsWith('data:')))
-      ? track.coverArt
-      : '/icon-192.png';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const icon = track.coverArt
+      ? (track.coverArt.startsWith('http') || track.coverArt.startsWith('data:') ? track.coverArt : `${origin}${track.coverArt}`)
+      : `${origin}/icon-192.png`;
 
     const title = isPlaying ? `▶ Playing: ${track.title}` : `❚❚ Paused: ${track.title}`;
     const options: NotificationOptions = {
       body: `${track.artist} • ${track.album || 'NOVA Player'}`,
       icon,
-      badge: '/icon-192.png',
+      badge: `${origin}/icon-192.png`,
       tag: 'nova-player-active',
       silent: true,
     };

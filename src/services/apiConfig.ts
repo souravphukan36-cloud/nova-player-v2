@@ -154,9 +154,19 @@ export function resolveAudioStreamUrl(url: string | undefined): string {
 
   // Web Browser environment
   if (url.startsWith('/api/telegram/audio')) {
+    if (!url.includes('path=') && fileId) {
+      const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
+      if (cachedPath) {
+        return `${url}&path=${encodeURIComponent(cachedPath)}`;
+      }
+    }
     return url;
   }
   if (fileId) {
+    const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
+    if (cachedPath) {
+      return `/api/telegram/audio?file_id=${fileId}&path=${encodeURIComponent(cachedPath)}`;
+    }
     return `/api/telegram/audio?file_id=${fileId}`;
   }
   return url;

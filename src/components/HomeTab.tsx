@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Play, 
   Pause, 
@@ -13,7 +13,10 @@ import {
   CloudRain,
   Compass,
   Mic2,
-  Check
+  Check,
+  Bell,
+  X,
+  Star
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
@@ -37,6 +40,19 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
   } = usePlayer();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'lossless'>('all');
+  const [announcement, setAnnouncement] = useState<{ text: string; enabled: boolean; type?: string } | null>(null);
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/announcement')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.announcement?.enabled && data.announcement.text) {
+          setAnnouncement(data.announcement);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const shelves = settings.homeShelves;
   const isPortrait = shelves.cardStyle === 'portrait';
@@ -90,6 +106,36 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
 
   return (
     <div className="space-y-7 pb-36 px-4 sm:px-6 select-none animate-in fade-in duration-300">
+
+      {/* Global Admin Announcement Banner */}
+      {announcement && announcement.enabled && !dismissedAnnouncement && (
+        <div 
+          className="p-3.5 rounded-2xl border flex items-center justify-between gap-3 shadow-lg animate-in slide-in-from-top-2 duration-300"
+          style={{
+            backgroundColor: `${settings.accentColor}15`,
+            borderColor: `${settings.accentColor}35`,
+          }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div 
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${settings.accentColor}30`, color: settings.accentColor }}
+            >
+              <Bell className="w-4 h-4 animate-bounce" />
+            </div>
+            <p className="text-xs font-medium text-white/90 truncate">
+              {announcement.text}
+            </p>
+          </div>
+          <button
+            onClick={() => setDismissedAnnouncement(true)}
+            className="p-1 rounded-lg text-white/40 hover:text-white transition-colors flex-shrink-0"
+            title="Dismiss notice"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Top Customizer Action Bar & Category Chips */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">

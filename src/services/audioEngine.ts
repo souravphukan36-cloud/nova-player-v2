@@ -225,11 +225,22 @@ class AudioEngine {
       this.analyser.connect(this.ctx.destination);
 
       // Direct hardware HTML5 Audio routing for 100% reliable, loud, crystal-clear playback across all devices
-      // Without createMediaElementSource, audio plays directly to device DAC/speakers with zero CORS or AudioContext suspension blocks
-      this.audioElement = new Audio();
+      // Attached to document.body so Android background service maintains the audio pipeline and notification card
+      if (typeof document !== 'undefined') {
+        let existing = document.getElementById('nova-core-audio') as HTMLAudioElement;
+        if (!existing) {
+          existing = document.createElement('audio');
+          existing.id = 'nova-core-audio';
+          existing.setAttribute('playsinline', 'true');
+          existing.setAttribute('webkit-playsinline', 'true');
+          existing.style.display = 'none';
+          document.body.appendChild(existing);
+        }
+        this.audioElement = existing;
+      } else {
+        this.audioElement = new Audio();
+      }
       this.audioElement.preload = 'auto';
-      this.audioElement.setAttribute('playsinline', 'true');
-      this.audioElement.setAttribute('webkit-playsinline', 'true');
 
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
@@ -237,11 +248,13 @@ class AudioEngine {
           this.onTimeUpdateCallback(cur);
           this.updateMediaSessionPosition(cur, this.audioElement.duration || this.currentTrack?.duration || 0);
 
-          // Android & WebView fallback: If track reached end without firing native 'ended' event
+          // Android & WebView fallback: Only trigger if audio element genuinely reached end of full track
           if (
             !this.audioElement.src.startsWith('data:audio/wav') &&
             this.audioElement.duration > 0 &&
-            cur >= this.audioElement.duration - 0.25 &&
+            Number.isFinite(this.audioElement.duration) &&
+            this.audioElement.duration > 15 &&
+            cur >= this.audioElement.duration - 0.35 &&
             !this.hasTriggeredEnded
           ) {
             this.hasTriggeredEnded = true;
@@ -915,13 +928,20 @@ class AudioEngine {
     if ('mediaSession' in navigator) {
       try {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const fullCover = track.coverArt
+          ? (track.coverArt.startsWith('http') || track.coverArt.startsWith('data:') ? track.coverArt : `${origin}${track.coverArt}`)
+          : `${origin}/icon-512.png`;
+
         const artwork = [
+          { src: fullCover, sizes: '512x512', type: 'image/jpeg' },
+          { src: fullCover, sizes: '384x384', type: 'image/jpeg' },
+          { src: fullCover, sizes: '256x256', type: 'image/jpeg' },
+          { src: fullCover, sizes: '192x192', type: 'image/jpeg' },
+          { src: fullCover, sizes: '128x128', type: 'image/jpeg' },
+          { src: fullCover, sizes: '96x96', type: 'image/jpeg' },
           { src: `${origin}/icon-512.png`, sizes: '512x512', type: 'image/png' },
           { src: `${origin}/icon-192.png`, sizes: '192x192', type: 'image/png' },
         ];
-        if (track.coverArt && track.coverArt.startsWith('http')) {
-          artwork.unshift({ src: track.coverArt, sizes: '512x512', type: 'image/jpeg' });
-        }
 
         navigator.mediaSession.metadata = new MediaMetadata({
           title: track.title,
@@ -935,9 +955,15 @@ class AudioEngine {
 
         navigator.mediaSession.setActionHandler('play', () => {
           this.resume();
+          window.dispatchEvent(new CustomEvent('nova-play'));
         });
         navigator.mediaSession.setActionHandler('pause', () => {
           this.pause();
+          window.dispatchEvent(new CustomEvent('nova-pause'));
+        });
+        navigator.mediaSession.setActionHandler('stop', () => {
+          this.pause();
+          window.dispatchEvent(new CustomEvent('nova-pause'));
         });
         navigator.mediaSession.setActionHandler('previoustrack', () => {
           window.dispatchEvent(new CustomEvent('nova-prev-track'));

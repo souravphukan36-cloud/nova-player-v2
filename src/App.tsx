@@ -17,13 +17,47 @@ import { SleepTimerModal } from './components/SleepTimerModal';
 import { FileScannerModal } from './components/FileScannerModal';
 import { CustomizerModal } from './components/CustomizerModal';
 import { CarModeModal } from './components/CarModeModal';
+import { AdminWebPortal } from './components/AdminWebPortal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainTab, LibrarySubTab } from './types';
 
 const MainLayout: React.FC = () => {
+  const [isAdminRoute, setIsAdminRoute] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname.toLowerCase();
+      const s = window.location.search.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      return p === '/admin' || p.startsWith('/admin') || s.includes('page=admin') || h.includes('admin');
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const p = window.location.pathname.toLowerCase();
+      const s = window.location.search.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      setIsAdminRoute(p === '/admin' || p.startsWith('/admin') || s.includes('page=admin') || h.includes('admin'));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [currentTab, setCurrentTab] = useState<MainTab>('home');
   const [librarySubTab, setLibrarySubTab] = useState<LibrarySubTab>('songs');
   const { settings, currentTrack } = usePlayer();
+
+  // If user navigates to /admin, show full-page Admin Web Portal
+  if (isAdminRoute) {
+    return (
+      <AdminWebPortal
+        onBackToApp={() => {
+          window.history.pushState({}, '', '/');
+          setIsAdminRoute(false);
+        }}
+      />
+    );
+  }
 
   const handleNavigateToLibrary = (subTab?: string) => {
     if (subTab) {

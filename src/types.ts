@@ -24,6 +24,9 @@ export interface Track {
   playCount: number;
   lastPlayed?: number; // timestamp
   isFavorite: boolean;
+  isHidden?: boolean;
+  isFeatured?: boolean;
+  hasCustomMetadata?: boolean;
   isDownloaded?: boolean;
   dateAdded: number; // timestamp
 }

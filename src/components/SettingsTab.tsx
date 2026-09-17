@@ -31,6 +31,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 import { notificationService } from '../services/notificationService';
 import { NovaStudio } from './NovaStudio';
+import { AdminGatewayModal } from './AdminGatewayModal';
 
 const ACCENT_COLORS = [
   { name: 'Electric Purple (Default)', value: '#7C6EFF' },
@@ -78,6 +79,7 @@ export const SettingsTab: React.FC = () => {
   const [customHex, setCustomHex] = useState(settings.accentColor);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [isGatewayOpen, setIsGatewayOpen] = useState(false);
 
   useEffect(() => {
     // Check notification permission
@@ -995,19 +997,33 @@ export const SettingsTab: React.FC = () => {
             <span>Cloud Streaming & Local Playback • Zero Tracking • Studio Audio</span>
           </div>
 
-          {/* Secure Creator Portal Entry for Sourav Phukan */}
-          <div className="pt-3 border-t border-white/10">
+          {/* Secure Creator & Admin Web Portal Entry for Sourav Phukan */}
+          <div className="pt-3 border-t border-white/10 space-y-2">
+            <button
+              onClick={() => setIsGatewayOpen(true)}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/40 text-purple-200 hover:text-white transition-all flex items-center justify-center gap-2 group text-xs font-bold shadow-lg shadow-purple-600/10 active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform" />
+              <span>Admin Web Portal (Browser & Songs Manager)</span>
+              <Lock className="w-3.5 h-3.5 text-purple-300 ml-1" />
+            </button>
+
             <button
               onClick={() => setIsStudioOpen(true)}
-              className="w-full py-3 px-4 rounded-2xl bg-white/[0.05] hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-white/80 hover:text-emerald-400 transition-all flex items-center justify-center gap-2 group text-xs font-bold shadow-lg"
+              className="w-full py-2.5 px-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 text-white/60 hover:text-white transition-all flex items-center justify-center gap-2 text-[11px] font-semibold"
             >
-              <Sparkles className="w-4 h-4 text-emerald-400 group-hover:rotate-12 transition-transform" />
-              <span>Open NOVA Studio (Creator Console)</span>
-              <Lock className="w-3.5 h-3.5 text-white/40 ml-1" />
+              <span>Quick In-App Creator Console</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Render Admin Gateway Modal */}
+      <AdminGatewayModal
+        isOpen={isGatewayOpen}
+        onClose={() => setIsGatewayOpen(false)}
+        onOpenInsideApp={() => setIsStudioOpen(true)}
+      />
 
       {/* Render Nova Studio Modal when opened */}
       {isStudioOpen && (

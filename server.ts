@@ -606,6 +606,8 @@ export interface TrackOverride {
   coverArt?: string;
   lyrics?: Array<{ time: number; text: string }>;
   isFavorite?: boolean;
+  isHidden?: boolean;
+  isFeatured?: boolean;
   synthPreset?: string;
   updatedAt?: number;
 }
@@ -655,6 +657,8 @@ function applyTrackOverrides(track: any): any {
     coverArt: override.coverArt !== undefined && override.coverArt.trim() !== '' ? override.coverArt.trim() : track.coverArt,
     lyrics: override.lyrics !== undefined && Array.isArray(override.lyrics) && override.lyrics.length > 0 ? override.lyrics : track.lyrics,
     isFavorite: override.isFavorite !== undefined ? override.isFavorite : track.isFavorite,
+    isHidden: override.isHidden !== undefined ? override.isHidden : false,
+    isFeatured: override.isFeatured !== undefined ? override.isFeatured : false,
     synthPreset: override.synthPreset !== undefined ? override.synthPreset : track.synthPreset,
     hasCustomMetadata: true,
     lastMetadataUpdated: override.updatedAt || undefined,
@@ -998,7 +1002,7 @@ async function fetchTelegramUpdates(customToken?: string, force = false) {
                 duration: audio.duration || 240,
                 format: ext as any,
                 coverArt,
-                audioUrl: `/api/telegram/audio?file_id=${fileId}`,
+                audioUrl: `/api/telegram/audio?file_id=${fileId}&path=${encodeURIComponent(filePath)}`,
                 synthPreset: 'acoustic',
                 genre: 'Telegram Cloud Music',
                 folder: `NOVA Private Library / ${artist}`,
@@ -1061,20 +1065,51 @@ async function startServer() {
     res.json({ status: 'ok', channelId: TELEGRAM_CHANNEL_ID, trackCount: dynamicTracks.length });
   });
 
+  // Announcements persistence
+  const ANNOUNCEMENT_FILE = path.join(CACHE_DIR, 'announcement.json');
+  let currentAnnouncement: { text: string; enabled: boolean; type: string; updatedAt: number } = {
+    text: 'Welcome to NOVA Player! Stream Telegram cloud music with 0s latency & Studio DSP.',
+    enabled: true,
+    type: 'info',
+    updatedAt: Date.now()
+  };
+
+  try {
+    if (fs.existsSync(ANNOUNCEMENT_FILE)) {
+      currentAnnouncement = JSON.parse(fs.readFileSync(ANNOUNCEMENT_FILE, 'utf-8'));
+    }
+  } catch {}
+
   // 1. Get all tracks from Telegram bot channel (with custom overrides applied)
   app.get('/api/telegram/tracks', async (req: Request, res: Response) => {
+    const isAdmin = req.query.admin === 'true' || req.query.all === 'true';
+
     // Check for any new updates in background (non-blocking)
     fetchTelegramUpdates().catch(() => {});
     // Warm track cache in background for 0-second fast playback
     prewarmAllTracks();
 
-    // Map through dynamicTracks and apply any custom overrides
-    const finalizedTracks = dynamicTracks.map(t => applyTrackOverrides(t));
+    // Map through dynamicTracks and apply any custom overrides with direct path optimization
+    let finalizedTracks = dynamicTracks.map(t => {
+      const track = applyTrackOverrides(t);
+      const p = track.filePath || (track.fileId && filePathCache[track.fileId]);
+      if (p && track.audioUrl && track.audioUrl.startsWith('/api/telegram/audio') && !track.audioUrl.includes('path=')) {
+        track.audioUrl = `${track.audioUrl}&path=${encodeURIComponent(p)}`;
+      }
+      return track;
+    });
+
+    // If regular user, filter out hidden tracks
+    if (!isAdmin) {
+      finalizedTracks = finalizedTracks.filter(t => !t.isHidden);
+    }
 
     res.json({
       success: true,
       channel: 'NOVA Private Library',
       tracks: finalizedTracks,
+      totalCount: dynamicTracks.length,
+      visibleCount: finalizedTracks.length,
       metadataOverridesCount: Object.keys(trackOverrides).length
     });
   });
@@ -1083,11 +1118,83 @@ async function startServer() {
   app.post('/api/telegram/sync', async (req: Request, res: Response) => {
     const customToken = req.body?.botToken || req.query.bot_token as string;
     await fetchTelegramUpdates(customToken);
-    const finalizedTracks = dynamicTracks.map(t => applyTrackOverrides(t));
+    const finalizedTracks = dynamicTracks.map(t => {
+      const track = applyTrackOverrides(t);
+      const p = track.filePath || (track.fileId && filePathCache[track.fileId]);
+      if (p && track.audioUrl && track.audioUrl.startsWith('/api/telegram/audio') && !track.audioUrl.includes('path=')) {
+        track.audioUrl = `${track.audioUrl}&path=${encodeURIComponent(p)}`;
+      }
+      return track;
+    });
     res.json({
       success: true,
       count: dynamicTracks.length,
       tracks: finalizedTracks,
+    });
+  });
+
+  // Public Announcement Endpoint for user app
+  app.get('/api/announcement', (req: Request, res: Response) => {
+    res.json({
+      success: true,
+      announcement: currentAnnouncement
+    });
+  });
+
+  // Admin Announcement Update
+  app.post('/api/admin/announcement', (req: Request, res: Response) => {
+    const { text, enabled, type } = req.body || {};
+    if (text !== undefined) currentAnnouncement.text = String(text);
+    if (enabled !== undefined) currentAnnouncement.enabled = Boolean(enabled);
+    if (type !== undefined) currentAnnouncement.type = String(type);
+    currentAnnouncement.updatedAt = Date.now();
+
+    try {
+      fs.writeFileSync(ANNOUNCEMENT_FILE, JSON.stringify(currentAnnouncement, null, 2), 'utf-8');
+    } catch {}
+
+    res.json({
+      success: true,
+      announcement: currentAnnouncement
+    });
+  });
+
+  // Admin Stats Overview (Track count, Cache disk usage, Active status)
+  app.get('/api/admin/stats', (req: Request, res: Response) => {
+    let cacheFilesCount = 0;
+    let cacheTotalBytes = 0;
+    try {
+      if (fs.existsSync(AUDIO_CACHE_DIR)) {
+        const files = fs.readdirSync(AUDIO_CACHE_DIR);
+        cacheFilesCount = files.length;
+        for (const file of files) {
+          try {
+            const stat = fs.statSync(path.join(AUDIO_CACHE_DIR, file));
+            cacheTotalBytes += stat.size;
+          } catch {}
+        }
+      }
+    } catch {}
+
+    const hiddenCount = Object.values(trackOverrides).filter(o => o.isHidden).length;
+    const featuredCount = Object.values(trackOverrides).filter(o => o.isFeatured).length;
+    const customMetadataCount = Object.keys(trackOverrides).length;
+
+    res.json({
+      success: true,
+      stats: {
+        totalTracks: dynamicTracks.length,
+        visibleTracks: dynamicTracks.length - hiddenCount,
+        hiddenTracks: hiddenCount,
+        featuredTracks: featuredCount,
+        customMetadataCount,
+        cachedFilesCount: cacheFilesCount,
+        cacheSizeBytes: cacheTotalBytes,
+        cacheSizeMB: (cacheTotalBytes / (1024 * 1024)).toFixed(1),
+        channelId: TELEGRAM_CHANNEL_ID,
+        botConnected: Boolean(TELEGRAM_BOT_TOKEN),
+        serverUptime: Math.floor(process.uptime()),
+      }
     });
   });
 
@@ -1106,7 +1213,7 @@ async function startServer() {
 
   // Update a single track's metadata (Title, Artist, Album, CoverArt, Lyrics, etc.)
   app.post('/api/tracks/metadata/update', (req: Request, res: Response) => {
-    const { trackId, title, artist, album, genre, year, coverArt, lyrics, synthPreset, isFavorite } = req.body || {};
+    const { trackId, title, artist, album, genre, year, coverArt, lyrics, synthPreset, isFavorite, isHidden, isFeatured } = req.body || {};
 
     if (!trackId) {
       res.status(400).json({ success: false, error: 'trackId is required' });
@@ -1152,6 +1259,8 @@ async function startServer() {
     if (coverArt !== undefined) updated.coverArt = String(coverArt).trim();
     if (synthPreset !== undefined) updated.synthPreset = String(synthPreset).trim();
     if (isFavorite !== undefined) updated.isFavorite = Boolean(isFavorite);
+    if (isHidden !== undefined) updated.isHidden = Boolean(isHidden);
+    if (isFeatured !== undefined) updated.isFeatured = Boolean(isFeatured);
     if (lyrics !== undefined && Array.isArray(lyrics)) updated.lyrics = lyrics;
 
     trackOverrides[trackId] = updated;
@@ -1324,7 +1433,24 @@ async function startServer() {
     }
   });
 
-  // 2. High-speed Audio Stream Proxy with Spotify-grade Disk Caching & Range support
+  // Active in-flight audio downloads manager so Telegram streams at wire speed without stalling
+  interface ActiveAudioDownload {
+    key: string;
+    diskTarget: string;
+    tempPath: string;
+    writeStream: fs.WriteStream;
+    chunks: Buffer[];
+    totalBytes: number;
+    contentLength: number;
+    contentType: string;
+    clients: Set<Response>;
+    completed: boolean;
+    failed: boolean;
+  }
+
+  const activeAudioDownloads = new Map<string, ActiveAudioDownload>();
+
+  // 2. High-speed Audio Stream Proxy with Non-Blocking Caching & Zero-Latency Range support
   app.all('/api/telegram/audio', async (req: Request, res: Response) => {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1391,9 +1517,12 @@ async function startServer() {
       }
     }
 
-    // If only file_id is provided, resolve file path first
+    // Check fast memory cache for file_path
     if (!filePath && fileId) {
-      filePath = (await resolveTelegramFilePath(fileId)) || '';
+      filePath = filePathCache[fileId] || '';
+      if (!filePath) {
+        filePath = (await resolveTelegramFilePath(fileId)) || '';
+      }
     }
 
     if (!filePath) {
@@ -1418,88 +1547,143 @@ async function startServer() {
       }
     }
 
-    // 2. Cache Miss: Stream from Telegram and write to local disk cache simultaneously
-    prewarmTrackCache(fileId || '', filePath || '');
+    // 2. Cache Miss: Stream from Telegram using non-blocking wire-speed pipeline
+    const cacheKey = fileId || filePath;
+    const diskTarget = getAudioCachePath(fileId || filePath, filePath);
 
-    const streamFromTelegram = (pathCandidate: string, isRetry = false) => {
-      const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${pathCandidate}`;
-      const headers: Record<string, string> = {};
-      if (req.headers.range) {
-        headers['Range'] = req.headers.range;
-      }
+    let active = activeAudioDownloads.get(cacheKey);
 
-      https.get(telegramFileUrl, { headers }, (tgRes) => {
+    if (!active || active.failed) {
+      const tempPath = `${diskTarget}.tmp.${Date.now()}`;
+      const writeStream = fs.createWriteStream(tempPath);
+      active = {
+        key: cacheKey,
+        diskTarget,
+        tempPath,
+        writeStream,
+        chunks: [],
+        totalBytes: 0,
+        contentLength: 0,
+        contentType,
+        clients: new Set(),
+        completed: false,
+        failed: false,
+      };
+      activeAudioDownloads.set(cacheKey, active);
+
+      const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
+      const reqTg = https.get(telegramFileUrl, (tgRes) => {
         const statusCode = tgRes.statusCode || 200;
-
-        // Auto-healing: If Telegram CDN returns 404, 403, or 410, refresh file_path from Telegram Bot API immediately
-        if ((statusCode === 404 || statusCode === 403 || statusCode === 410) && !isRetry && fileId) {
-          console.warn(`[Audio Stream Engine] Telegram returned ${statusCode} for ${pathCandidate}. Querying Bot API for refreshed path...`);
-          resolveTelegramFilePath(fileId, true).then((freshPath) => {
-            if (freshPath && freshPath !== pathCandidate) {
-              console.log(`[Audio Stream Engine] Refreshed path resolved: ${freshPath}. Retrying stream...`);
-              streamFromTelegram(freshPath, true);
-            } else {
-              if (!res.headersSent) {
-                res.status(statusCode).send('Audio stream not available');
-              }
+        if (statusCode >= 400) {
+          active!.failed = true;
+          try { active!.writeStream.close(); } catch {}
+          try { fs.unlinkSync(tempPath); } catch {}
+          activeAudioDownloads.delete(cacheKey);
+          for (const client of active!.clients) {
+            if (!client.headersSent) {
+              client.status(statusCode).send('Audio stream not available');
             }
-          }).catch(() => {
-            if (!res.headersSent) {
-              res.status(statusCode).send('Audio stream failed');
-            }
-          });
+          }
           return;
         }
 
-        res.status(statusCode);
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
-        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
-        res.setHeader('X-Cache-Status', isRetry ? 'MISS-HEALED' : 'MISS-STREAMING');
-
-        if (tgRes.headers['content-range']) {
-          res.setHeader('Content-Range', tgRes.headers['content-range']);
-        }
         if (tgRes.headers['content-length']) {
-          res.setHeader('Content-Length', tgRes.headers['content-length']);
+          active!.contentLength = parseInt(tgRes.headers['content-length'] as string, 10);
+        }
+        if (tgRes.headers['content-type']) {
+          active!.contentType = tgRes.headers['content-type'];
         }
 
-        if (req.method === 'HEAD') {
-          res.end();
-          return;
-        }
+        // Flowing mode: Never gets paused by browser buffer stalls
+        tgRes.on('data', (chunk: Buffer) => {
+          active!.totalBytes += chunk.length;
+          try { active!.writeStream.write(chunk); } catch {}
+          // Retain first 5MB in memory for instant delivery to any parallel client requests
+          if (active!.totalBytes < 5 * 1024 * 1024) {
+            active!.chunks.push(chunk);
+          }
+          // Broadcast in real-time to active listeners
+          for (const client of active!.clients) {
+            if (!client.writableEnded) {
+              try { client.write(chunk); } catch {}
+            }
+          }
+        });
 
-        // If full audio stream (status 200), save to disk cache in background
-        if (statusCode === 200) {
-          const diskTarget = getAudioCachePath(fileId || pathCandidate, pathCandidate);
-          const tempPath = `${diskTarget}.tmp.${Date.now()}`;
-          const writeStream = fs.createWriteStream(tempPath);
-          tgRes.pipe(writeStream);
-          writeStream.on('finish', () => {
+        tgRes.on('end', () => {
+          active!.completed = true;
+          active!.writeStream.end(() => {
             fs.rename(tempPath, diskTarget, (err) => {
               if (!err) {
-                console.log(`[Spotify Cache Engine] Saved to disk cache: ${path.basename(diskTarget)}`);
+                console.log(`[Audio Cache] Successfully saved track to disk cache: ${path.basename(diskTarget)} (${active!.totalBytes} bytes)`);
               }
             });
           });
-          writeStream.on('error', () => {
-            try { fs.unlinkSync(tempPath); } catch {}
-          });
-        }
+          for (const client of active!.clients) {
+            if (!client.writableEnded) {
+              try { client.end(); } catch {}
+            }
+          }
+          activeAudioDownloads.delete(cacheKey);
+        });
 
-        tgRes.pipe(res);
-      }).on('error', (err) => {
-        console.error('Telegram streaming proxy error:', err);
-        if (!res.headersSent) {
-          res.status(502).send('Error streaming audio from Telegram');
-        }
+        tgRes.on('error', (err) => {
+          console.warn('[Audio Stream] Telegram download error:', err);
+          active!.failed = true;
+          try { active!.writeStream.close(); } catch {}
+          try { fs.unlinkSync(tempPath); } catch {}
+          activeAudioDownloads.delete(cacheKey);
+        });
       });
-    };
 
-    streamFromTelegram(filePath);
+      reqTg.on('error', (err) => {
+        console.warn('[Audio Stream] Telegram request error:', err);
+        active!.failed = true;
+        try { active!.writeStream.close(); } catch {}
+        try { fs.unlinkSync(tempPath); } catch {}
+        activeAudioDownloads.delete(cacheKey);
+      });
+    }
+
+    // Deliver audio to current response
+    res.setHeader('Content-Type', active.contentType || contentType);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Cache-Status', 'MISS-STREAMING');
+
+    if (active.contentLength > 0) {
+      res.setHeader('Content-Length', active.contentLength);
+    }
+
+    if (req.method === 'HEAD') {
+      res.status(200).end();
+      return;
+    }
+
+    // Flush any already downloaded chunks immediately
+    if (active.chunks.length > 0) {
+      for (const chunk of active.chunks) {
+        if (!res.writableEnded) {
+          try { res.write(chunk); } catch {}
+        }
+      }
+    }
+
+    if (active.completed) {
+      if (!res.writableEnded) res.end();
+      return;
+    }
+
+    // Subscribe to live incoming chunks
+    active.clients.add(res);
+    res.on('close', () => {
+      active?.clients.delete(res);
+      // Background download continues uninterrupted!
+    });
   });
 
   // In-memory cache for fetched Telegram images to make album artwork load instantly
