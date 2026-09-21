@@ -147,11 +147,14 @@ export const AdminGatewayModal: React.FC<AdminGatewayModalProps> = ({
           </button>
         </div>
 
-        {/* Footer PIN hint */}
-        <div className="pt-2 text-center border-t border-white/5">
-          <p className="text-[11px] text-white/40 flex items-center justify-center gap-1">
-            <Lock className="w-3 h-3" />
-            <span>Default PIN is <strong className="text-white">7788</strong> (can be authenticated once)</span>
+        {/* Footer PIN & Password hint */}
+        <div className="pt-2 text-center border-t border-white/5 space-y-1">
+          <p className="text-[11px] text-white/50 flex items-center justify-center gap-1.5">
+            <Lock className="w-3.5 h-3.5 text-purple-400" />
+            <span>Master Password: <strong className="text-purple-300 font-mono">2620260095</strong></span>
+          </p>
+          <p className="text-[10px] text-white/35">
+            Supports Fingerprint / Face ID & Backup PIN (7788)
           </p>
         </div>
       </div>

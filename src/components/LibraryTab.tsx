@@ -248,7 +248,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
   };
 
   return (
-    <div className="space-y-4 pb-36 px-5 select-none animate-in fade-in duration-200">
+    <div className="space-y-4 pb-52 px-5 select-none animate-in fade-in duration-200">
       {/* Horizontal Sub-Tabs (Samsung Music Pill Tabs) */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
         {subTabs.map(({ id, label }) => {
@@ -460,9 +460,11 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                         }}
                       />
                     ) : null}
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      {isCurrent && isPlaying ? '▶' : idx + 1}
-                    </div>
+                    {isCurrent && isPlaying && (
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
+                        <div className="w-2.5 h-2.5 rounded-full animate-ping" style={{ backgroundColor: settings.accentColor }} />
+                      </div>
+                    )}
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -472,17 +474,17 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                     >
                       {track.title}
                     </h4>
-                    <p className="text-[11px] text-white/50 truncate flex items-center gap-1.5 mt-0.5">
-                      <span>{track.artist}</span>
-                      <span>•</span>
-                      <span className="uppercase text-[9px] px-1 rounded bg-white/10 text-white/70">{track.format}</span>
+                    <div className="text-[11px] text-white/50 flex items-center gap-1.5 mt-0.5 min-w-0">
+                      <span className="truncate max-w-[150px] sm:max-w-[220px]">{track.artist}</span>
+                      <span className="shrink-0">•</span>
+                      <span className="shrink-0 uppercase text-[9px] px-1.5 py-0.2 rounded bg-white/10 text-white/70 font-mono font-medium">{track.format}</span>
                       {(downloadedTrackIds.has(track.id) || track.isDownloaded) && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
+                        <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
                           <CheckCircle2 className="w-2.5 h-2.5" />
                           <span>Offline</span>
                         </span>
                       )}
-                    </p>
+                    </div>
                   </div>
                 </div>
 
@@ -639,9 +641,11 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                             }}
                           />
                         ) : null}
-                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                          {isCurrent && isPlaying ? '▶' : idx + 1}
-                        </div>
+                        {isCurrent && isPlaying && (
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
+                            <div className="w-2.5 h-2.5 rounded-full animate-ping" style={{ backgroundColor: settings.accentColor }} />
+                          </div>
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -651,13 +655,13 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                         >
                           {track.title}
                         </h4>
-                        <p className="text-[11px] text-white/50 truncate flex items-center gap-1.5 mt-0.5">
-                          <span>{track.artist}</span>
-                          <span>•</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <div className="text-[11px] text-white/50 flex items-center gap-1.5 mt-0.5 min-w-0">
+                          <span className="truncate max-w-[150px] sm:max-w-[220px]">{track.artist}</span>
+                          <span className="shrink-0">•</span>
+                          <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             Offline Ready
                           </span>
-                        </p>
+                        </div>
                       </div>
                     </div>
 

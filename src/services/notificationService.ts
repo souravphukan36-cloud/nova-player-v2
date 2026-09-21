@@ -41,13 +41,18 @@ class NotificationService {
       ? (track.coverArt.startsWith('http') || track.coverArt.startsWith('data:') ? track.coverArt : `${origin}${track.coverArt}`)
       : `${origin}/icon-192.png`;
 
-    const title = isPlaying ? `▶ Playing: ${track.title}` : `❚❚ Paused: ${track.title}`;
-    const options: NotificationOptions = {
+    const title = isPlaying ? `▶ ${track.title}` : `❚❚ ${track.title}`;
+    const options: NotificationOptions & { actions?: Array<{ action: string; title: string; icon?: string }> } = {
       body: `${track.artist} • ${track.album || 'NOVA Player'}`,
       icon,
       badge: `${origin}/icon-192.png`,
       tag: 'nova-player-active',
       silent: true,
+      actions: [
+        { action: 'prev', title: '⏮ Previous' },
+        { action: isPlaying ? 'pause' : 'play', title: isPlaying ? '❚❚ Pause' : '▶ Play' },
+        { action: 'next', title: '⏭ Next' },
+      ],
     };
 
     // Prefer serviceWorker.showNotification on Android mobile browsers
@@ -77,3 +82,21 @@ class NotificationService {
 }
 
 export const notificationService = new NotificationService();
+
+// Listen for service worker notification click messages on Android
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'nova-notification-action') {
+      const action = event.data.action;
+      if (action === 'play') {
+        window.dispatchEvent(new CustomEvent('nova-play'));
+      } else if (action === 'pause') {
+        window.dispatchEvent(new CustomEvent('nova-pause'));
+      } else if (action === 'prev') {
+        window.dispatchEvent(new CustomEvent('nova-prev-track'));
+      } else if (action === 'next') {
+        window.dispatchEvent(new CustomEvent('nova-next-track'));
+      }
+    }
+  });
+}

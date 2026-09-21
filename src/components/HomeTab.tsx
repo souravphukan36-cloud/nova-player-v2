@@ -21,6 +21,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
 import { isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
+import { DailyLivePoster } from './DailyLivePoster';
 
 interface HomeTabProps {
   onNavigateToLibrary: (subTab?: string) => void;
@@ -39,15 +40,26 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
     settings,
   } = usePlayer();
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'lossless'>('all');
-  const [announcement, setAnnouncement] = useState<{ text: string; enabled: boolean; type?: string } | null>(null);
+  const [announcement, setAnnouncement] = useState<{ 
+    title?: string; 
+    text: string; 
+    imageUrl?: string; 
+    videoUrl?: string;
+    mediaType?: 'image' | 'video';
+    linkUrl?: string; 
+    enabled: boolean; 
+    type?: string; 
+    wishText?: string;
+    eventDate?: string;
+    themeColor?: string;
+  } | null>(null);
   const [dismissedAnnouncement, setDismissedAnnouncement] = useState(false);
 
   useEffect(() => {
     fetch('/api/announcement')
       .then(res => res.json())
       .then(data => {
-        if (data?.announcement?.enabled && data.announcement.text) {
+        if (data?.announcement?.enabled && (data.announcement.text || data.announcement.imageUrl || data.announcement.videoUrl || data.announcement.wishText)) {
           setAnnouncement(data.announcement);
         }
       })
@@ -57,19 +69,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
   const shelves = settings.homeShelves;
   const isPortrait = shelves.cardStyle === 'portrait';
   const isCompact = shelves.cardStyle === 'compact';
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
-  // Filtered tracks for the list below
-  const filteredTracks = useMemo(() => tracks.filter(t => {
-    if (activeFilter === 'favorites') return t.isFavorite;
-    if (activeFilter === 'lossless') return t.format === 'flac' || t.format === 'wav';
-    return true;
-  }), [tracks, activeFilter]);
 
   // Recently played tracks (first 6)
   const recentlyPlayed = useMemo(() => [...tracks].sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0)).slice(0, 6), [tracks]);
@@ -105,70 +104,35 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
   }, [tracks]);
 
   return (
-    <div className="space-y-7 pb-36 px-4 sm:px-6 select-none animate-in fade-in duration-300">
+    <div className="space-y-7 pb-52 px-4 sm:px-6 select-none animate-in fade-in duration-300">
 
-      {/* Global Admin Announcement Banner */}
-      {announcement && announcement.enabled && !dismissedAnnouncement && (
-        <div 
-          className="p-3.5 rounded-2xl border flex items-center justify-between gap-3 shadow-lg animate-in slide-in-from-top-2 duration-300"
-          style={{
-            backgroundColor: `${settings.accentColor}15`,
-            borderColor: `${settings.accentColor}35`,
-          }}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div 
-              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: `${settings.accentColor}30`, color: settings.accentColor }}
-            >
-              <Bell className="w-4 h-4 animate-bounce" />
-            </div>
-            <p className="text-xs font-medium text-white/90 truncate">
-              {announcement.text}
-            </p>
-          </div>
-          <button
-            onClick={() => setDismissedAnnouncement(true)}
-            className="p-1 rounded-lg text-white/40 hover:text-white transition-colors flex-shrink-0"
-            title="Dismiss notice"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
+      {/* Live Daily Event & Special Day Master Poster */}
+      <DailyLivePoster 
+        announcement={announcement} 
+        onTrackPlay={(track) => playTrack(track)} 
+      />
 
-      {/* Top Customizer Action Bar & Category Chips */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+      {/* Top Quick Navigation Bar & Feed Customizer */}
+      <div className="flex items-center justify-between gap-2.5 pt-1">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
-            onClick={() => setActiveFilter('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-              activeFilter === 'all' 
-                ? 'bg-white text-black shadow-md' 
-                : 'bg-white/10 text-white/70 hover:text-white'
-            }`}
+            onClick={() => onNavigateToLibrary('favorites')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 text-white transition-all active:scale-95"
           >
-            All Tracks
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-current" />
+            <span>Liked ({tracks.filter(t => t.isFavorite).length})</span>
           </button>
           <button
-            onClick={() => setActiveFilter('favorites')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-              activeFilter === 'favorites' 
-                ? 'bg-white text-black shadow-md' 
-                : 'bg-white/10 text-white/70 hover:text-white'
-            }`}
+            onClick={() => onNavigateToLibrary('artists')}
+            className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all active:scale-95"
           >
-            Liked ({tracks.filter(t => t.isFavorite).length})
+            Artists
           </button>
           <button
-            onClick={() => setActiveFilter('lossless')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-              activeFilter === 'lossless' 
-                ? 'bg-white text-black shadow-md' 
-                : 'bg-white/10 text-white/70 hover:text-white'
-            }`}
+            onClick={() => onNavigateToLibrary('albums')}
+            className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all active:scale-95"
           >
-            Hi-Res Lossless
+            Albums
           </button>
         </div>
 
@@ -176,7 +140,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
         <button
           id="btn-customize-feed"
           onClick={() => setCustomizerOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-all group active:scale-95"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-all group active:scale-95 flex-shrink-0"
           style={{ borderColor: `${settings.accentColor}50` }}
           title="Customize Home Feed & Player Style"
         >
@@ -512,116 +476,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* 6. ALL TRACKS LIST (Vertical rows) */}
-      {shelves.showAllTracks && (
-        <div className="pt-2">
-          <div className="flex items-center justify-between mb-3.5">
-            <div className="flex items-center gap-2">
-              <Music className="w-4 h-4" style={{ color: settings.accentColor }} />
-              <h3 className="text-sm font-extrabold tracking-wide text-white uppercase font-sans">
-                All Tracks
-              </h3>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70 font-mono font-semibold">
-                {filteredTracks.length}
-              </span>
-            </div>
-          </div>
-
-          {/* Vertical Rows of Songs */}
-          <div className="space-y-1.5">
-            {filteredTracks.map((track, idx) => {
-              const isCurrent = currentTrack?.id === track.id;
-              return (
-                <div
-                  key={`row-${track.id}`}
-                  onClick={() => playTrack(track, filteredTracks)}
-                  className={`group flex items-center justify-between p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 border ${
-                    isCurrent 
-                      ? 'bg-emerald-950/30 border-emerald-500/40 shadow-md' 
-                      : 'bg-neutral-900/50 hover:bg-neutral-800/80 border-white/5 hover:border-white/15'
-                  }`}
-                >
-                  {/* Left: Thumbnail & Song Info */}
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-3">
-                    <span className="w-5 text-center text-xs font-mono font-bold text-white/40 group-hover:text-white/70">
-                      {isCurrent && isPlaying ? (
-                        <span className="text-emerald-400 animate-pulse font-bold">▶</span>
-                      ) : (
-                        idx + 1
-                      )}
-                    </span>
-
-                    <div 
-                      className="w-12 h-12 rounded-xl flex-shrink-0 shadow-md overflow-hidden relative flex items-center justify-center text-xs font-bold text-white group-hover:scale-105 transition-transform"
-                      style={{ background: track.coverArt }}
-                    >
-                      {isCoverArtImage(track.coverArt) ? (
-                        <img 
-                          src={getResolvedCoverArt(track.coverArt)} 
-                          alt={track.title} 
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer" 
-                          onError={(e) => {
-                            const img = e.currentTarget as HTMLImageElement;
-                            img.onerror = null;
-                            img.src = DEFAULT_FALLBACK_ART;
-                          }}
-                        />
-                      ) : (
-                        <Music className="w-5 h-5 text-white/60" />
-                      )}
-
-                      {isCurrent && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-lg animate-ping" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <h4 
-                        className={`text-xs sm:text-sm font-bold truncate tracking-tight ${
-                          isCurrent ? 'text-emerald-400' : 'text-white'
-                        }`}
-                      >
-                        {track.title}
-                      </h4>
-                      <p className="text-[11px] text-white/50 truncate mt-0.5">
-                        {track.artist} <span className="text-white/20">•</span> {track.album}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Right: Audio Tag, Duration & Actions */}
-                  <div className="flex items-center gap-2.5">
-                    <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-white/5 text-white/60 border border-white/10">
-                      {track.format}
-                    </span>
-
-                    <span className="text-xs font-mono text-white/50">
-                      {formatTime(track.duration)}
-                    </span>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(track.id);
-                      }}
-                      className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
-                        track.isFavorite ? 'text-rose-500' : 'text-white/30 hover:text-white'
-                      }`}
-                      title={track.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                      <Heart className={`w-4 h-4 ${track.isFavorite ? 'fill-current' : ''}`} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

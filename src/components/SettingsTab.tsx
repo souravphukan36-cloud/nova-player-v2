@@ -30,8 +30,6 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { notificationService } from '../services/notificationService';
-import { NovaStudio } from './NovaStudio';
-import { AdminGatewayModal } from './AdminGatewayModal';
 
 const ACCENT_COLORS = [
   { name: 'Electric Purple (Default)', value: '#7C6EFF' },
@@ -78,8 +76,6 @@ export const SettingsTab: React.FC = () => {
   const [cacheCleared, setCacheCleared] = useState(false);
   const [customHex, setCustomHex] = useState(settings.accentColor);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
-  const [isStudioOpen, setIsStudioOpen] = useState(false);
-  const [isGatewayOpen, setIsGatewayOpen] = useState(false);
 
   useEffect(() => {
     // Check notification permission
@@ -115,7 +111,7 @@ export const SettingsTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-36 px-5 select-none animate-in fade-in duration-200">
+    <div className="space-y-6 pb-52 px-5 select-none animate-in fade-in duration-200">
       {/* 0. Home Feed & Player Customization (BitChord-inspired & Customizable) */}
       <div 
         className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4"
@@ -605,6 +601,19 @@ export const SettingsTab: React.FC = () => {
             />
           </button>
         </div>
+
+        {/* Android 17 / System Media Session Notice & Direct Control */}
+        <div className="p-3.5 rounded-2xl bg-purple-950/30 border border-purple-800/30 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-purple-200">Android 17 / Lock Screen Media Card</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">
+              MediaSession v2
+            </span>
+          </div>
+          <p className="text-[11px] text-white/60 leading-relaxed">
+            On Android 17, swipe down from the top or lock your phone while a song is playing. The system notification card displays live track title, singer name, scrubber bar, play/pause and previous/next buttons.
+          </p>
+        </div>
       </div>
 
       {/* 4. Home Screen Customization (User Request 8) */}
@@ -996,39 +1005,8 @@ export const SettingsTab: React.FC = () => {
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>Cloud Streaming & Local Playback • Zero Tracking • Studio Audio</span>
           </div>
-
-          {/* Secure Creator & Admin Web Portal Entry for Sourav Phukan */}
-          <div className="pt-3 border-t border-white/10 space-y-2">
-            <button
-              onClick={() => setIsGatewayOpen(true)}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/40 text-purple-200 hover:text-white transition-all flex items-center justify-center gap-2 group text-xs font-bold shadow-lg shadow-purple-600/10 active:scale-95"
-            >
-              <Sparkles className="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform" />
-              <span>Admin Web Portal (Browser & Songs Manager)</span>
-              <Lock className="w-3.5 h-3.5 text-purple-300 ml-1" />
-            </button>
-
-            <button
-              onClick={() => setIsStudioOpen(true)}
-              className="w-full py-2.5 px-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 text-white/60 hover:text-white transition-all flex items-center justify-center gap-2 text-[11px] font-semibold"
-            >
-              <span>Quick In-App Creator Console</span>
-            </button>
-          </div>
         </div>
       </div>
-
-      {/* Render Admin Gateway Modal */}
-      <AdminGatewayModal
-        isOpen={isGatewayOpen}
-        onClose={() => setIsGatewayOpen(false)}
-        onOpenInsideApp={() => setIsStudioOpen(true)}
-      />
-
-      {/* Render Nova Studio Modal when opened */}
-      {isStudioOpen && (
-        <NovaStudio onClose={() => setIsStudioOpen(false)} />
-      )}
 
       {/* Bottom spacer for miniplayer and bottom navigation */}
       <div className="h-28 w-full" aria-hidden="true" />

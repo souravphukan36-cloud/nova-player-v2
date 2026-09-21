@@ -194,6 +194,24 @@ export async function resolveAudioStreamUrlAsync(url: string | undefined): Promi
   return resolveAudioStreamUrl(url);
 }
 
+export const DEFAULT_FILE_ID_TO_COVER: Record<string, string> = {
+  'AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E': '/covers/choo-lo.jpg',
+  'AAMCBQADIQUABNMmLkoAAwtqoR1X-anDUhVJjSUqSaMQZeYo2AACSSIAApl-CVVPJZy6DhNzDQEAB20AAz0E': '/covers/kaahe-mose.jpg',
+  'AAMCBQADIQUABNMmLkoAAwxqoUa9KBWr_otcOzfQE27yJVDdHQACqyIAApl-CVXiteNlDQAB3R4BAAdtAAM9BA': '/covers/raabta.jpg',
+  'AAMCBQADIQUABNMmLkoAAw1qomvF0FA5aELOto7gVgWIzUdSKwACaSQAAnjfGFViU2bRmiIYVgEAB20AAz0E': '/covers/somewhere-only-we-know.jpg',
+  'AAMCBQADIQUABNMmLkoAAw5qowNsBQHR7mTpwFjnenCZybcGLAACYyYAAnjfGFXGrSY9lo8TYwEAB20AAz0E': '/covers/jo-tum-mere-ho.jpg',
+  'AAMCBQADIQUABNMmLkoAAxZqpVCI2Lq0RGP4Q8tzKmMsKtsWvAAC0yAAAlIVKVU6UMzpzfGPVQEAB20AAz0E': '/covers/dil-jhoom.jpg',
+  'AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E': '/covers/nadaan-parinde.jpg',
+  'AAMCBQADIQUABNMmLkoAAxdqpV1uadEur-ejmC3fnnUAAX63OHwAAv8gAAJSFSlVX9OiPuL8LEoBAAdtAAM9BA': '/covers/nadaan-parinde.jpg',
+  'AAMCBQADIQUABNMmLkoAAw9qp0RuOQ_4GQKUAby6FQKFGERhugACKiIAAnjfIFVzrlcaDXxHmAEAB20AAz0E': '/covers/surili-akhiyon-wale.jpg',
+  'AAMCBQADIQUABNMmLkoAAxFqp0RyIFyr86LohPEodmK9bWIkUgACZiIAAnjfIFUljea8aWm8TwEAB20AAz0E': '/covers/bairan.jpg',
+  'AAMCBQADIQUABNMmLkoAAxJqp0Rzrx8SJK_6Ow_XfSP1lMYK4wACCyEAAlIVIVXGcmnGSx-m2gEAB20AAz0E': '/covers/faasle.jpg',
+  'AAMCBQADIQUABNMmLkoAAxRqp0R0oOmH-mU7tFM62Je6xtSp2gACXCEAAlIVIVU6CAf_Ddps3wEAB20AAz0E': '/covers/come-and-get-your-love.jpg',
+  'AAMCBQADIQUABNMmLkoAAxVqp0R0yw2nxW6DdC4QMa84sjR2bQACNB8AAlIVKVUC8T6X_8ujjAEAB20AAz0E': '/covers/the-last-letter.jpg',
+  'AAMCBQADIQUABNMmLkoAAylqpnC8-JAwkvon3xFDem37HNtO1gACPiIAAuafOVVi9bQJQxKslQEAB20AAz0E': '/covers/black-star.jpg',
+  'AAMCBQADIQUABNMmLkoAAytqqD9DzXNipCMghwHw5QWvrvY2SgACXiEAAk4ySFW2JA0cD87dSgEAB20AAz0E': '/covers/muntazir.jpg',
+};
+
 /**
  * Image / Thumbnail URL Resolver
  * Resolves local cover art paths, Telegram CDN artworks, or external images
@@ -211,12 +229,17 @@ export function resolveImageUrl(url: string | undefined): string {
 
   const fileId = extractFileId(url);
   if (fileId) {
+    if (DEFAULT_FILE_ID_TO_COVER[fileId]) {
+      return DEFAULT_FILE_ID_TO_COVER[fileId];
+    }
     const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
-    if (cachedPath) {
+    if (isRunningInNativeApp() && cachedPath) {
       return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
     }
-    // Background fetch to populate cache for future views
-    resolveTelegramFilePath(fileId).catch(() => {});
+    if (cachedPath) {
+      return `/api/telegram/image?file_id=${fileId}&path=${encodeURIComponent(cachedPath)}`;
+    }
+    return `/api/telegram/image?file_id=${fileId}`;
   }
 
   if (url.startsWith('http://') || url.startsWith('https://')) {

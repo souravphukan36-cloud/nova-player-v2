@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   ChevronDown, 
   Sliders, 
@@ -14,7 +14,6 @@ import {
   Volume2, 
   VolumeX, 
   ListMusic, 
-  FileText, 
   MoreVertical,
   Music,
   Plus,
@@ -50,8 +49,6 @@ export const NowPlayingModal: React.FC = () => {
     setCustomizerOpen,
     queueOpen,
     setQueueOpen,
-    lyricsOpen,
-    setLyricsOpen,
     carModeOpen,
     setCarModeOpen,
     togglePlayPause,
@@ -80,18 +77,9 @@ export const NowPlayingModal: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [showTrackDetails, setShowTrackDetails] = useState(false);
   const [dragY, setDragY] = useState(0);
+  const [cardDragX, setCardDragX] = useState(0);
   const touchStartYRef = useRef<number | null>(null);
-  const activeLyricRef = useRef<HTMLButtonElement | null>(null);
-
-  // Auto-scroll active lyric into view (Unconditional hook)
-  useEffect(() => {
-    if (nowPlayingOpen && lyricsOpen && activeLyricRef.current) {
-      activeLyricRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
-    }
-  }, [currentTime, lyricsOpen, nowPlayingOpen]);
+  const cardTouchRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   if (!nowPlayingOpen || !currentTrack) return null;
 
@@ -118,6 +106,50 @@ export const NowPlayingModal: React.FC = () => {
     touchStartYRef.current = null;
   };
 
+  // Card Touch / Swipe Handlers for One-Hand Use (Swipe Left: Next, Swipe Right: Prev, Swipe Down: Minimize)
+  const handleCardTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    cardTouchRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  };
+
+  const handleCardTouchMove = (e: React.TouchEvent) => {
+    if (!cardTouchRef.current) return;
+    const touch = e.touches[0];
+    const diffX = touch.clientX - cardTouchRef.current.x;
+    const diffY = touch.clientY - cardTouchRef.current.y;
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      setCardDragX(Math.max(-80, Math.min(80, diffX * 0.6)));
+    } else if (diffY > 0) {
+      setDragY(Math.min(150, diffY * 0.7));
+    }
+  };
+
+  const handleCardTouchEnd = (e: React.TouchEvent) => {
+    if (!cardTouchRef.current) return;
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - cardTouchRef.current.x;
+    const diffY = touch.clientY - cardTouchRef.current.y;
+    const elapsed = Date.now() - cardTouchRef.current.time;
+
+    setCardDragX(0);
+    cardTouchRef.current = null;
+
+    // Horizontal Swipe (Next / Prev track)
+    if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) && elapsed < 500) {
+      if (diffX < 0) {
+        nextTrack();
+      } else {
+        prevTrack();
+      }
+      return;
+    }
+
+    // Downward Swipe (Minimize)
+    if (diffY > 50 && Math.abs(diffY) > Math.abs(diffX)) {
+      setNowPlayingOpen(false);
+    }
+  };
+
   const formatTime = (secs: number) => {
     if (!Number.isFinite(secs) || secs < 0) return '0:00';
     const m = Math.floor(secs / 60);
@@ -132,18 +164,6 @@ export const NowPlayingModal: React.FC = () => {
     const s = Math.floor(rem % 60);
     return `-${m}:${s < 10 ? '0' : ''}${s}`;
   };
-
-  // Find active lyric line
-  const activeLyricIndex = currentTrack.lyrics
-    ? currentTrack.lyrics.reduce((acc, curr, idx) => {
-        if (currentTime >= curr.time) return idx;
-        return acc;
-      }, 0)
-    : -1;
-
-  const activeLyricText = currentTrack.lyrics && activeLyricIndex >= 0 
-    ? currentTrack.lyrics[activeLyricIndex]?.text 
-    : 'Finding the right words...';
 
   const toggleInfiniteAutoplay = () => {
     updateSettings({
@@ -266,55 +286,9 @@ export const NowPlayingModal: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Area: Artwork / Lyrics / Queue View */}
+      {/* Main Content Area: Artwork / Queue View (One-Handed Thumb Zone) */}
       <div className="relative z-10 flex-1 flex flex-col justify-center px-6 overflow-y-auto no-scrollbar">
-        {lyricsOpen ? (
-          // Full Synchronized Lyrics View
-          <div className="flex-1 flex flex-col justify-center py-4 text-center">
-            <div className="flex items-center justify-between mb-3 px-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-white/50">
-                Synchronized Lyrics
-              </span>
-              <button 
-                onClick={() => setLyricsOpen(false)}
-                className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20"
-              >
-                Close Lyrics
-              </button>
-            </div>
-            
-            <div className="flex-1 flex flex-col justify-start space-y-5 max-h-[380px] overflow-y-auto no-scrollbar py-12 px-2 scroll-smooth">
-              {currentTrack.lyrics && currentTrack.lyrics.length > 0 ? (
-                currentTrack.lyrics.map((lyric, idx) => {
-                  const isActive = idx === activeLyricIndex;
-                  return (
-                    <button
-                      key={idx}
-                      ref={isActive ? activeLyricRef : undefined}
-                      onClick={() => seek(lyric.time)}
-                      className={`block w-full text-center transition-all duration-300 rounded-2xl py-2 px-3 ${
-                        isActive
-                          ? 'text-xl sm:text-2xl font-black scale-[1.03] bg-white/[0.08] shadow-lg backdrop-blur-md'
-                          : 'text-base sm:text-lg font-bold text-white/35 hover:text-white/70 hover:bg-white/[0.02]'
-                      }`}
-                      style={{ 
-                        color: isActive ? (palette.primary || settings.accentColor) : undefined,
-                        textShadow: isActive ? `0 0 20px ${palette.glow || 'rgba(124, 110, 255, 0.4)'}` : undefined
-                      }}
-                    >
-                      {lyric.text}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="text-white/40 py-12">
-                  <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Finding the right words...</p>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : queueOpen ? (
+        {queueOpen ? (
           // Queue Drawer
           <div className="flex-1 flex flex-col py-2 max-h-[440px]">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -399,11 +373,21 @@ export const NowPlayingModal: React.FC = () => {
             </div>
           </div>
         ) : (
-          // Artwork Stage (Card, Fullscreen Backdrop, or Vinyl Disc)
-          <div className="flex flex-col items-center justify-center my-auto w-full">
+          // Artwork Stage (Card, Fullscreen Backdrop, or Vinyl Disc) with One-Handed Swipe
+          <div 
+            className="flex flex-col items-center justify-center my-auto w-full touch-pan-y"
+            onTouchStart={handleCardTouchStart}
+            onTouchMove={handleCardTouchMove}
+            onTouchEnd={handleCardTouchEnd}
+          >
             {npConfig.layoutStyle === 'vinyl-disc' ? (
               // 3D Vinyl Disc Mode
-              <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
+              <div 
+                className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center transition-transform duration-200"
+                style={{
+                  transform: cardDragX !== 0 ? `translateX(${cardDragX}px) rotate(${cardDragX * 0.08}deg)` : 'none'
+                }}
+              >
                 <div 
                   className={`w-full h-full rounded-full bg-neutral-900 border-4 border-neutral-800 shadow-2xl flex items-center justify-center ${
                     isPlaying ? 'animate-spin' : ''
@@ -431,16 +415,19 @@ export const NowPlayingModal: React.FC = () => {
                 </div>
               </div>
             ) : (
-              // Card / Immersive Artwork
+              // Card / Immersive Artwork with One-Hand Gesture Feedback
               <div 
-                className={`relative group w-64 h-64 sm:w-72 sm:h-72 rounded-3xl shadow-2xl overflow-hidden border border-white/10 flex items-center justify-center transition-transform duration-300 ${
+                className={`relative group w-64 h-64 sm:w-72 sm:h-72 rounded-3xl shadow-2xl overflow-hidden border border-white/10 flex items-center justify-center transition-transform duration-200 cursor-grab active:cursor-grabbing ${
                   npConfig.layoutStyle === 'immersive-backdrop' ? 'shadow-black/80' : ''
                 }`}
+                style={{
+                  transform: cardDragX !== 0 ? `translateX(${cardDragX}px) rotate(${cardDragX * 0.06}deg)` : 'none'
+                }}
               >
                 <img
                   src={getTrackCoverArt(currentTrack)}
                   alt={currentTrack.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover select-none pointer-events-none"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     const img = e.currentTarget as HTMLImageElement;
@@ -451,8 +438,15 @@ export const NowPlayingModal: React.FC = () => {
               </div>
             )}
 
+            {/* Subtle One-Hand Gesture Indicator */}
+            <div className="text-[10px] text-white/30 font-medium tracking-wider uppercase mt-2 select-none flex items-center gap-2">
+              <span>‹ Swipe for Prev</span>
+              <span>•</span>
+              <span>Next ›</span>
+            </div>
+
             {/* Song Title, Artist, Heart & 3-Dots (Photo 2 layout) */}
-            <div className="w-full max-w-sm mt-6 px-3 flex items-center justify-between">
+            <div className="w-full max-w-sm mt-4 px-3 flex items-center justify-between">
               <div className="min-w-0 flex-1 pr-3">
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">
                   {currentTrack.title}
@@ -475,39 +469,6 @@ export const NowPlayingModal: React.FC = () => {
                   <Heart className={`w-6 h-6 ${currentTrack.isFavorite ? 'fill-current' : ''}`} />
                 </button>
 
-                {/* Download Offline Button */}
-                <button
-                  id="np-btn-download"
-                  disabled={downloading}
-                  onClick={async () => {
-                    if (downloading) return;
-                    setDownloading(true);
-                    try {
-                      await downloadTrack(currentTrack);
-                    } finally {
-                      setDownloading(false);
-                    }
-                  }}
-                  className={`p-2.5 rounded-full hover:bg-white/10 transition-transform active:scale-110 ${
-                    downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded
-                      ? 'text-emerald-400'
-                      : 'text-white/70 hover:text-white'
-                  }`}
-                  title={
-                    downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded
-                      ? 'Downloaded (Offline Ready)'
-                      : 'Download Offline to Phone'
-                  }
-                >
-                  {downloading ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-white" />
-                  ) : downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded ? (
-                    <CheckCircle2 className="w-5 h-5 fill-emerald-500/20 text-emerald-400" />
-                  ) : (
-                    <Download className="w-5 h-5" />
-                  )}
-                </button>
-
                 <button
                   onClick={() => setShowTrackDetails(!showTrackDetails)}
                   className="p-2.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
@@ -516,26 +477,6 @@ export const NowPlayingModal: React.FC = () => {
                 </button>
               </div>
             </div>
-
-            {/* Live Lyrics Sneak-Peek Line (Photo 2: "Finding the right words") */}
-            {npConfig.showLyricsLine && (
-              <div className="w-full max-w-sm px-3 mt-3">
-                <button
-                  onClick={() => {
-                    setLyricsOpen(true);
-                    setQueueOpen(false);
-                  }}
-                  className="w-full text-left py-1 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center justify-between group"
-                >
-                  <span className="text-xs font-medium text-white/60 group-hover:text-white truncate">
-                    {activeLyricText}
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider ml-2 flex-shrink-0" style={{ color: settings.accentColor }}>
-                    Lyrics
-                  </span>
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -711,10 +652,7 @@ export const NowPlayingModal: React.FC = () => {
           {/* Queue / Up Next */}
           <button
             id="np-btn-queue-toggle"
-            onClick={() => {
-              setQueueOpen(!queueOpen);
-              setLyricsOpen(false);
-            }}
+            onClick={() => setQueueOpen(!queueOpen)}
             className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
               queueOpen ? 'text-white bg-white/15' : 'text-white/70 hover:text-white'
             }`}

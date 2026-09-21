@@ -9,7 +9,6 @@ import {
   Check, 
   RotateCcw,
   Volume2,
-  FileText,
   Repeat
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
@@ -289,28 +288,18 @@ export const CustomizerModal: React.FC = () => {
             {/* Now Playing Features */}
             <div className="space-y-2">
               <div 
-                onClick={() => toggleNpConfig('showLyricsLine')}
-                className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/5 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/5 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <FileText className="w-4 h-4 text-white/60" />
+                  <Smartphone className="w-4 h-4 text-purple-400" />
                   <div>
-                    <p className="text-xs font-semibold text-white">Live Lyrics Sneak-Peek</p>
-                    <p className="text-[11px] text-white/50">Shows "Finding the right words" or real-time lyric under title</p>
+                    <p className="text-xs font-semibold text-white">One-Hand Swipe Controls</p>
+                    <p className="text-[11px] text-white/50">Swipe ◀ ▶ on artwork for Next/Prev • Swipe ▼ to Minimize</p>
                   </div>
                 </div>
-                <div 
-                  className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-1 ${
-                    npConfig.showLyricsLine ? 'bg-emerald-500' : 'bg-white/20'
-                  }`}
-                  style={{ backgroundColor: npConfig.showLyricsLine ? settings.accentColor : undefined }}
-                >
-                  <div 
-                    className={`w-4 h-4 rounded-full bg-black shadow-md transition-transform ${
-                      npConfig.showLyricsLine ? 'translate-x-5' : 'translate-x-0'
-                    }`} 
-                  />
-                </div>
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  ACTIVE
+                </span>
               </div>
 
               <div 

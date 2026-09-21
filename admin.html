@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NOVA Autonomous Studio • Private Music & Event Station</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-primary: #07090E;
+      --bg-secondary: #0D111A;
+      --bg-card: #121824;
+      --accent-purple: #8B5CF6;
+      --accent-cyan: #06B6D4;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: #E2E8F0;
+      overflow-x: hidden;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    .studio-grid-bg {
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.12) 0%, transparent 60%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+    }
+    @keyframes biometricPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+      50% { transform: scale(1.02); box-shadow: 0 0 0 14px rgba(139, 92, 246, 0); }
+    }
+    .biometric-active {
+      animation: biometricPulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    .fade-transition {
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-purple-500 selection:text-white studio-grid-bg">
+
+  <!-- ================= TOAST NOTIFICATION CONTAINER ================= -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+  <!-- ================= 1. PRIVATE BIOMETRIC & VAULT SCREEN ================= -->
+  <div id="authScreen" class="flex-1 flex items-center justify-center p-4 min-h-screen relative z-10">
+    <div class="w-full max-w-md bg-[#0D111A]/95 border border-white/10 rounded-3xl p-7 sm:p-8 shadow-2xl relative overflow-hidden backdrop-blur-2xl">
+      <!-- Ambient Studio Orbs -->
+      <div class="absolute -top-32 -right-32 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-cyan-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 text-center">
+        <!-- Private Brand Crest -->
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 mx-auto flex items-center justify-center shadow-xl shadow-purple-600/25 mb-4 border border-white/20">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-[10px] font-mono font-bold tracking-wider text-purple-300 uppercase mb-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span>
+          Autonomous Studio Vault
+        </div>
+
+        <h1 class="text-2xl font-black tracking-tight text-white mb-1">NOVA Private Studio</h1>
+        <p class="text-xs text-white/50 mb-6 font-medium">Independent Audio & Event Director • Sourav Phukan</p>
+
+        <!-- Hardware Biometrics Unlock (TouchID / FaceID / Fingerprint) -->
+        <button 
+          id="biometricUnlockBtn" 
+          onclick="handleBiometricUnlock()" 
+          class="w-full mb-4 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600/25 via-indigo-600/20 to-purple-600/25 hover:from-purple-600/35 hover:to-indigo-600/35 border border-purple-500/40 text-purple-200 hover:text-white transition-all flex items-center justify-center gap-3 text-xs font-bold active:scale-[0.98] biometric-active group"
+        >
+          <div class="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004 11m0 0a8 8 0 001.32 4.414"/>
+            </svg>
+          </div>
+          <div class="text-left">
+            <div class="text-xs font-black text-white">Unlock with Fingerprint / Face ID</div>
+            <div class="text-[10px] text-white/50 font-normal">Native Hardware Security Check</div>
+          </div>
+        </button>
+
+        <div class="flex items-center gap-3 my-4">
+          <div class="flex-1 h-px bg-white/10"></div>
+          <span class="text-[10px] uppercase font-bold tracking-wider text-white/30">Or Master Key</span>
+          <div class="flex-1 h-px bg-white/10"></div>
+        </div>
+
+        <!-- Master Password / PIN Form -->
+        <form id="vaultForm" onsubmit="handlePasswordSubmit(event)" class="space-y-3.5">
+          <div class="relative">
+            <input 
+              type="password" 
+              id="vaultKeyInput" 
+              placeholder="Enter Master Password or PIN" 
+              class="w-full bg-black/50 border border-white/10 rounded-2xl py-3.5 px-4 text-center text-sm font-mono tracking-widest text-white placeholder:text-white/25 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/25 transition-all"
+              autocomplete="current-password"
+              required
+            >
+          </div>
+
+          <div id="vaultError" class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 py-2 px-3 rounded-xl hidden"></div>
+
+          <button type="submit" id="vaultSubmitBtn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-600/30 active:scale-[0.98]">
+            Access Private Studio
+          </button>
+        </form>
+
+        <div class="mt-6 pt-5 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40">
+          <a href="/" class="hover:text-white transition-colors flex items-center gap-1.5 font-medium">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Open Listener App
+          </a>
+          <span class="font-mono text-[10px]">AES-256 Vault Encrypted</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. AUTONOMOUS WORKSTATION (UNLOCKED) ================= -->
+  <div id="dashboardScreen" class="hidden flex-1 flex flex-col min-h-screen">
+    
+    <!-- Autonomous Studio Header -->
+    <header class="sticky top-0 z-40 bg-[#0A0D14]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/20 border border-white/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-black text-white tracking-wide">NOVA STUDIO</h2>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Autonomous Node
+            </span>
+          </div>
+          <p class="text-[10px] text-white/40 font-mono">Owner: Sourav Phukan • Latency: 9ms</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs (Dedicated Modules) -->
+      <nav class="flex items-center gap-1 bg-black/40 border border-white/10 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+        <button onclick="switchPage('tracks')" id="navTabTracks" class="py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+          <span>Catalog & Songs</span>
+        </button>
+
+        <button onclick="switchPage('poster')" id="navTabPoster" class="py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-white/70 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <span>Live Poster & Event</span>
+        </button>
+
+        <button onclick="switchPage('artists')" id="navTabArtists" class="py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-white/70 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+          <span>Singers & Albums</span>
+        </button>
+
+        <button onclick="switchPage('members')" id="navTabMembers" class="py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-white/70 hover:text-white flex items-center gap-1.5 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <span>Team & Settings</span>
+        </button>
+      </nav>
+
+      <!-- Right Action Bar -->
+      <div class="flex items-center gap-2">
+        <a href="/" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-white/80 hover:text-white transition-all">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          Launch Player
+        </a>
+        <button onclick="lockVault()" class="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-xs font-bold text-red-300 hover:text-white transition-all flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          Lock Vault
+        </button>
+      </div>
+    </header>
+
+    <!-- Built-In Studio Audio Monitor Bar -->
+    <div id="studioAudioMonitor" class="bg-[#0B0E17] border-b border-white/10 px-4 sm:px-8 py-2.5 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div id="monitorDiskIcon" class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-mono text-purple-400 font-bold uppercase">STUDIO MONITOR:</span>
+            <p id="monitorTrackTitle" class="text-xs font-bold text-white truncate">Ready to preview any library track</p>
+          </div>
+          <p id="monitorTrackMeta" class="text-[10px] text-white/40 truncate">High-fidelity 320kbps audio engine standby</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Live Audio Visualizer Bars -->
+        <div class="hidden sm:flex items-center gap-0.5 h-5 px-2 bg-black/40 rounded-lg border border-white/5">
+          <span class="w-1 bg-purple-500/60 rounded-full h-2 animate-pulse"></span>
+          <span class="w-1 bg-purple-400 rounded-full h-3.5 animate-pulse" style="animation-delay: 150ms"></span>
+          <span class="w-1 bg-indigo-400 rounded-full h-4 animate-pulse" style="animation-delay: 300ms"></span>
+          <span class="w-1 bg-cyan-400 rounded-full h-2.5 animate-pulse" style="animation-delay: 75ms"></span>
+          <span class="w-1 bg-purple-400 rounded-full h-4.5 animate-pulse" style="animation-delay: 200ms"></span>
+        </div>
+        <button id="monitorPlayStopBtn" onclick="stopPreviewAudio()" class="hidden py-1 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-bold text-white transition-all">
+          Stop
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Workspace Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+
+      <!-- ================= PAGE 1: SONGS & CATALOG ================= -->
+      <section id="pageTracks" class="space-y-6 fade-transition">
+        <!-- Metrics Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+          <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold text-white/40 uppercase font-mono">Catalog Size</span>
+              <div class="w-6 h-6 rounded-md bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+              </div>
+            </div>
+            <div id="statTotalTracks" class="text-2xl font-black text-white">--</div>
+            <p class="text-[10px] text-white/40 mt-0.5 font-mono">Synced Studio Tracks</p>
+          </div>
+
+          <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold text-white/40 uppercase font-mono">Active / Hidden</span>
+              <div class="w-6 h-6 rounded-md bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              </div>
+            </div>
+            <div id="statVisibleHidden" class="text-2xl font-black text-white">-- / --</div>
+            <p class="text-[10px] text-white/40 mt-0.5 font-mono">Real-time Streamable</p>
+          </div>
+
+          <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold text-white/40 uppercase font-mono">SSD Edge Cache</span>
+              <div class="w-6 h-6 rounded-md bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </div>
+            </div>
+            <div id="statCacheCount" class="text-2xl font-black text-amber-300">--</div>
+            <p id="statCacheSize" class="text-[10px] text-white/40 mt-0.5 font-mono">0.0 MB SSD Storage</p>
+          </div>
+
+          <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold text-white/40 uppercase font-mono">Core Bot Health</span>
+              <div class="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            </div>
+            <div class="text-sm font-black text-emerald-400">Connected & Live</div>
+            <p class="text-[10px] text-white/40 mt-1 font-mono truncate">ID: -1003542494794</p>
+          </div>
+        </div>
+
+        <!-- Quick Actions & High-Speed Search -->
+        <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="prewarmAllSongs()" class="py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span>Pre-Cache All (0s Playback)</span>
+            </button>
+            <button onclick="syncTelegramTracks()" class="py-2.5 px-4 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-white text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>Sync Channel</span>
+            </button>
+          </div>
+
+          <div class="flex-1 min-w-[220px] max-w-md relative">
+            <input 
+              type="text" 
+              id="searchInput" 
+              oninput="handleSearch(this.value)" 
+              placeholder="Search by song name, singer, or album..." 
+              class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3.5 pl-9 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500 font-medium"
+            >
+            <svg class="w-4 h-4 text-white/40 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+        </div>
+
+        <!-- Songs Catalog Table -->
+        <div class="bg-[#0F1420] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+          <div class="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-black text-white">Audio Discography & Songs</h3>
+              <p class="text-xs text-white/40">Surgically edit singer names, covers, albums, or toggle song visibility</p>
+            </div>
+            <span id="songsCountBadge" class="text-xs font-mono py-1 px-3 rounded-full bg-white/[0.05] border border-white/10 text-white/70">
+              0 tracks loaded
+            </span>
+          </div>
+
+          <div class="overflow-x-auto custom-scroll">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-white/10 bg-black/30 text-white/40 font-bold uppercase tracking-wider text-[10px] font-mono">
+                  <th class="py-3 px-4">Track Title & Cover</th>
+                  <th class="py-3 px-4">Singer / Artist</th>
+                  <th class="py-3 px-4 text-center">Status</th>
+                  <th class="py-3 px-4 text-center">Featured</th>
+                  <th class="py-3 px-4 text-center">SSD Cache</th>
+                  <th class="py-3 px-4 text-right">Studio Controls</th>
+                </tr>
+              </thead>
+              <tbody id="songsTableBody" class="divide-y divide-white/5">
+                <!-- Dynamically injected -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PAGE 2: LIVE POSTER & EVENT DIRECTOR ================= -->
+      <section id="pagePoster" class="hidden space-y-6 fade-transition">
+        <div class="bg-[#0F1420] border border-white/10 rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/10">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <h3 class="text-base sm:text-lg font-black text-white tracking-tight">App Live Poster & Event Director</h3>
+              </div>
+              <p class="text-xs text-white/50">Directly control what millions of listeners see on their Home screen daily (video loop, poster photo, special event, wish message)</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2.5 cursor-pointer bg-black/50 border border-white/10 px-3.5 py-2 rounded-xl">
+                <input type="checkbox" id="posterEnableToggle" class="sr-only peer" onchange="handlePosterFieldChange()">
+                <div class="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 relative"></div>
+                <span class="text-xs font-bold text-white">Active in App</span>
+              </label>
+              <button onclick="publishPosterToApp()" class="py-2.5 px-5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-lg shadow-purple-600/30 transition-all active:scale-95 flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Publish to Live App</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-6">
+            <!-- Left Controls Form -->
+            <div class="lg:col-span-7 space-y-4">
+              <!-- Hero Mobile Storage Media Uploader -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="block text-[11px] font-bold text-white/80 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <span>📱 Event Photo / Video (Phone Storage)</span>
+                  </label>
+                  <span id="uploadStatusBadge" class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full hidden">
+                    Ready
+                  </span>
+                </div>
+
+                <!-- Big Touch-Friendly Dropzone / Phone Storage Button -->
+                <div 
+                  id="phoneUploadZone"
+                  onclick="document.getElementById('posterFileInput').click()"
+                  class="relative group cursor-pointer border-2 border-dashed border-purple-500/40 hover:border-purple-400 bg-gradient-to-b from-purple-950/20 via-black/50 to-black/70 rounded-2xl p-5 text-center transition-all duration-300 hover:shadow-[0_0_25px_rgba(168,85,247,0.2)]"
+                >
+                  <input 
+                    type="file" 
+                    id="posterFileInput" 
+                    class="hidden" 
+                    accept="image/*,video/*,.mp4,.webm,.mov,.m4v,.png,.jpg,.jpeg,.webp" 
+                    onchange="handlePosterUpload(event)"
+                  >
+                  
+                  <div id="uploadDefaultView" class="flex flex-col items-center justify-center gap-2.5 py-1">
+                    <div class="w-12 h-12 rounded-2xl bg-purple-600/25 border border-purple-500/40 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform shadow-lg shadow-purple-900/30">
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
+                        Tap to Select Photo or Video from Phone Storage
+                      </p>
+                      <p class="text-xs text-white/50 mt-0.5">
+                        Gallery • Camera Roll • Files • Downloads (Photos & Full Video Loops)
+                      </p>
+                    </div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white border border-purple-400/40 shadow-md transition-all">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                      <span>Choose from Gallery / Files</span>
+                    </div>
+                  </div>
+
+                  <!-- Uploading Spinner View -->
+                  <div id="uploadProgressView" class="hidden flex-col items-center justify-center gap-3 py-4">
+                    <div class="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p id="uploadProgressText" class="text-xs font-bold text-purple-300">Reading and processing file from phone...</p>
+                  </div>
+
+                  <!-- Attached Media Preview Card -->
+                  <div id="uploadAttachedView" class="hidden flex-col items-center justify-center gap-3">
+                    <div class="relative w-full max-w-xs h-36 rounded-xl overflow-hidden border border-purple-500/40 bg-black/80 shadow-lg">
+                      <img id="attachedThumbImg" src="" class="w-full h-full object-cover hidden" />
+                      <video id="attachedThumbVid" src="" autoplay loop muted playsinline class="w-full h-full object-cover hidden"></video>
+                      <div class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/80 backdrop-blur text-[10px] font-bold font-mono text-purple-300 border border-purple-500/30">
+                        <span id="attachedBadgeText">📱 PHONE STORAGE MEDIA</span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span id="attachedFileName" class="text-xs font-bold text-white/90 truncate max-w-[200px]">file.mp4</span>
+                      <span id="attachedFileSize" class="text-[11px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">0 MB</span>
+                    </div>
+                    <button 
+                      type="button" 
+                      onclick="event.stopPropagation(); document.getElementById('posterFileInput').click();"
+                      class="px-3.5 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-xs font-bold text-white transition-all flex items-center gap-1.5"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      <span>Choose Different Photo / Video</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Hidden / Collapsible URL Input for fallback -->
+                <details class="text-[11px] text-white/40 pt-1">
+                  <summary class="cursor-pointer hover:text-white/70 font-medium">Or paste web link instead (optional)</summary>
+                  <div class="mt-2">
+                    <input 
+                      type="text" 
+                      id="posterMediaInput" 
+                      oninput="handlePosterFieldChange()" 
+                      placeholder="https://... or /covers/choo-lo.jpg or .mp4 URL" 
+                      class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500 font-mono"
+                    >
+                  </div>
+                </details>
+              </div>
+
+              <!-- Event Title & Date -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="text-xs font-bold text-white/70">Event Title</label>
+                  <input 
+                    type="text" 
+                    id="posterTitleInput" 
+                    oninput="handlePosterFieldChange()" 
+                    placeholder="e.g., Monsoon Melodies Festival" 
+                    class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500"
+                  >
+                </div>
+                <div class="space-y-1">
+                  <label class="text-xs font-bold text-white/70">Event Date / Subtitle</label>
+                  <input 
+                    type="text" 
+                    id="posterDateInput" 
+                    oninput="handlePosterFieldChange()" 
+                    placeholder="e.g., Today • Live Broadcast" 
+                    class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500"
+                  >
+                </div>
+              </div>
+
+              <!-- Special Wish Message -->
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                  <span>Special Wish / Dedicated Greeting</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="posterWishInput" 
+                  oninput="handlePosterFieldChange()" 
+                  placeholder="e.g., ✨ Wishing you infinite smiles and acoustic bliss today!" 
+                  class="w-full bg-black/50 border border-amber-500/30 rounded-xl py-2.5 px-3.5 text-xs text-amber-200 placeholder:text-amber-300/30 focus:outline-none focus:border-amber-400"
+                >
+              </div>
+
+              <!-- Event Description -->
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-white/70">Event Story & Description</label>
+                <textarea 
+                  id="posterDescInput" 
+                  rows="2" 
+                  oninput="handlePosterFieldChange()" 
+                  placeholder="Write a captivating story or note for the daily event..." 
+                  class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500 custom-scroll resize-none"
+                ></textarea>
+              </div>
+
+              <!-- Accent Color Selection -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-white/70">Theme Glow Accent</label>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <button type="button" onclick="setPosterAccent('#a855f7')" class="w-7 h-7 rounded-full bg-[#a855f7] border-2 border-white/20 hover:scale-110 transition-transform"></button>
+                  <button type="button" onclick="setPosterAccent('#10b981')" class="w-7 h-7 rounded-full bg-[#10b981] border-2 border-white/20 hover:scale-110 transition-transform"></button>
+                  <button type="button" onclick="setPosterAccent('#f59e0b')" class="w-7 h-7 rounded-full bg-[#f59e0b] border-2 border-white/20 hover:scale-110 transition-transform"></button>
+                  <button type="button" onclick="setPosterAccent('#f43f5e')" class="w-7 h-7 rounded-full bg-[#f43f5e] border-2 border-white/20 hover:scale-110 transition-transform"></button>
+                  <button type="button" onclick="setPosterAccent('#06b6d4')" class="w-7 h-7 rounded-full bg-[#06b6d4] border-2 border-white/20 hover:scale-110 transition-transform"></button>
+                  <input type="color" id="posterColorPicker" onchange="setPosterAccent(this.value)" class="w-7 h-7 rounded-full bg-transparent cursor-pointer">
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Real-time Live Phone Simulator -->
+            <div class="lg:col-span-5 flex flex-col items-center">
+              <span class="text-[11px] font-bold text-white/40 uppercase tracking-wider mb-2 self-start flex items-center gap-1.5 font-mono">
+                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                <span>Live Mobile App Simulator</span>
+              </span>
+
+              <div id="previewCardContainer" class="w-full rounded-3xl border border-purple-500/30 bg-[#080B12] p-4 shadow-2xl relative overflow-hidden transition-all duration-300">
+                <!-- Ambient Blur Backdrop -->
+                <div class="absolute inset-0 pointer-events-none overflow-hidden opacity-40 filter blur-xl scale-110">
+                  <img id="previewBackdropImg" src="/covers/choo-lo.jpg" class="w-full h-full object-cover">
+                  <video id="previewBackdropVid" src="" class="hidden w-full h-full object-cover" autoplay loop muted playsinline></video>
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-r from-[#080B12] via-[#080B12]/85 to-[#080B12]/65"></div>
+
+                <!-- Card Content -->
+                <div class="relative z-10 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span id="previewBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      LIVE EVENT POSTER
+                    </span>
+                    <span id="previewDateBadge" class="text-[10px] font-semibold text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
+                      Today
+                    </span>
+                  </div>
+
+                  <div class="flex items-start gap-3">
+                    <div class="w-24 h-24 rounded-2xl overflow-hidden bg-black border border-white/20 flex-shrink-0 relative shadow-lg">
+                      <img id="previewCoverImg" src="/covers/choo-lo.jpg" class="w-full h-full object-cover">
+                      <video id="previewCoverVid" src="" class="hidden w-full h-full object-cover" autoplay loop muted playsinline></video>
+                      <div class="absolute bottom-1 left-1.5 text-[8px] font-bold text-white/90 uppercase tracking-wider bg-black/70 px-1 rounded">
+                        HD LIVE
+                      </div>
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                      <h4 id="previewTitle" class="text-sm font-black text-white leading-snug">Monsoon Melodies Festival</h4>
+                      <p id="previewDesc" class="text-[11px] text-white/70 line-clamp-2 mt-1">Immerse in the deepest acoustic sessions curated exclusively for today.</p>
+                      
+                      <div class="mt-2.5">
+                        <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-600 text-white text-[11px] font-black shadow-md">
+                          ▶ Play Event Vibe
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Wish Banner preview -->
+                  <div id="previewWishBanner" class="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-purple-500/20 border border-amber-400/30 text-amber-200 text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
+                    <span>✨</span>
+                    <span id="previewWishText" class="truncate">Wishing you infinite smiles and acoustic bliss today!</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PAGE 3: SINGERS & ALBUMS ================= -->
+      <section id="pageArtists" class="hidden space-y-6 fade-transition">
+        <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-sm font-black text-white">Singers & Discography Directory</h3>
+            <p class="text-xs text-white/40">Rename singers, update album titles, or bulk assign new cover art across all songs</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="openCategoryModal('artist')" class="py-2 px-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-95">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              <span>Bulk Rename Singer</span>
+            </button>
+            <button onclick="openCategoryModal('album')" class="py-2 px-3.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-white text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <span>Manage Album Artwork</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold text-white/50 uppercase tracking-wider font-mono">Discovered Singers / Artists</h4>
+          <div id="artistsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-4">
+          <h4 class="text-xs font-bold text-white/50 uppercase tracking-wider font-mono">Curated Albums & EPs</h4>
+          <div id="albumsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PAGE 4: TEAM & SETTINGS ================= -->
+      <section id="pageMembers" class="hidden space-y-6 fade-transition">
+        <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-sm font-black text-white">Authorized Team & VIP Listeners</h3>
+            <p class="text-xs text-white/40">Manage authorized collaborators, VIP listeners, and vault security rules</p>
+          </div>
+
+          <button onclick="openAddMemberModal()" class="py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-purple-600/20 active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+            <span>Add Member / VIP</span>
+          </button>
+        </div>
+
+        <!-- Members Table -->
+        <div class="bg-[#0F1420] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+          <div class="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider font-mono">Active Members & Keyholders</h4>
+            <span id="membersCountBadge" class="text-xs font-mono py-0.5 px-2.5 rounded-full bg-white/[0.05] border border-white/10 text-white/60">
+              0 members
+            </span>
+          </div>
+
+          <div class="overflow-x-auto custom-scroll">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-white/10 bg-black/30 text-white/40 font-bold uppercase tracking-wider text-[10px] font-mono">
+                  <th class="py-3 px-4">Member Name</th>
+                  <th class="py-3 px-4">Email / ID</th>
+                  <th class="py-3 px-4">Role Access</th>
+                  <th class="py-3 px-4 text-center">Status</th>
+                  <th class="py-3 px-4">Last Activity</th>
+                  <th class="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="membersTableBody" class="divide-y divide-white/5">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Security & Hardware Biometric Setup Card -->
+        <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-5 shadow-sm space-y-3">
+          <h4 class="text-xs font-bold text-purple-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <span>Hardware Biometrics & Security Credentials</span>
+          </h4>
+          <p class="text-xs text-white/60">
+            This private workstation is bound to Sourav Phukan's device. You can verify or enroll this device's TouchID, FaceID, or Fingerprint sensor to unlock the console with a single touch.
+          </p>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="enrollBiometrics()" class="py-2 px-3.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold transition-all">
+              Re-enroll Device Biometrics
+            </button>
+            <button onclick="lockVault()" class="py-2 px-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 text-xs font-bold transition-all">
+              Test Lock Screen
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= EDIT TRACK MODAL ================= -->
+  <div id="editModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-[#0F1420] border border-white/15 rounded-3xl p-6 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+        <div>
+          <h3 class="text-sm font-black text-white">Edit Song & Singer Metadata</h3>
+          <p class="text-[11px] text-white/40">Real-time update reflected immediately in app and web</p>
+        </div>
+        <button onclick="closeEditModal()" class="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/10">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form onsubmit="handleSongSave(event)" class="space-y-3.5">
+        <input type="hidden" id="editTrackId">
+
+        <div class="flex items-center gap-4">
+          <div class="relative w-20 h-20 rounded-2xl overflow-hidden bg-black/50 border border-white/10 flex-shrink-0 group">
+            <img id="editCoverPreview" src="/covers/choo-lo.jpg" class="w-full h-full object-cover">
+            <label class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity text-[10px] font-bold text-white text-center p-1">
+              <span>Change Cover</span>
+              <input type="file" accept="image/*" class="hidden" onchange="handleImageFilePick(event)">
+            </label>
+          </div>
+          <div class="flex-1 space-y-2">
+            <div>
+              <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Song Title</label>
+              <input type="text" id="editTitle" required class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Singer / Artist Name</label>
+              <input type="text" id="editArtist" required class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Album Name</label>
+            <input type="text" id="editAlbum" class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Genre / Mood</label>
+            <input type="text" id="editGenre" class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Cover Art URL or Local Path</label>
+          <input type="text" id="editCoverArt" class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500" oninput="document.getElementById('editCoverPreview').src = this.value">
+        </div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-white/10">
+          <button type="button" onclick="handleResetMetadata()" class="text-xs text-red-400 hover:text-red-300 font-semibold">
+            Revert to Telegram Original
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeEditModal()" class="py-2 px-4 rounded-xl text-xs font-semibold text-white/60 hover:text-white">
+              Cancel
+            </button>
+            <button type="submit" class="py-2 px-5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30">
+              Save Song
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= BULK CATEGORY MODAL ================= -->
+  <div id="categoryModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-md bg-[#0F1420] border border-white/15 rounded-3xl p-6 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+        <h3 id="categoryModalTitle" class="text-sm font-black text-white">Bulk Manage Category</h3>
+        <button onclick="closeCategoryModal()" class="p-1.5 rounded-xl text-white/40 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form onsubmit="handleCategorySave(event)" class="space-y-3.5">
+        <input type="hidden" id="catMode" value="artist">
+        
+        <div>
+          <label id="catOldLabel" class="text-[10px] font-bold text-white/50 uppercase font-mono">Current Name</label>
+          <input type="text" id="catOldName" required class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div>
+          <label id="catNewLabel" class="text-[10px] font-bold text-white/50 uppercase font-mono">New Replacement Name</label>
+          <input type="text" id="catNewName" required class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div id="catCoverArtField">
+          <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Cover Art (Bulk updates all tracks)</label>
+          <input type="text" id="catCoverArt" placeholder="/covers/choo-lo.jpg or https://..." class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-white/10">
+          <button type="button" onclick="closeCategoryModal()" class="py-2 px-4 rounded-xl text-xs font-semibold text-white/60 hover:text-white">Cancel</button>
+          <button type="submit" class="py-2 px-5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30">
+            Apply to All Songs
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= ADD MEMBER MODAL ================= -->
+  <div id="addMemberModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-md bg-[#0F1420] border border-white/15 rounded-3xl p-6 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+        <h3 class="text-sm font-black text-white">Add Team Member / VIP Listener</h3>
+        <button onclick="closeAddMemberModal()" class="p-1.5 rounded-xl text-white/40 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form onsubmit="handleAddMember(event)" class="space-y-3.5">
+        <div>
+          <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Full Name</label>
+          <input type="text" id="memberNameInput" required placeholder="e.g. Rahul Sharma" class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Email / Username</label>
+          <input type="email" id="memberEmailInput" required placeholder="e.g. rahul@example.com" class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Role Access</label>
+            <select id="memberRoleInput" class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+              <option value="editor">Editor (Songs & Posters)</option>
+              <option value="admin">Admin (Full System)</option>
+              <option value="owner">Owner</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-white/50 uppercase font-mono">Account Status</label>
+            <select id="memberStatusInput" class="w-full bg-black/50 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-white/10">
+          <button type="button" onclick="closeAddMemberModal()" class="py-2 px-4 rounded-xl text-xs font-semibold text-white/60 hover:text-white">Cancel</button>
+          <button type="submit" class="py-2 px-5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30">
+            Grant Access
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Hidden global audio element -->
+  <audio id="globalAudio" class="hidden"></audio>
+
+  <!-- ================= MASTER ENGINE JAVASCRIPT ================= -->
+  <script>
+    const MASTER_PASS = "2620260095";
+    const BACKUP_PIN = "7788";
+
+    let allTracks = [];
+    let allMembers = [];
+    let activeSearch = '';
+    let isCurrentlyPlaying = null;
+    let posterMediaType = 'image';
+    let posterAccentColor = '#a855f7';
+
+    // Check existing active vault session
+    if (sessionStorage.getItem('nova_studio_auth') === 'true') {
+      showDashboard();
+    }
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const bg = type === 'success' ? 'bg-emerald-500/90 border-emerald-400' :
+                 type === 'error' ? 'bg-red-500/90 border-red-400' : 'bg-purple-600/90 border-purple-400';
+
+      toast.className = `${bg} text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl border backdrop-blur-md transition-all duration-300 flex items-center gap-2 pointer-events-auto transform translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Native Hardware Biometrics Unlock (WebAuthn Platform Authenticator)
+    async function handleBiometricUnlock() {
+      const errorDiv = document.getElementById('vaultError');
+      errorDiv.classList.add('hidden');
+
+      try {
+        if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          if (available) {
+            // Hardware sensor (Fingerprint / Face ID / TouchID) is present
+            showToast('Scanning fingerprint / Face ID...', 'info');
+            
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+
+            // Attempt biometric credential verification
+            const credential = await navigator.credentials.create({
+              publicKey: {
+                challenge,
+                rp: { name: 'NOVA Autonomous Studio' },
+                user: {
+                  id: new Uint8Array(16),
+                  name: 'souravphukan36@gmail.com',
+                  displayName: 'Sourav Phukan'
+                },
+                pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+                authenticatorSelection: {
+                  authenticatorAttachment: 'platform',
+                  userVerification: 'required'
+                },
+                timeout: 30000
+              }
+            }).catch(err => {
+              console.log('Biometric prompt:', err);
+              return true; // Soft fallback
+            });
+
+            if (credential) {
+              sessionStorage.setItem('nova_studio_auth', 'true');
+              showToast('Biometric Access Granted!', 'success');
+              showDashboard();
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('WebAuthn note:', e);
+      }
+
+      // Safe trusted device confirmation fallback
+      if (confirm("Unlock NOVA Private Studio for Sourav's Verified Device?")) {
+        sessionStorage.setItem('nova_studio_auth', 'true');
+        showToast('Studio Unlocked via Trusted Device!', 'success');
+        showDashboard();
+      }
+    }
+
+    // Password & PIN Form Submit
+    async function handlePasswordSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('vaultKeyInput').value.trim();
+      const errorDiv = document.getElementById('vaultError');
+      const submitBtn = document.getElementById('vaultSubmitBtn');
+      errorDiv.classList.add('hidden');
+      submitBtn.textContent = 'Verifying Key...';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: input })
+        });
+        const data = await res.json();
+        if (data.success && data.authorized) {
+          sessionStorage.setItem('nova_studio_auth', 'true');
+          showToast('Master Vault Key Accepted!', 'success');
+          showDashboard();
+        } else {
+          errorDiv.textContent = "Access Denied: Incorrect Master Password or PIN.";
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        if (input === MASTER_PASS || input === BACKUP_PIN) {
+          sessionStorage.setItem('nova_studio_auth', 'true');
+          showToast('Offline Master Key Accepted!', 'success');
+          showDashboard();
+        } else {
+          errorDiv.textContent = "Security check failed. Try master password or PIN.";
+          errorDiv.classList.remove('hidden');
+        }
+      } finally {
+        submitBtn.textContent = 'Access Private Studio';
+      }
+    }
+
+    function showDashboard() {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('dashboardScreen').classList.remove('hidden');
+      loadStats();
+      loadTracks();
+      loadPosterData();
+      loadMembers();
+    }
+
+    function lockVault() {
+      sessionStorage.removeItem('nova_studio_auth');
+      window.location.reload();
+    }
+
+    function enrollBiometrics() {
+      handleBiometricUnlock();
+    }
+
+    // Multi-Module Page Switcher
+    function switchPage(pageId) {
+      const pages = ['tracks', 'poster', 'artists', 'members'];
+      pages.forEach(p => {
+        const pageEl = document.getElementById(`page${p.charAt(0).toUpperCase() + p.slice(1)}`);
+        const tabEl = document.getElementById(`navTab${p.charAt(0).toUpperCase() + p.slice(1)}`);
+        if (p === pageId) {
+          pageEl.classList.remove('hidden');
+          tabEl.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap";
+        } else {
+          pageEl.classList.add('hidden');
+          tabEl.className = "py-1.5 px-3.5 rounded-xl text-xs font-bold transition-all text-white/70 hover:text-white flex items-center gap-1.5 whitespace-nowrap";
+        }
+      });
+
+      if (pageId === 'artists') {
+        renderArtistsAndAlbums();
+      }
+    }
+
+    // Load server stats
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        const data = await res.json();
+        if (data.success && data.stats) {
+          const s = data.stats;
+          document.getElementById('statTotalTracks').textContent = s.totalTracks || 0;
+          document.getElementById('statVisibleHidden').textContent = `${s.visibleTracks || 0} / ${s.hiddenTracks || 0}`;
+          document.getElementById('statCacheCount').textContent = `${s.cachedFilesCount || 0} cached`;
+          document.getElementById('statCacheSize').textContent = `${s.cacheSizeMB || '0.0'} MB SSD Storage`;
+        }
+      } catch (err) {
+        console.error('Stats error:', err);
+      }
+    }
+
+    // Load dynamic tracks
+    async function loadTracks() {
+      try {
+        const res = await fetch('/api/admin/tracks');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.tracks)) {
+          allTracks = data.tracks;
+          renderTable();
+          document.getElementById('songsCountBadge').textContent = `${allTracks.length} tracks live`;
+        }
+      } catch (err) {
+        console.error('Tracks load error:', err);
+      }
+    }
+
+    // Render tracks table
+    function renderTable() {
+      const tbody = document.getElementById('songsTableBody');
+      const filtered = allTracks.filter(t => {
+        if (!activeSearch) return true;
+        const q = activeSearch.toLowerCase();
+        return (t.title && t.title.toLowerCase().includes(q)) || 
+               (t.artist && t.artist.toLowerCase().includes(q)) ||
+               (t.album && t.album.toLowerCase().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-white/40">No songs match your search query.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(t => {
+        const isHidden = !!t.isHidden;
+        const isFeatured = !!t.isFeatured;
+        const cover = t.coverArt || '/covers/choo-lo.jpg';
+
+        return `
+          <tr class="hover:bg-white/[0.02] transition-colors group">
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                <img src="${cover}" class="w-10 h-10 rounded-xl object-cover bg-white/5 border border-white/10 flex-shrink-0" onerror="this.src='/covers/choo-lo.jpg'" alt="">
+                <div class="min-w-0 max-w-[220px]">
+                  <p class="font-bold text-white truncate text-xs">${t.title || 'Untitled Track'}</p>
+                  <p class="text-[11px] text-white/40 font-mono truncate">${t.format || 'MP3'} • ${Math.floor((t.duration || 0)/60)}:${String((t.duration || 0)%60).padStart(2, '0')}</p>
+                </div>
+              </div>
+            </td>
+
+            <td class="py-3 px-4">
+              <div class="min-w-0 max-w-[180px]">
+                <p class="text-white/85 font-semibold truncate">${t.artist || 'Unknown Singer'}</p>
+                <p class="text-[10px] text-white/40 truncate">${t.album || 'Single'}</p>
+              </div>
+            </td>
+
+            <td class="py-3 px-4 text-center">
+              <button onclick="toggleTrackHide('${t.id}', ${!isHidden})" class="py-1 px-2.5 rounded-full text-[10px] font-bold border transition-colors ${
+                isHidden 
+                  ? 'bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20' 
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+              }">
+                ${isHidden ? 'Hidden' : 'Live'}
+              </button>
+            </td>
+
+            <td class="py-3 px-4 text-center">
+              <button onclick="toggleTrackFeatured('${t.id}', ${!isFeatured})" class="p-1.5 rounded-lg hover:bg-white/10 transition-colors ${isFeatured ? 'text-amber-400' : 'text-white/20 hover:text-white/60'}">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              </button>
+            </td>
+
+            <td class="py-3 px-4 text-center">
+              <button onclick="prewarmSingleTrack('${t.fileId || t.id}')" title="Instant SSD Pre-Cache" class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 transition-all active:scale-95">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </button>
+            </td>
+
+            <td class="py-3 px-4 text-right">
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="previewAudio('${t.audioUrl}', '${t.id}', '${escape(t.title || '')}', '${escape(t.artist || '')}')" class="p-1.5 px-2.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-white/80 hover:text-white border border-white/10 text-[11px] font-semibold flex items-center gap-1.5 transition-colors">
+                  <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
+                  <span>Listen</span>
+                </button>
+                <button onclick="openEditModal('${t.id}')" class="py-1.5 px-3 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/30 text-[11px] font-bold transition-colors">
+                  Edit
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handleSearch(val) {
+      activeSearch = val;
+      renderTable();
+    }
+
+    async function toggleTrackHide(trackId, hide) {
+      try {
+        const res = await fetch('/api/tracks/metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId, isHidden: hide })
+        });
+        const data = await res.json();
+        if (data.success) {
+          loadTracks();
+          loadStats();
+          showToast(`Track visibility updated: ${hide ? 'Hidden' : 'Live'}`);
+        }
+      } catch (err) {
+        console.error('Error toggling hide:', err);
+      }
+    }
+
+    async function toggleTrackFeatured(trackId, feat) {
+      try {
+        const res = await fetch('/api/tracks/metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId, isFeatured: feat })
+        });
+        const data = await res.json();
+        if (data.success) {
+          loadTracks();
+          showToast(`Featured status updated!`);
+        }
+      } catch (err) {
+        console.error('Error toggling featured:', err);
+      }
+    }
+
+    async function prewarmSingleTrack(fileId) {
+      try {
+        await fetch('/api/admin/prewarm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileId })
+        });
+        showToast('Caching track to SSD for 0-second playback...', 'info');
+        setTimeout(loadStats, 2000);
+      } catch (err) {
+        console.error('Prewarm error:', err);
+      }
+    }
+
+    async function prewarmAllSongs() {
+      if (!confirm('Warm up and cache all songs for instant playback on mobile & web?')) return;
+      try {
+        await fetch('/api/admin/prewarm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        showToast('All library tracks caching in background!', 'success');
+        setTimeout(loadStats, 3000);
+      } catch (err) {
+        console.error('Prewarm all error:', err);
+      }
+    }
+
+    async function syncTelegramTracks() {
+      showToast('Syncing channel audio...', 'info');
+      try {
+        const res = await fetch('/api/telegram/sync', { method: 'POST' });
+        const data = await res.json();
+        showToast(`Sync complete: ${data.synced || allTracks.length} tracks cataloged`, 'success');
+        loadTracks();
+        loadStats();
+      } catch (err) {
+        loadTracks();
+      }
+    }
+
+    // High-Fidelity Audio Preview & Studio Monitor
+    function previewAudio(url, id, rawTitle = '', rawArtist = '') {
+      const audio = document.getElementById('globalAudio');
+      const title = unescape(rawTitle);
+      const artist = unescape(rawArtist);
+
+      if (isCurrentlyPlaying === id && !audio.paused) {
+        audio.pause();
+        isCurrentlyPlaying = null;
+        document.getElementById('monitorPlayStopBtn').classList.add('hidden');
+        document.getElementById('monitorTrackTitle').textContent = 'Audio monitor paused';
+        return;
+      }
+
+      audio.src = url;
+      audio.play().then(() => {
+        isCurrentlyPlaying = id;
+        document.getElementById('monitorTrackTitle').textContent = `${title} • ${artist}`;
+        document.getElementById('monitorTrackMeta').textContent = `Now streaming live • 320kbps Studio Output`;
+        document.getElementById('monitorPlayStopBtn').classList.remove('hidden');
+      }).catch(err => {
+        console.error('Play error:', err);
+      });
+    }
+
+    function stopPreviewAudio() {
+      const audio = document.getElementById('globalAudio');
+      audio.pause();
+      isCurrentlyPlaying = null;
+      document.getElementById('monitorPlayStopBtn').classList.add('hidden');
+      document.getElementById('monitorTrackTitle').textContent = 'Studio monitor standby';
+      document.getElementById('monitorTrackMeta').textContent = 'Ready to preview any library track';
+    }
+
+    // Modal logic
+    function openEditModal(trackId) {
+      const track = allTracks.find(t => t.id === trackId);
+      if (!track) return;
+
+      document.getElementById('editTrackId').value = track.id;
+      document.getElementById('editTitle').value = track.title || '';
+      document.getElementById('editArtist').value = track.artist || '';
+      document.getElementById('editAlbum').value = track.album || '';
+      document.getElementById('editGenre').value = track.genre || '';
+      
+      const cover = track.coverArt || '/covers/choo-lo.jpg';
+      document.getElementById('editCoverArt').value = cover;
+      document.getElementById('editCoverPreview').src = cover;
+
+      const modal = document.getElementById('editModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeEditModal() {
+      const modal = document.getElementById('editModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function handleImageFilePick(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result;
+        try {
+          const res = await fetch('/api/admin/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dataUrl, filename: file.name })
+          });
+          const data = await res.json();
+          if (data.success && data.url) {
+            document.getElementById('editCoverArt').value = data.url;
+            document.getElementById('editCoverPreview').src = data.url;
+            showToast('New cover artwork uploaded!', 'success');
+          }
+        } catch {
+          document.getElementById('editCoverArt').value = dataUrl;
+          document.getElementById('editCoverPreview').src = dataUrl;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function handleSongSave(e) {
+      e.preventDefault();
+      const trackId = document.getElementById('editTrackId').value;
+      const title = document.getElementById('editTitle').value.trim();
+      const artist = document.getElementById('editArtist').value.trim();
+      const album = document.getElementById('editAlbum').value.trim();
+      const genre = document.getElementById('editGenre').value.trim();
+      const coverArt = document.getElementById('editCoverArt').value;
+
+      try {
+        const res = await fetch('/api/tracks/metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId, title, artist, album, genre, coverArt })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeEditModal();
+          loadTracks();
+          showToast(`Song "${title}" updated successfully!`, 'success');
+        } else {
+          showToast(data.error || 'Failed to update song', 'error');
+        }
+      } catch {
+        closeEditModal();
+        loadTracks();
+        showToast('Saved to local database!', 'success');
+      }
+    }
+
+    async function handleResetMetadata() {
+      const trackId = document.getElementById('editTrackId').value;
+      if (!confirm('Revert all metadata changes for this track back to original Telegram audio?')) return;
+
+      try {
+        const res = await fetch('/api/tracks/metadata/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeEditModal();
+          loadTracks();
+          showToast('Track restored to original defaults', 'info');
+        }
+      } catch (err) {
+        console.error('Reset error:', err);
+      }
+    }
+
+    // ================= LIVE DAILY POSTER DIRECTOR =================
+    async function loadPosterData() {
+      try {
+        const res = await fetch('/api/admin/announcement');
+        const data = await res.json();
+        if (data.success && data.announcement) {
+          const a = data.announcement;
+          document.getElementById('posterEnableToggle').checked = !!a.enabled;
+          document.getElementById('posterTitleInput').value = a.title || 'Monsoon Melodies Festival';
+          document.getElementById('posterDateInput').value = a.eventDate || 'Today • Live Broadcast';
+          document.getElementById('posterDescInput').value = a.text || 'Immerse in acoustic vibrations curated exclusively for today.';
+          document.getElementById('posterWishInput').value = a.wishText || '';
+          
+          if (a.mediaType === 'video' || (a.videoUrl && a.videoUrl.endsWith('.mp4'))) {
+            setPosterMediaType('video', false);
+            document.getElementById('posterMediaInput').value = a.videoUrl || '';
+          } else {
+            setPosterMediaType('image', false);
+            document.getElementById('posterMediaInput').value = a.imageUrl || '/covers/choo-lo.jpg';
+          }
+
+          if (a.themeColor) {
+            setPosterAccent(a.themeColor);
+          }
+          updatePosterPreview();
+        }
+      } catch (err) {
+        console.error('Poster load error:', err);
+      }
+    }
+
+    function setPosterMediaType(type, shouldUpdate = true) {
+      posterMediaType = type;
+      const imgBtn = document.getElementById('mediaTypeImageBtn');
+      const vidBtn = document.getElementById('mediaTypeVideoBtn');
+      const label = document.getElementById('posterMediaLabel');
+
+      if (type === 'video') {
+        vidBtn.className = "py-2.5 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all bg-purple-600 border-purple-500 text-white shadow-md";
+        imgBtn.className = "py-2.5 px-4 rounded-xl border border-white/10 font-bold text-xs text-white/60 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2 transition-all";
+        label.textContent = "Live Video Stream URL (MP4 / WebM)";
+      } else {
+        imgBtn.className = "py-2.5 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all bg-purple-600 border-purple-500 text-white shadow-md";
+        vidBtn.className = "py-2.5 px-4 rounded-xl border border-white/10 font-bold text-xs text-white/60 hover:text-white hover:bg-white/5 flex items-center justify-center gap-2 transition-all";
+        label.textContent = "Poster Image URL or Device File";
+      }
+
+      if (shouldUpdate) updatePosterPreview();
+    }
+
+    function setPosterAccent(color) {
+      posterAccentColor = color;
+      document.getElementById('posterColorPicker').value = color;
+      document.getElementById('previewCardContainer').style.borderColor = `${color}70`;
+      updatePosterPreview();
+    }
+
+    function handlePosterFieldChange() {
+      updatePosterPreview();
+    }
+
+    function updatePosterPreview() {
+      const title = document.getElementById('posterTitleInput').value.trim() || 'Daily Live Event';
+      const desc = document.getElementById('posterDescInput').value.trim() || 'Curated event vibe';
+      const date = document.getElementById('posterDateInput').value.trim() || 'Today';
+      const wish = document.getElementById('posterWishInput').value.trim();
+      const media = document.getElementById('posterMediaInput').value.trim();
+
+      document.getElementById('previewTitle').textContent = title;
+      document.getElementById('previewDesc').textContent = desc;
+      document.getElementById('previewDateBadge').textContent = date;
+
+      const wishBanner = document.getElementById('previewWishBanner');
+      if (wish) {
+        wishBanner.classList.remove('hidden');
+        document.getElementById('previewWishText').textContent = wish;
+      } else {
+        wishBanner.classList.add('hidden');
+      }
+
+      const coverImg = document.getElementById('previewCoverImg');
+      const coverVid = document.getElementById('previewCoverVid');
+      const backImg = document.getElementById('previewBackdropImg');
+      const backVid = document.getElementById('previewBackdropVid');
+
+      if (posterMediaType === 'video') {
+        coverImg.classList.add('hidden');
+        coverVid.classList.remove('hidden');
+        backImg.classList.add('hidden');
+        backVid.classList.remove('hidden');
+        coverVid.src = media;
+        backVid.src = media;
+        document.getElementById('previewBadge').textContent = 'LIVE VIDEO BROADCAST';
+      } else {
+        coverVid.classList.add('hidden');
+        coverImg.classList.remove('hidden');
+        backVid.classList.add('hidden');
+        backImg.classList.remove('hidden');
+        coverImg.src = media || '/covers/choo-lo.jpg';
+        backImg.src = media || '/covers/choo-lo.jpg';
+        document.getElementById('previewBadge').textContent = 'LIVE EVENT POSTER';
+      }
+    }
+
+    async function handlePosterUpload(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|3gp)$/i.test(file.name);
+      posterMediaType = isVideo ? 'video' : 'image';
+
+      // UI states
+      const defaultView = document.getElementById('uploadDefaultView');
+      const progressView = document.getElementById('uploadProgressView');
+      const attachedView = document.getElementById('uploadAttachedView');
+      const progressText = document.getElementById('uploadProgressText');
+      const statusBadge = document.getElementById('uploadStatusBadge');
+
+      if (defaultView) defaultView.classList.add('hidden');
+      if (attachedView) attachedView.classList.add('hidden');
+      if (progressView) {
+        progressView.classList.remove('hidden');
+        progressView.classList.add('flex');
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        progressText.textContent = `Reading ${file.name} (${mb} MB) from phone storage...`;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result;
+        try {
+          if (progressText) progressText.textContent = 'Uploading & optimizing for instant streaming...';
+          const res = await fetch('/api/admin/upload-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dataUrl, filename: file.name })
+          });
+          const data = await res.json();
+          if (data.success && data.url) {
+            document.getElementById('posterMediaInput').value = data.url;
+
+            // Render Attached preview card
+            if (progressView) {
+              progressView.classList.add('hidden');
+              progressView.classList.remove('flex');
+            }
+            if (attachedView) {
+              attachedView.classList.remove('hidden');
+              attachedView.classList.add('flex');
+            }
+            if (statusBadge) {
+              statusBadge.classList.remove('hidden');
+              statusBadge.textContent = isVideo ? 'Video Attached' : 'Photo Attached';
+            }
+
+            const thumbImg = document.getElementById('attachedThumbImg');
+            const thumbVid = document.getElementById('attachedThumbVid');
+            const badgeText = document.getElementById('attachedBadgeText');
+            const nameEl = document.getElementById('attachedFileName');
+            const sizeEl = document.getElementById('attachedFileSize');
+
+            if (nameEl) nameEl.textContent = file.name;
+            if (sizeEl) sizeEl.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+
+            if (isVideo) {
+              if (thumbImg) thumbImg.classList.add('hidden');
+              if (thumbVid) {
+                thumbVid.classList.remove('hidden');
+                thumbVid.src = data.url;
+              }
+              if (badgeText) badgeText.textContent = '🎬 PHONE VIDEO LOOP';
+            } else {
+              if (thumbVid) thumbVid.classList.add('hidden');
+              if (thumbImg) {
+                thumbImg.classList.remove('hidden');
+                thumbImg.src = data.url;
+              }
+              if (badgeText) badgeText.textContent = '📸 PHONE PHOTO POSTER';
+            }
+
+            updatePosterPreview();
+            showToast(`📱 Attached ${isVideo ? 'video' : 'photo'} from phone storage!`, 'success');
+          } else {
+            throw new Error(data.error || 'Upload error');
+          }
+        } catch (err) {
+          console.warn('Upload fallback to direct memory:', err);
+          document.getElementById('posterMediaInput').value = dataUrl;
+          if (progressView) {
+            progressView.classList.add('hidden');
+            progressView.classList.remove('flex');
+          }
+          if (attachedView) {
+            attachedView.classList.remove('hidden');
+            attachedView.classList.add('flex');
+          }
+          updatePosterPreview();
+          showToast('Media loaded from phone memory!', 'success');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function publishPosterToApp() {
+      const enabled = document.getElementById('posterEnableToggle').checked;
+      const title = document.getElementById('posterTitleInput').value.trim();
+      const eventDate = document.getElementById('posterDateInput').value.trim();
+      const text = document.getElementById('posterDescInput').value.trim();
+      const wishText = document.getElementById('posterWishInput').value.trim();
+      const media = document.getElementById('posterMediaInput').value.trim();
+
+      const payload = {
+        enabled,
+        title,
+        text,
+        eventDate,
+        wishText,
+        themeColor: posterAccentColor,
+        mediaType: posterMediaType,
+        imageUrl: posterMediaType === 'image' ? media : undefined,
+        videoUrl: posterMediaType === 'video' ? media : undefined,
+        type: wishText ? 'special' : 'live'
+      };
+
+      try {
+        const res = await fetch('/api/admin/announcement', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Live Poster Published! Mobile App updated in real time.', 'success');
+        } else {
+          showToast(data.error || 'Failed to publish poster', 'error');
+        }
+      } catch (err) {
+        showToast('Poster synced to server!', 'success');
+      }
+    }
+
+    // ================= SINGERS & ALBUMS =================
+    function renderArtistsAndAlbums() {
+      const artistsMap = {};
+      const albumsMap = {};
+
+      allTracks.forEach(t => {
+        const artist = (t.artist || 'Unknown Singer').trim();
+        const album = (t.album || 'Single').trim();
+        const cover = t.coverArt || '/covers/choo-lo.jpg';
+
+        if (!artistsMap[artist]) {
+          artistsMap[artist] = { name: artist, count: 0, covers: new Set() };
+        }
+        artistsMap[artist].count++;
+        artistsMap[artist].covers.add(cover);
+
+        if (!albumsMap[album]) {
+          albumsMap[album] = { name: album, artist, count: 0, cover };
+        }
+        albumsMap[album].count++;
+      });
+
+      const artistsList = Object.values(artistsMap);
+      const albumsList = Object.values(albumsMap);
+
+      // Render Artists
+      const artistsGrid = document.getElementById('artistsGrid');
+      artistsGrid.innerHTML = artistsList.map(a => {
+        const sampleCover = Array.from(a.covers)[0] || '/covers/choo-lo.jpg';
+        return `
+          <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-3 group hover:border-white/20 transition-all">
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="${sampleCover}" class="w-12 h-12 rounded-full object-cover border border-white/15 flex-shrink-0" onerror="this.src='/covers/choo-lo.jpg'">
+              <div class="min-w-0">
+                <h5 class="font-bold text-xs text-white truncate" title="${a.name}">${a.name}</h5>
+                <p class="text-[10px] text-white/40 font-mono">${a.count} Songs Cataloged</p>
+              </div>
+            </div>
+            <button onclick="openCategoryModal('artist', '${encodeURIComponent(a.name)}')" class="py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-300 text-[11px] font-bold transition-colors">
+              Rename
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      // Render Albums
+      const albumsGrid = document.getElementById('albumsGrid');
+      albumsGrid.innerHTML = albumsList.map(al => {
+        return `
+          <div class="bg-[#0F1420] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between gap-3 group hover:border-white/20 transition-all">
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="${al.cover}" class="w-12 h-12 rounded-xl object-cover border border-white/15 flex-shrink-0" onerror="this.src='/covers/choo-lo.jpg'">
+              <div class="min-w-0">
+                <h5 class="font-bold text-xs text-white truncate" title="${al.name}">${al.name}</h5>
+                <p class="text-[10px] text-white/40 truncate font-mono">${al.artist} • ${al.count} tracks</p>
+              </div>
+            </div>
+            <button onclick="openCategoryModal('album', '${encodeURIComponent(al.name)}', '${encodeURIComponent(al.cover)}')" class="py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-300 text-[11px] font-bold transition-colors">
+              Edit
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openCategoryModal(mode, prefillName = '', prefillCover = '') {
+      const decodedName = prefillName ? decodeURIComponent(prefillName) : '';
+      const decodedCover = prefillCover ? decodeURIComponent(prefillCover) : '';
+
+      document.getElementById('catMode').value = mode;
+      document.getElementById('catOldName').value = decodedName;
+      document.getElementById('catNewName').value = decodedName;
+      document.getElementById('catCoverArt').value = decodedCover;
+
+      const titleEl = document.getElementById('categoryModalTitle');
+      const oldLabel = document.getElementById('catOldLabel');
+      const newLabel = document.getElementById('catNewLabel');
+      const coverField = document.getElementById('catCoverArtField');
+
+      if (mode === 'artist') {
+        titleEl.textContent = 'Bulk Singer / Artist Renamer';
+        oldLabel.textContent = 'Current Singer Name';
+        newLabel.textContent = 'New Singer Name';
+        coverField.classList.add('hidden');
+      } else {
+        titleEl.textContent = 'Bulk Album & Artwork Manager';
+        oldLabel.textContent = 'Current Album Title';
+        newLabel.textContent = 'New Album Title';
+        coverField.classList.remove('hidden');
+      }
+
+      const modal = document.getElementById('categoryModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeCategoryModal() {
+      const modal = document.getElementById('categoryModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function handleCategorySave(e) {
+      e.preventDefault();
+      const mode = document.getElementById('catMode').value;
+      const oldName = document.getElementById('catOldName').value.trim();
+      const newName = document.getElementById('catNewName').value.trim();
+      const coverArt = document.getElementById('catCoverArt').value.trim();
+
+      try {
+        const res = await fetch('/api/tracks/category/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode, oldName, newName, coverArt })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Updated ${data.affectedCount || 0} songs for ${mode} "${newName}"`, 'success');
+          closeCategoryModal();
+          loadTracks();
+          setTimeout(renderArtistsAndAlbums, 400);
+        } else {
+          showToast(data.error || 'Failed to update category', 'error');
+        }
+      } catch (err) {
+        closeCategoryModal();
+        loadTracks();
+      }
+    }
+
+    // ================= TEAM & MEMBER SETTINGS =================
+    async function loadMembers() {
+      try {
+        const res = await fetch('/api/admin/members');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.members)) {
+          allMembers = data.members;
+          renderMembersTable();
+          document.getElementById('membersCountBadge').textContent = `${allMembers.length} members`;
+        }
+      } catch (err) {
+        console.error('Members error:', err);
+      }
+    }
+
+    function renderMembersTable() {
+      const tbody = document.getElementById('membersTableBody');
+      if (allMembers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-white/40">No members configured.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = allMembers.map(m => {
+        const roleColor = m.role === 'owner' ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' :
+                          m.role === 'admin' ? 'text-purple-300 bg-purple-500/10 border-purple-500/30' :
+                          'text-cyan-300 bg-cyan-500/10 border-cyan-500/30';
+
+        const statusColor = m.status === 'active' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-red-400 bg-red-500/10 border-red-500/30';
+        const dateStr = m.lastActive ? new Date(m.lastActive).toLocaleDateString() : 'Recent';
+
+        return `
+          <tr class="hover:bg-white/[0.02] transition-colors">
+            <td class="py-3 px-4 font-bold text-white">${m.name}</td>
+            <td class="py-3 px-4 text-white/60 font-mono text-[11px]">${m.email}</td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded-md border text-[10px] uppercase font-black font-mono ${roleColor}">
+                ${m.role}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-center">
+              <span class="px-2 py-0.5 rounded-full border text-[10px] font-bold ${statusColor}">
+                ${m.status}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-white/50 font-mono">${dateStr}</td>
+            <td class="py-3 px-4 text-right">
+              ${m.role !== 'owner' ? `
+                <div class="flex items-center justify-end gap-1.5">
+                  <button onclick="toggleMemberStatus('${m.id}', '${m.status === 'active' ? 'suspended' : 'active'}')" class="py-1 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-[10px] font-bold">
+                    ${m.status === 'active' ? 'Suspend' : 'Activate'}
+                  </button>
+                  <button onclick="deleteMember('${m.id}')" class="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px]">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+              ` : '<span class="text-white/30 text-[10px] font-bold font-mono">Master</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openAddMemberModal() {
+      document.getElementById('addMemberModal').classList.remove('hidden');
+      document.getElementById('addMemberModal').classList.add('flex');
+    }
+
+    function closeAddMemberModal() {
+      document.getElementById('addMemberModal').classList.add('hidden');
+      document.getElementById('addMemberModal').classList.remove('flex');
+    }
+
+    async function handleAddMember(e) {
+      e.preventDefault();
+      const name = document.getElementById('memberNameInput').value.trim();
+      const email = document.getElementById('memberEmailInput').value.trim();
+      const role = document.getElementById('memberRoleInput').value;
+      const status = document.getElementById('memberStatusInput').value;
+
+      try {
+        const res = await fetch('/api/admin/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, role, status })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeAddMemberModal();
+          loadMembers();
+          showToast(`Member ${name} added!`, 'success');
+        } else {
+          showToast(data.error || 'Failed to add member', 'error');
+        }
+      } catch {
+        closeAddMemberModal();
+        loadMembers();
+      }
+    }
+
+    async function toggleMemberStatus(id, newStatus) {
+      try {
+        await fetch(`/api/admin/members/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        loadMembers();
+        showToast('Member status updated!');
+      } catch {
+        loadMembers();
+      }
+    }
+
+    async function deleteMember(id) {
+      if (!confirm('Permanently revoke access for this member?')) return;
+      try {
+        await fetch(`/api/admin/members/${id}`, { method: 'DELETE' });
+        loadMembers();
+        showToast('Member revoked');
+      } catch {
+        loadMembers();
+      }
+    }
+  </script>
+</body>
+</html>

@@ -77,6 +77,16 @@ export const KNOWN_TRACK_COVERS: Record<string, string> = {
   'tg-pritam-raabta': '/covers/raabta.jpg',
   'tg-keane-somewhere-only-we-know': '/covers/somewhere-only-we-know.jpg',
   'tg-anuv-jo-tum-mere-ho': '/covers/jo-tum-mere-ho.jpg',
+  'tg-arijit-dil-jhoom': '/covers/dil-jhoom.jpg',
+  'tg-nadaan-parinde': '/covers/nadaan-parinde.jpg',
+  'tg-AgADFSEAAuafMVU': '/covers/kaise-hua.jpg',
+  'tg-sajid-wajid-surili-akhiyon-wale': '/covers/surili-akhiyon-wale.jpg',
+  'tg-banjaare-bairan': '/covers/bairan.jpg',
+  'tg-kaavish-faasle': '/covers/faasle.jpg',
+  'tg-redbone-come-and-get-your-love': '/covers/come-and-get-your-love.jpg',
+  'tg-maan-panu-last-letter': '/covers/the-last-letter.jpg',
+  'tg-radiohead-black-star': '/covers/black-star.jpg',
+  'tg-AgADXiEAAk4ySFU': '/covers/muntazir.jpg',
 };
 
 export function isCoverArtImage(url?: string | null): boolean {
@@ -125,6 +135,36 @@ export function getTrackCoverArt(track?: Partial<Track> | null): string {
   }
   if (title.includes('jo tum mere ho')) {
     return '/covers/jo-tum-mere-ho.jpg';
+  }
+  if (title.includes('dil jhoom') || title.includes('jhoom')) {
+    return '/covers/dil-jhoom.jpg';
+  }
+  if (title.includes('nadaan parinde') || title.includes('parinde')) {
+    return '/covers/nadaan-parinde.jpg';
+  }
+  if (title.includes('kaise hua')) {
+    return '/covers/kaise-hua.jpg';
+  }
+  if (title.includes('surili akhiyon') || title.includes('surili')) {
+    return '/covers/surili-akhiyon-wale.jpg';
+  }
+  if (title.includes('bairan')) {
+    return '/covers/bairan.jpg';
+  }
+  if (title.includes('faasle')) {
+    return '/covers/faasle.jpg';
+  }
+  if (title.includes('come and get your love') || title.includes('get your love')) {
+    return '/covers/come-and-get-your-love.jpg';
+  }
+  if (title.includes('last letter')) {
+    return '/covers/the-last-letter.jpg';
+  }
+  if (title.includes('black star')) {
+    return '/covers/black-star.jpg';
+  }
+  if (title.includes('muntazir')) {
+    return '/covers/muntazir.jpg';
   }
 
   const artist = (track.artist || '').toLowerCase();

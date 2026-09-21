@@ -222,7 +222,7 @@ export const CloudTab: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col space-y-6 px-4 py-3 select-none animate-in fade-in duration-200">
+    <div className="flex flex-col space-y-6 px-4 py-3 pb-52 select-none animate-in fade-in duration-200">
       
       {/* 1. Channel Connection Banner Card (Automatic live connection, manual sync removed) */}
       <div 

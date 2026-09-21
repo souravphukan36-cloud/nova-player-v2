@@ -225,7 +225,8 @@ class AudioEngine {
       this.analyser.connect(this.ctx.destination);
 
       // Direct hardware HTML5 Audio routing for 100% reliable, loud, crystal-clear playback across all devices
-      // Attached to document.body so Android background service maintains the audio pipeline and notification card
+      // For Android 17 Media Session architecture: element must be physically in DOM, not set to display:none
+      // Using opacity 0 and 1x1px absolute positioning guarantees Android Chrome / System Media Router detects active media output
       if (typeof document !== 'undefined') {
         let existing = document.getElementById('nova-core-audio') as HTMLAudioElement;
         if (!existing) {
@@ -233,7 +234,17 @@ class AudioEngine {
           existing.id = 'nova-core-audio';
           existing.setAttribute('playsinline', 'true');
           existing.setAttribute('webkit-playsinline', 'true');
-          existing.style.display = 'none';
+          existing.setAttribute('x-webkit-airplay', 'allow');
+          existing.setAttribute('controlsList', 'nodownload noplaybackrate');
+          // Style as invisible but layout-rendered so Android MediaSession controller activates lock screen controls
+          existing.style.position = 'fixed';
+          existing.style.bottom = '0px';
+          existing.style.left = '0px';
+          existing.style.width = '1px';
+          existing.style.height = '1px';
+          existing.style.opacity = '0.01';
+          existing.style.pointerEvents = 'none';
+          existing.style.zIndex = '-9999';
           document.body.appendChild(existing);
         }
         this.audioElement = existing;
