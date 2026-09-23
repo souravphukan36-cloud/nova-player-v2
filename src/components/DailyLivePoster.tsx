@@ -304,16 +304,26 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
       {/* Foreground Content */}
       <div className="relative z-10 p-4 sm:p-6">
         
-        {/* Top Header: Live Badge, Today's Date & Actions */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Top Header: Prominent Day Name, Live Badge, Today's Date & Day Picker */}
+        <div className="flex items-center justify-between gap-3 mb-3.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Prominent Day Name */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                {currentEvent.dayName}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-white/60">
+                • {todayFormatted.split(',')[1]?.trim() || todayFormatted}
+              </span>
+            </div>
+
             {/* Pulsing Live Badge */}
             <div 
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-black tracking-wider uppercase shadow-md"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase shadow-md"
               style={{
-                backgroundColor: `${activeAccent}20`,
+                backgroundColor: `${activeAccent}25`,
                 color: activeAccent,
-                border: `1px solid ${activeAccent}40`
+                border: `1px solid ${activeAccent}50`
               }}
             >
               <span className="relative flex h-2 w-2">
@@ -328,28 +338,23 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
               </span>
               <span>{displayBadge}</span>
             </div>
-
-            {/* Date Tag */}
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 text-white/80 text-[10px] sm:text-xs font-semibold backdrop-blur-sm">
-              <Calendar className="w-3 h-3 text-white/60" />
-              <span>{todayFormatted}</span>
-            </div>
           </div>
 
           {/* Right Action: Day Switcher & Close */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               id="btn-day-schedule"
               onClick={() => setShowDayPicker(!showDayPicker)}
-              className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-white/70 hover:text-white bg-white/10 hover:bg-white/15 transition-all flex items-center gap-1"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/15 transition-all flex items-center gap-1 border border-white/10"
               title="Browse 7-Day Live Event Schedule"
             >
-              <span>{currentEvent.dayName}</span>
+              <Calendar className="w-3.5 h-3.5 text-white/60" />
+              <span>Schedule</span>
               <ChevronRight className="w-3.5 h-3.5 text-white/50" />
             </button>
             <button
               onClick={() => setIsDismissed(true)}
-              className="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors"
               title="Dismiss for today"
             >
               <X className="w-4 h-4" />
@@ -359,10 +364,10 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
 
         {/* 7-Day Schedule Picker Drawer (When opened) */}
         {showDayPicker && (
-          <div className="mb-4 p-2.5 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="text-[11px] font-bold text-white/50 px-2 py-1 uppercase tracking-wider mb-1 flex items-center justify-between">
+          <div className="mb-4 p-3 rounded-2xl bg-black/80 border border-white/10 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="text-[11px] font-bold text-white/50 px-2 py-1 uppercase tracking-wider mb-2 flex items-center justify-between">
               <span>Weekly Event Lineup</span>
-              <span>Tap to preview any day's vibe</span>
+              <span>Tap to switch day vibe</span>
             </div>
             <div className="grid grid-cols-7 gap-1.5">
               {WEEKLY_EVENTS.map((ev, idx) => {
@@ -392,127 +397,122 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
           </div>
         )}
 
-        {/* Main Poster Layout: Left Poster Visual + Right Story & Actions */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-          {/* Main Visual Poster Art (Photo or Video) */}
-          <div className="relative flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden shadow-2xl border border-white/15 group-hover:border-white/30 transition-all bg-black">
-            {isVideoPoster ? (
-              <video
-                src={displayVideo}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <img 
-                src={displayPoster} 
-                alt={displayTitle}
-                className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/covers/choo-lo.jpg';
-                }}
-              />
-            )}
-            {/* Visual Glass Overlay Badge */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2.5 pointer-events-none">
-              <span className="text-[9px] font-black uppercase text-white/90 tracking-wider">
-                {isVideoPoster ? 'VIDEO POSTER' : currentEvent.vibe}
-              </span>
-            </div>
+        {/* Full-Sized Edge-to-Edge Poster Visual */}
+        <div className="relative w-full aspect-[16/10] sm:aspect-[21/9] max-h-[360px] rounded-2xl overflow-hidden shadow-2xl border border-white/15 group-hover:border-white/25 transition-all bg-black mb-4">
+          {isVideoPoster ? (
+            <video
+              src={displayVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <img 
+              src={displayPoster} 
+              alt={displayTitle}
+              className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-103"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = '/covers/choo-lo.jpg';
+              }}
+            />
+          )}
 
-            {/* Live Equalizer indicator when playing */}
-            {isPlayingEvent && (
-              <div 
-                className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-lg backdrop-blur-md"
-                style={{ backgroundColor: `${activeAccent}ee` }}
-              >
-                <span className="w-0.5 h-3 bg-black animate-pulse" />
-                <span className="w-0.5 h-4 bg-black animate-pulse delay-75" />
-                <span className="w-0.5 h-2 bg-black animate-pulse delay-150" />
-              </div>
-            )}
+          {/* Vignette Gradients for cinematic visual depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
+
+          {/* Overlay Tag on Top of Poster */}
+          <div className="absolute top-3 left-3 flex items-center gap-2">
+            <span 
+              className="px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider backdrop-blur-md shadow-lg"
+              style={{ 
+                backgroundColor: 'rgba(0, 0, 0, 0.70)',
+                color: activeAccent,
+                border: `1px solid ${activeAccent}60`
+              }}
+            >
+              {isVideoPoster ? 'VIDEO POSTER' : currentEvent.vibe}
+            </span>
           </div>
 
-          {/* Right Text & Interactive Controls */}
-          <div className="min-w-0 flex-1 space-y-2">
-            {/* Special Wish Message: Dynamic for the day */}
-            <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-purple-500/20 border border-amber-400/30 text-amber-200 text-xs font-bold flex items-center gap-2 shadow-md">
-              <Sparkles className="w-4 h-4 text-amber-300 flex-shrink-0 animate-pulse" />
-              <span className="line-clamp-2">{announcement?.wishText || `Have an inspiring and musical ${currentEvent.dayName}! ✨`}</span>
+          {/* Live Audio Waves when playing on bottom right of the image */}
+          {isPlayingEvent && (
+            <div 
+              className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl backdrop-blur-md"
+              style={{ backgroundColor: `${activeAccent}f0` }}
+            >
+              <span className="text-[11px] font-black text-black uppercase mr-1">Playing Live</span>
+              <span className="w-1.5 h-3.5 bg-black rounded-full animate-pulse" />
+              <span className="w-1.5 h-5 bg-black rounded-full animate-pulse delay-75" />
+              <span className="w-1.5 h-2.5 bg-black rounded-full animate-pulse delay-150" />
             </div>
+          )}
+        </div>
 
-            <div>
-              <span 
-                className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider block mb-1"
-                style={{ color: activeAccent }}
+        {/* Structured Event Details Underneath Poster Image */}
+        <div className="space-y-3 px-0.5">
+          {/* Tagline & Title */}
+          <div>
+            <span 
+              className="text-xs font-extrabold uppercase tracking-wider block mb-1"
+              style={{ color: activeAccent }}
+            >
+              {displayTagline}
+            </span>
+            <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
+              {displayTitle}
+            </h3>
+            <p className="text-xs sm:text-sm text-white/80 font-normal leading-relaxed mt-1.5">
+              {displayDescription}
+            </p>
+          </div>
+
+          {/* Special Day Wish Banner */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-purple-500/20 border border-amber-400/30 text-amber-200 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-md">
+            <Sparkles className="w-4 h-4 text-amber-300 flex-shrink-0 animate-pulse" />
+            <span className="flex-1 leading-snug">
+              {announcement?.wishText || `Have an inspiring and musical ${currentEvent.dayName}! ✨`}
+            </span>
+          </div>
+
+          {/* Action Row: Play Event Button (Clean & focused, no suggested tracks clutter) */}
+          <div className="pt-1 flex items-center justify-between gap-3">
+            <button
+              id="btn-play-daily-event"
+              onClick={handleToggleEventPlayback}
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl font-black text-sm shadow-xl transition-all active:scale-95 group/btn"
+              style={{
+                backgroundColor: activeAccent,
+                color: '#000'
+              }}
+            >
+              {isPlayingEvent ? (
+                <>
+                  <Pause className="w-4 h-4 fill-current" />
+                  <span>Pause Event Stream</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 fill-current transition-transform group-hover/btn:scale-110" />
+                  <span>Play {currentEvent.dayName} Event</span>
+                </>
+              )}
+            </button>
+
+            {/* Quick Share / Link if announcement has one */}
+            {announcement?.linkUrl && (
+              <a
+                href={announcement.linkUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all border border-white/10 flex items-center gap-1.5"
               >
-                {displayTagline}
-              </span>
-              <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-snug">
-                {displayTitle}
-              </h3>
-              <p className="text-xs sm:text-sm text-white/75 font-medium line-clamp-2 mt-1 leading-relaxed">
-                {displayDescription}
-              </p>
-            </div>
-
-            {/* Bottom Controls Bar: Big Play Button + Event Tracks Quick Access */}
-            <div className="pt-2 flex flex-wrap items-center gap-3">
-              <button
-                id="btn-play-daily-event"
-                onClick={handleToggleEventPlayback}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm shadow-xl transition-all active:scale-95 group/btn"
-                style={{
-                  backgroundColor: activeAccent,
-                  color: '#000'
-                }}
-              >
-                {isPlayingEvent ? (
-                  <>
-                    <Pause className="w-4 h-4 fill-current" />
-                    <span>Pause Event Vibe</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 fill-current transition-transform group-hover/btn:scale-110" />
-                    <span>Play Today's Event</span>
-                  </>
-                )}
-              </button>
-
-              {/* Event Mood Tracks Chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-                {eventTracks.slice(0, 3).map((track) => {
-                  const isCurrentPlaying = currentTrack?.id === track.id && isPlaying;
-                  return (
-                    <button
-                      key={track.id}
-                      onClick={() => {
-                        if (isCurrentPlaying) {
-                          togglePlayPause();
-                        } else if (onTrackPlay) {
-                          onTrackPlay(track);
-                        } else {
-                          playTrack(track);
-                        }
-                      }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
-                        isCurrentPlaying 
-                          ? 'border-white text-white bg-white/20' 
-                          : 'border-white/10 text-white/70 bg-white/5 hover:bg-white/15 hover:text-white'
-                      }`}
-                      title={`Play ${track.title}`}
-                    >
-                      <Music className="w-3 h-3 text-white/50" />
-                      <span className="truncate max-w-[90px] sm:max-w-[120px]">{track.title}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                <span>View Event Details</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </a>
+            )}
           </div>
         </div>
 

@@ -25,6 +25,7 @@ export const MiniPlayer: React.FC = () => {
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const palette = getTrackDynamicPalette(currentTrack);
+  const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -85,11 +86,15 @@ export const MiniPlayer: React.FC = () => {
         onClick={() => setNowPlayingOpen(true)}
         style={{
           transform: `translateX(${dragX}px)`,
-          borderColor: palette.border,
-          boxShadow: `0 10px 25px -5px ${palette.glow}`,
+          borderColor: isLight ? 'rgba(0,0,0,0.08)' : palette.border,
+          boxShadow: isLight ? '0 12px 28px -4px rgba(0,0,0,0.12)' : `0 10px 25px -5px ${palette.glow}`,
           transition: dragX === 0 ? 'transform 0.25s ease-out, box-shadow 0.4s ease' : 'none'
         }}
-        className="group relative flex items-center justify-between p-2 rounded-2xl bg-neutral-900/95 border backdrop-blur-xl cursor-pointer hover:bg-neutral-850/95 transition-all overflow-hidden pointer-events-auto"
+        className={`group relative flex items-center justify-between p-2 rounded-2xl border backdrop-blur-xl cursor-pointer transition-all overflow-hidden pointer-events-auto ${
+          isLight 
+            ? 'bg-white/95 hover:bg-white text-neutral-900 border-neutral-200/90' 
+            : 'bg-neutral-900/95 hover:bg-neutral-850/95 text-white border-white/10'
+        }`}
       >
         {/* Dynamic Subtle Ambient Tint */}
         <div 
@@ -98,7 +103,7 @@ export const MiniPlayer: React.FC = () => {
         />
 
         {/* Top Hairline Progress Bar */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/10 z-10">
+        <div className={`absolute top-0 left-0 right-0 h-[2px] z-10 ${isLight ? 'bg-black/10' : 'bg-white/10'}`}>
           <div 
             className="h-full transition-all duration-200"
             style={{ 
@@ -111,7 +116,7 @@ export const MiniPlayer: React.FC = () => {
         {/* Track Artwork & Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1 pr-2 relative z-10">
           <div 
-            className="w-11 h-11 rounded-xl shadow-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden ring-1 ring-white/10"
+            className="w-11 h-11 rounded-xl shadow-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden ring-1 ring-black/10"
             style={{ background: currentTrack.coverArt }}
           >
             <img 
@@ -135,12 +140,12 @@ export const MiniPlayer: React.FC = () => {
           </div>
 
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-semibold text-white truncate tracking-tight">
+            <h4 className={`text-sm font-semibold truncate tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
               {currentTrack.title}
             </h4>
-            <p className="text-xs text-white/60 truncate flex items-center gap-1.5">
+            <p className={`text-xs truncate flex items-center gap-1.5 ${isLight ? 'text-neutral-500' : 'text-white/60'}`}>
               <span>{currentTrack.artist}</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/10 text-white/70 uppercase font-mono">
+              <span className={`text-[9px] px-1.5 py-0.2 rounded uppercase font-mono ${isLight ? 'bg-neutral-100 text-neutral-600' : 'bg-white/10 text-white/70'}`}>
                 {currentTrack.format}
               </span>
             </p>
@@ -155,8 +160,10 @@ export const MiniPlayer: React.FC = () => {
           <button
             id="mini-btn-favorite"
             onClick={() => toggleFavorite(currentTrack.id)}
-            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
-              currentTrack.isFavorite ? 'text-rose-500' : 'text-white/60 hover:text-white'
+            className={`p-2 rounded-full transition-colors ${
+              currentTrack.isFavorite 
+                ? 'text-rose-500' 
+                : isLight ? 'text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100' : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}
             title="Toggle Favorite"
           >
@@ -180,7 +187,9 @@ export const MiniPlayer: React.FC = () => {
           <button
             id="mini-btn-next"
             onClick={nextTrack}
-            className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            className={`p-2 rounded-full transition-colors ${
+              isLight ? 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100' : 'text-white/80 hover:text-white hover:bg-white/10'
+            }`}
             title="Next Track (or swipe left)"
           >
             <SkipForward className="w-4 h-4" />
@@ -192,7 +201,9 @@ export const MiniPlayer: React.FC = () => {
               setNowPlayingOpen(true);
               setQueueOpen(true);
             }}
-            className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            className={`p-2 rounded-full transition-colors ${
+              isLight ? 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100' : 'text-white/80 hover:text-white hover:bg-white/10'
+            }`}
             title="View Queue"
           >
             <ListMusic className="w-4 h-4" />

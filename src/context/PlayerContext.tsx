@@ -168,7 +168,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   searchInstantFilter: true,
   searchShowUnheardShelf: true,
   systemNotificationsEnabled: true,
-  transitionDelaySecs: 0,
+  transitionDelaySecs: 0.005, // 0.005s Ultra-Instant playback response
   autoAdvanceLoop: true,
   homeShelves: {
     showRecentlyPlayed: true,
@@ -816,8 +816,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    const delaySecs = currentSettings.transitionDelaySecs ?? 0;
-    const delayMs = Math.max(0, delaySecs * 1000);
+    const delaySecs = currentSettings.transitionDelaySecs ?? 0.005;
+    const delayMs = delaySecs <= 0.005 ? 0 : Math.max(0, delaySecs * 1000);
 
     const executeAdvance = () => {
       setQueue(effectiveQueue);
@@ -831,14 +831,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     if (delayMs > 0) {
-      // User specified a time gap before next song starts
+      // User specified a time gap (> 0.005s) before next song starts
       audioEngine.pause();
       setIsPlaying(false);
       autoAdvanceTimerRef.current = window.setTimeout(() => {
         executeAdvance();
       }, delayMs);
     } else {
-      // 0s Instant transition - plays immediately!
+      // 0.005s Ultra-Instant transition - plays immediately with 0 delay!
       executeAdvance();
     }
   };

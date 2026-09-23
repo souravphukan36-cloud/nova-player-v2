@@ -64,3 +64,30 @@ configurations.all {
   fs.writeFileSync(gradlePath, gradle, 'utf8');
   console.log('Updated build.gradle for Java 21 and Kotlin successfully.');
 }
+
+// 4. Generate Android mipmap launcher icons from user logo if android directory exists
+const androidResPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
+const logoSrcPath = path.join(__dirname, '..', 'src', 'assets', 'images', 'nova_app_logo_1789977858779.jpg');
+
+if (fs.existsSync(androidResPath) && fs.existsSync(logoSrcPath)) {
+  try {
+    const sharp = require('sharp');
+    const densities = [
+      { dir: 'mipmap-mdpi', size: 48 },
+      { dir: 'mipmap-hdpi', size: 72 },
+      { dir: 'mipmap-xhdpi', size: 96 },
+      { dir: 'mipmap-xxhdpi', size: 144 },
+      { dir: 'mipmap-xxxhdpi', size: 192 },
+    ];
+    for (const d of densities) {
+      const targetDir = path.join(androidResPath, d.dir);
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+      sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher.png')).catch(() => {});
+      sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher_round.png')).catch(() => {});
+    }
+    console.log('Android mipmap launcher icons populated from user logo.');
+  } catch (err) {
+    console.log('Mipmap generation note:', err);
+  }
+}
+

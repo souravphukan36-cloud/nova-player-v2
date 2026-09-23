@@ -87,7 +87,7 @@ export interface TelegramChannelConfig {
 }
 
 export interface SettingsState {
-  theme: 'amoled' | 'dark' | 'midnight' | 'slate';
+  theme: 'amoled' | 'dark' | 'midnight' | 'slate' | 'light' | 'light-silver' | 'warm-light';
   accentColor: string;
   crossfadeSecs: number;
   gapless: boolean;

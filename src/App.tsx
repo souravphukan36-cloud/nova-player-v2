@@ -97,17 +97,30 @@ const MainLayout: React.FC = () => {
   };
 
   // Determine theme background
-  const themeBgMap = {
+  const themeBgMap: Record<string, string> = {
     amoled: '#000000',
     dark: '#101116',
     midnight: '#0C0A17',
     slate: '#0B0F19',
+    light: '#F2F4F8',
+    'light-silver': '#FFFFFF',
+    'warm-light': '#FAF7F2',
   };
-  const bgColor = themeBgMap[settings.theme] || '#000000';
+  const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';
+  const bgColor = themeBgMap[settings.theme] || (isLight ? '#F2F4F8' : '#000000');
+
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('theme-light', isLight);
+      document.body.style.backgroundColor = bgColor;
+    }
+  }, [isLight, bgColor]);
 
   return (
     <div 
-      className="fixed inset-0 w-full h-full flex flex-col overflow-hidden transition-colors duration-300 select-none"
+      className={`fixed inset-0 w-full h-full flex flex-col overflow-hidden transition-colors duration-300 select-none ${
+        isLight ? 'theme-light text-neutral-900' : 'text-neutral-100'
+      }`}
       style={{ 
         backgroundColor: bgColor,
         paddingTop: 'max(env(safe-area-inset-top, 0px), 26px)'

@@ -1,38 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Palette, 
   Sliders, 
-  FolderPlus, 
   HardDrive, 
-  Info, 
   Trash2, 
   Check, 
-  RefreshCw,
-  ExternalLink,
+  Bell, 
+  Home, 
+  Search, 
+  CheckCircle2, 
+  AlertCircle, 
+  Car, 
+  Sparkles, 
+  Smartphone, 
   ShieldCheck,
-  Smartphone,
-  Share2,
-  Bell,
-  Eye,
-  SlidersHorizontal,
-  Home,
-  Music2,
-  Search,
-  Activity,
-  CheckCircle2,
-  AlertCircle,
-  FastForward,
-  Zap,
-  LayoutGrid,
-  Car,
+  ChevronRight,
+  ChevronDown,
+  Sun,
+  Moon,
+  Volume2,
   Lock,
-  Sparkles
+  Battery,
+  Paintbrush,
+  Clock,
+  Mic,
+  Music2,
+  FolderPlus,
+  Play,
+  Layers
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { notificationService } from '../services/notificationService';
 
 const ACCENT_COLORS = [
-  { name: 'Electric Purple (Default)', value: '#7C6EFF' },
+  { name: 'Electric Purple', value: '#7C6EFF' },
   { name: 'Electric Blue', value: '#3B82F6' },
   { name: 'Emerald Wave', value: '#10B981' },
   { name: 'Sunset Amber', value: '#F59E0B' },
@@ -42,19 +43,15 @@ const ACCENT_COLORS = [
 ];
 
 const THEMES = [
-  { id: 'amoled', name: 'Dark AMOLED (True Black)', bg: '#000000' },
-  { id: 'dark', name: 'Dark Carbon', bg: '#121216' },
-  { id: 'midnight', name: 'Midnight Purple', bg: '#100E1C' },
-  { id: 'slate', name: 'Deep Slate', bg: '#0F172A' },
-];
-
-const LIBRARY_SUB_TABS = [
-  { id: 'tracks', label: 'Tracks / Songs' },
-  { id: 'albums', label: 'Albums' },
-  { id: 'artists', label: 'Artists' },
-  { id: 'playlists', label: 'Playlists' },
-  { id: 'folders', label: 'Folders' },
-  { id: 'genres', label: 'Genres' },
+  // Dark Themes
+  { id: 'amoled', name: 'AMOLED Black', mode: 'dark', bg: '#000000', border: '#262626' },
+  { id: 'dark', name: 'Dark Carbon', mode: 'dark', bg: '#121216', border: '#2a2a30' },
+  { id: 'midnight', name: 'Midnight', mode: 'dark', bg: '#100E1C', border: '#26203a' },
+  { id: 'slate', name: 'Slate', mode: 'dark', bg: '#0F172A', border: '#1e293b' },
+  // Light Themes (Requested Color/Light screen mode)
+  { id: 'light', name: 'One UI Light', mode: 'light', bg: '#F2F4F8', border: '#D5DAE5' },
+  { id: 'light-silver', name: 'Pure White', mode: 'light', bg: '#FFFFFF', border: '#E5E7EB' },
+  { id: 'warm-light', name: 'Warm Cream', mode: 'light', bg: '#FAF7F2', border: '#E7DFD5' },
 ];
 
 export const SettingsTab: React.FC = () => {
@@ -70,30 +67,38 @@ export const SettingsTab: React.FC = () => {
     setEqualizerOpen,
     setCustomizerOpen,
     setCarModeOpen,
+    setLockScreenOpen,
+    setSleepTimerOpen,
     tracks,
   } = usePlayer();
+
+  const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';
+
+  // Expanded sections state (can expand/collapse or open modals)
+  const [expandedSection, setExpandedSection] = useState<string | null>('display');
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSection(prev => prev === sectionId ? null : sectionId);
+  };
 
   const [cacheCleared, setCacheCleared] = useState(false);
   const [customHex, setCustomHex] = useState(settings.accentColor);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
 
   useEffect(() => {
-    // Check notification permission
     setNotifPermission(notificationService.getPermissionStatus());
   }, []);
 
   const handleRequestNotificationPermission = async () => {
     const current = notificationService.getPermissionStatus();
     if (current === 'denied') {
-      alert("Samsung Android 14/15/16 Notification Step:\n\n1. Go to phone Home Screen\n2. Long-press 'NOVA Player' app icon and tap (i) App info\n3. Tap 'Notifications'\n4. Turn ON 'Allow notifications'\n\nAfter turning it on, notifications and lock screen player will start working!");
+      alert("Please allow notifications in your phone Settings > Apps > NOVA Player.");
       return;
     }
     const granted = await notificationService.requestPermission();
     setNotifPermission(notificationService.getPermissionStatus());
     if (granted && updateSettings) {
       updateSettings({ systemNotificationsEnabled: true });
-    } else if (!granted) {
-      alert("Notification was not enabled by Android.\n\nTo enable on Samsung:\n1. Long-press NOVA Player icon on home screen > App info (i)\n2. Tap Notifications > Turn ON 'Allow notifications'.");
     }
   };
 
@@ -110,906 +115,1148 @@ export const SettingsTab: React.FC = () => {
     }
   };
 
+  const matchesSearch = (_terms: string[]) => true;
+
   return (
-    <div className="space-y-6 pb-52 px-5 select-none animate-in fade-in duration-200">
-      {/* 0. Home Feed & Player Customization (BitChord-inspired & Customizable) */}
-      <div 
-        className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4"
-        style={{ borderColor: `${settings.accentColor}30` }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Sliders className="w-4 h-4" style={{ color: settings.accentColor }} />
-            <span>Home Shelves & Now Playing Customizer</span>
-          </div>
-          <button
-            onClick={() => setCustomizerOpen(true)}
-            className="text-xs font-extrabold px-3 py-1.5 rounded-full text-black flex items-center gap-1.5 shadow-lg active:scale-95 transition-transform"
-            style={{ backgroundColor: settings.accentColor }}
-          >
-            <span>Customize</span>
-          </button>
-        </div>
-        <p className="text-xs text-white/50">
-          Personalize home carousels (Recently played, Quick picks, Rain Therapy ☘️🌧️, Artist spotlight) and player layouts (Immersive backdrop, Proxy UI curved, 3D Vinyl disc).
-        </p>
+    <div className="space-y-4 pb-48 px-3 sm:px-5 select-none animate-in fade-in duration-200 max-w-xl mx-auto relative">
 
-        {/* Quick layout selector */}
-        <div className="grid grid-cols-3 gap-2 pt-1">
-          {[
-            { id: 'immersive-backdrop', label: 'Immersive Backdrop' },
-            { id: 'curved-card', label: 'Curved Proxy UI' },
-            { id: 'vinyl-disc', label: '3D Vinyl Disc' },
-          ].map(opt => {
-            const isSelected = settings.nowPlayingConfig.layoutStyle === opt.id;
-            return (
-              <button
-                key={opt.id}
-                onClick={() => updateSettings({
-                  nowPlayingConfig: {
-                    ...settings.nowPlayingConfig,
-                    layoutStyle: opt.id as any
-                  }
-                })}
-                className="p-2.5 rounded-2xl border text-center text-xs font-bold transition-all"
-                style={{
-                  borderColor: isSelected ? settings.accentColor : 'rgba(255,255,255,0.1)',
-                  backgroundColor: isSelected ? `${settings.accentColor}20` : 'rgba(255,255,255,0.03)',
-                  color: isSelected ? '#ffffff' : 'rgba(255,255,255,0.6)'
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 1. Top Status Bar Customization (User Request 7) */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <Eye className="w-4 h-4 text-rose-400" />
-          <span>Top Status Bar Customization</span>
-        </div>
-        <p className="text-xs text-white/50">
-          Clean status bar without clutter. Only shows red words (LOCK • TIME • EQ • PANEL) or hide completely.
-        </p>
-
-        {/* Toggle Show/Hide Top Status Bar */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Top Status Bar</span>
-            <span className="text-[11px] text-white/50">Show or completely hide the top status bar</span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ showTopStatusBar: !settings.showTopStatusBar })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.showTopStatusBar !== false ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.showTopStatusBar !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Toggle Red Accent Words */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Red Accent Status Words</span>
-            <span className="text-[11px] text-white/50">
-              Highlight LOCK, TIME, EQ, PANEL in prominent red
-            </span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ topBarRedAccent: !settings.topBarRedAccent })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.topBarRedAccent !== false ? 'bg-rose-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.topBarRedAccent !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* Library & Search Shelves Customization (Redesigned with sleek Proxy UI tactile switches and vibe chips) */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5 text-white font-bold text-sm">
-            <div 
-              className="w-7 h-7 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${settings.accentColor}20`, color: settings.accentColor }}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </div>
-            <span>Library & Search Customization</span>
-          </div>
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
-            Proxy UI Shelves
-          </span>
-        </div>
-        <p className="text-xs text-white/50 leading-relaxed">
-          Enable or customize square discovery shelves and interactive mood vibes across your music library.
-        </p>
-
-        {/* Library Characters Grid Card */}
-        <div 
-          onClick={() => updateSettings?.({ libraryShowCharacterGrid: settings.libraryShowCharacterGrid === false })}
-          className="p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition-all cursor-pointer space-y-3 active:scale-[0.99]"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div 
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                style={{ 
-                  backgroundColor: settings.libraryShowCharacterGrid !== false ? `${settings.accentColor}25` : 'rgba(255,255,255,0.05)',
-                  color: settings.libraryShowCharacterGrid !== false ? settings.accentColor : 'rgba(255,255,255,0.4)'
-                }}
-              >
-                <Music2 className="w-4 h-4" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white block">Library: Music Character Boxes</span>
-                  <span 
-                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
-                      settings.libraryShowCharacterGrid !== false ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
-                    }`}
-                  >
-                    {settings.libraryShowCharacterGrid !== false ? 'Active' : 'Hidden'}
-                  </span>
-                </div>
-                <span className="text-[11px] text-white/50 block">
-                  Top row of square mood boxes for instant filtering (High Energy, Late Night, Lo-Fi, 8D Bass, Folk).
-                </span>
-              </div>
-            </div>
-
-            {/* Tactile Proxy UI Switch */}
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={settings.libraryShowCharacterGrid !== false}
-                className={`w-[52px] h-[28px] rounded-full transition-all relative p-[3px] flex items-center shrink-0 shadow-inner cursor-pointer border ${
-                  settings.libraryShowCharacterGrid !== false 
-                    ? 'border-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]' 
-                    : 'bg-white/10 border-white/15'
-                }`}
-                style={{
-                  backgroundColor: settings.libraryShowCharacterGrid !== false ? (settings.accentColor || '#10B981') : undefined
-                }}
-              >
-                <div
-                  className={`w-[22px] h-[22px] rounded-full bg-white shadow-md transition-transform flex items-center justify-center text-[9px] font-black text-emerald-700 ${
-                    settings.libraryShowCharacterGrid !== false ? 'translate-x-[24px]' : 'translate-x-0'
-                  }`}
-                >
-                  {settings.libraryShowCharacterGrid !== false ? '✓' : ''}
-                </div>
-              </button>
-              <span className="text-[9px] font-mono font-bold tracking-wider text-white/50 uppercase">
-                {settings.libraryShowCharacterGrid !== false ? 'ON' : 'OFF'}
-              </span>
-            </div>
-          </div>
-
-          {/* Micro preview chips */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-white/5">
-            {['⚡ High Energy', '🌙 Late Night', '☕ Lo-Fi', '🎧 8D Bass', '🎻 Folk'].map((chip) => (
-              <span 
-                key={chip}
-                className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium"
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Search Never Heard Shelf Card */}
-        <div 
-          onClick={() => updateSettings?.({ searchShowUnheardShelf: settings.searchShowUnheardShelf === false })}
-          className="p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 transition-all cursor-pointer space-y-3 active:scale-[0.99]"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div 
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                style={{ 
-                  backgroundColor: settings.searchShowUnheardShelf !== false ? `${settings.accentColor}25` : 'rgba(255,255,255,0.05)',
-                  color: settings.searchShowUnheardShelf !== false ? settings.accentColor : 'rgba(255,255,255,0.4)'
-                }}
-              >
-                <Search className="w-4 h-4" />
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white block">Search: 'Never Heard Before' Shelf</span>
-                  <span 
-                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider ${
-                      settings.searchShowUnheardShelf !== false ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
-                    }`}
-                  >
-                    {settings.searchShowUnheardShelf !== false ? 'Active' : 'Hidden'}
-                  </span>
-                </div>
-                <span className="text-[11px] text-white/50 block">
-                  Discovery shelf beneath search bar featuring unplayed gems & rare tracks with cover arts.
-                </span>
-              </div>
-            </div>
-
-            {/* Tactile Proxy UI Switch */}
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={settings.searchShowUnheardShelf !== false}
-                className={`w-[52px] h-[28px] rounded-full transition-all relative p-[3px] flex items-center shrink-0 shadow-inner cursor-pointer border ${
-                  settings.searchShowUnheardShelf !== false 
-                    ? 'border-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]' 
-                    : 'bg-white/10 border-white/15'
-                }`}
-                style={{
-                  backgroundColor: settings.searchShowUnheardShelf !== false ? (settings.accentColor || '#10B981') : undefined
-                }}
-              >
-                <div
-                  className={`w-[22px] h-[22px] rounded-full bg-white shadow-md transition-transform flex items-center justify-center text-[9px] font-black text-emerald-700 ${
-                    settings.searchShowUnheardShelf !== false ? 'translate-x-[24px]' : 'translate-x-0'
-                  }`}
-                >
-                  {settings.searchShowUnheardShelf !== false ? '✓' : ''}
-                </div>
-              </button>
-              <span className="text-[9px] font-mono font-bold tracking-wider text-white/50 uppercase">
-                {settings.searchShowUnheardShelf !== false ? 'ON' : 'OFF'}
-              </span>
-            </div>
-          </div>
-
-          {/* Micro preview chips */}
-          <div className="flex items-center gap-1.5 pt-1 border-t border-white/5">
-            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium">
-              ✨ Rare Gems
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium">
-              📻 Zero Playcount
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 text-white/60 font-medium">
-              🎨 Artwork Cards
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Studio Audio & Equalizer */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Sliders className="w-4 h-4" style={{ color: settings.accentColor }} />
-            <span>Studio Audio & Equalizer</span>
-          </div>
-          <button
-            onClick={() => setEqualizerOpen(true)}
-            className="text-xs font-bold px-3 py-1.5 rounded-full text-black flex items-center gap-1.5 shadow active:scale-95 transition-transform"
-            style={{ backgroundColor: settings.accentColor }}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Equalizer</span>
-          </button>
-        </div>
-
-        {/* Dedicated Car / Driving Mode */}
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400">
-              <Car className="w-5 h-5" />
-            </div>
+      {/* ============================================================== */}
+      {/* GROUP 1: MODES, SOUNDS & NOTIFICATIONS (Matches Screenshot Top) */}
+      {/* ============================================================== */}
+      {(matchesSearch(['modes and routines', 'sleep timer', 'autoplay', 'loop']) ||
+        matchesSearch(['sounds and vibration', 'crossfade', 'gapless', 'soundalive', 'transition']) ||
+        matchesSearch(['notifications', 'lock screen shade', 'media session'])) && (
+        <div className={`rounded-3xl border overflow-hidden transition-all shadow-sm ${
+          isLight ? 'bg-white border-black/[0.06]' : 'bg-[#18191E] border-white/5'
+        }`}>
+          {/* Row 1: Modes and Routines (Purple Circle) */}
+          {matchesSearch(['modes and routines', 'sleep timer', 'autoplay', 'loop']) && (
             <div>
-              <span className="text-xs font-semibold text-white block">Car / Driving Mode</span>
-              <span className="text-[11px] text-white/50">
-                Large, distraction-free controls for safe listening on the road
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={() => setCarModeOpen(true)}
-            className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-400 text-black shadow active:scale-95 transition-transform"
-          >
-            Launch
-          </button>
-        </div>
-
-        {/* Crossfade Duration */}
-        <div className="space-y-2 pt-2 border-t border-white/10">
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-white/70">Crossfade Between Tracks</span>
-            <span className="font-bold text-white" style={{ color: settings.accentColor }}>
-              {settings.crossfadeSecs}s
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="12"
-            step="1"
-            value={settings.crossfadeSecs}
-            onChange={(e) => updateCrossfade(parseInt(e.target.value, 10))}
-            className="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
-          />
-        </div>
-
-        {/* Song Transition Delay (User Request: Ek song ke baad dusra song jaldi play hona) */}
-        <div className="space-y-3 pt-3 border-t border-white/10">
-          <div className="flex justify-between items-center text-xs">
-            <div className="flex items-center gap-1.5">
-              <FastForward className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-semibold text-white/90">Song Transition Delay</span>
-            </div>
-            <span className="font-bold text-xs px-2 py-0.5 rounded-full bg-white/10" style={{ color: settings.accentColor }}>
-              {settings.transitionDelaySecs === 0 ? '0s (Instant)' : `${settings.transitionDelaySecs}s Delay`}
-            </span>
-          </div>
-          <p className="text-[11px] text-white/50">
-            Ek song khatam hone ke baad agla song kitne second me play hoga. 0s chune taaki turant bina rukaawat agla song baj jaye.
-          </p>
-
-          <input
-            type="range"
-            min="0"
-            max="5"
-            step="0.5"
-            value={settings.transitionDelaySecs ?? 0}
-            onChange={(e) => updateSettings?.({ transitionDelaySecs: parseFloat(e.target.value) })}
-            className="w-full accent-amber-400 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
-          />
-
-          {/* Quick Preset Buttons */}
-          <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
-            {[
-              { label: '⚡ 0s Instant', val: 0 },
-              { label: '0.5s', val: 0.5 },
-              { label: '1.0s', val: 1.0 },
-              { label: '2.0s', val: 2.0 },
-              { label: '3.0s', val: 3.0 },
-            ].map((preset) => {
-              const isSelected = (settings.transitionDelaySecs ?? 0) === preset.val;
-              return (
-                <button
-                  key={preset.val}
-                  type="button"
-                  onClick={() => updateSettings?.({ transitionDelaySecs: preset.val })}
-                  className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap transition-all ${
-                    isSelected
-                      ? 'bg-amber-400 text-black shadow-md scale-105'
-                      : 'bg-white/10 text-white/60 hover:bg-white/15 hover:text-white'
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Continuous Loop Queue at End */}
-        <div className="flex items-center justify-between pt-2 border-t border-white/10">
-          <div>
-            <span className="text-xs font-semibold text-white block">Auto-Loop Playlist</span>
-            <span className="text-[11px] text-white/50">Aakhiri gaane ke baad dobara shuru se bajana jari rakhein</span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ autoAdvanceLoop: settings.autoAdvanceLoop === false ? true : false })}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-              settings.autoAdvanceLoop !== false
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-white/10 text-white/60'
-            }`}
-          >
-            {settings.autoAdvanceLoop !== false ? 'ENABLED' : 'DISABLED'}
-          </button>
-        </div>
-
-        {/* Gapless Playback Toggle */}
-        <div className="flex items-center justify-between pt-2">
-          <div>
-            <span className="text-xs font-semibold text-white block">Gapless Playback</span>
-            <span className="text-[11px] text-white/50">Zero pause between consecutive tracks</span>
-          </div>
-          <button
-            onClick={toggleGapless}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-              settings.gapless 
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                : 'bg-white/10 text-white/60'
-            }`}
-          >
-            {settings.gapless ? 'ENABLED' : 'DISABLED'}
-          </button>
-        </div>
-      </div>
-
-      {/* 3. System Permission & Notifications (User Request 5) */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <Bell className="w-4 h-4 text-amber-400" />
-          <span>System Permissions & Notifications</span>
-        </div>
-        <p className="text-xs text-white/50">
-          Receive playback status, song singer name, album art, and controls in phone notification shade.
-        </p>
-
-        {/* Status Badge */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div className="flex items-center gap-2">
-            {notifPermission === 'granted' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-amber-400" />
-            )}
-            <div>
-              <span className="text-xs font-semibold text-white block">Notification Permission</span>
-              <span className="text-[11px] text-white/50">
-                {notifPermission === 'granted'
-                  ? 'Permission is active'
-                  : 'Permission required for background notification'}
-              </span>
-            </div>
-          </div>
-
-          {notifPermission !== 'granted' && notifPermission !== 'unsupported' ? (
-            <button
-              onClick={handleRequestNotificationPermission}
-              className="text-xs font-bold px-3 py-1.5 rounded-full text-black"
-              style={{ backgroundColor: settings.accentColor }}
-            >
-              Allow Permission
-            </button>
-          ) : (
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              GRANTED
-            </span>
-          )}
-        </div>
-
-        {/* System Notifications Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Active Playback Notification</span>
-            <span className="text-[11px] text-white/50">
-              Display song details and singer name in system notification
-            </span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ systemNotificationsEnabled: !settings.systemNotificationsEnabled })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.systemNotificationsEnabled ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.systemNotificationsEnabled ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Android 17 / System Media Session Notice & Direct Control */}
-        <div className="p-3.5 rounded-2xl bg-purple-950/30 border border-purple-800/30 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-purple-200">Android 17 / Lock Screen Media Card</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">
-              MediaSession v2
-            </span>
-          </div>
-          <p className="text-[11px] text-white/60 leading-relaxed">
-            On Android 17, swipe down from the top or lock your phone while a song is playing. The system notification card displays live track title, singer name, scrubber bar, play/pause and previous/next buttons.
-          </p>
-        </div>
-      </div>
-
-      {/* 4. Home Screen Customization (User Request 8) */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <Home className="w-4 h-4 text-sky-400" />
-          <span>Home Screen Sections</span>
-        </div>
-        <p className="text-xs text-white/50">
-          Choose which sections appear on the main Home dashboard.
-        </p>
-
-        {/* Toggle Resume Card */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Now Playing / Resume Card</span>
-            <span className="text-[11px] text-white/50">Hero card with quick play/pause controls</span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ homeShowResumeCard: !settings.homeShowResumeCard })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.homeShowResumeCard !== false ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.homeShowResumeCard !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Toggle Recent Section */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Recently Played</span>
-            <span className="text-[11px] text-white/50">Horizontal carousel of recently played tracks</span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ homeShowRecent: !settings.homeShowRecent })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.homeShowRecent !== false ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.homeShowRecent !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Toggle Most Played Section */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Most Played / Top Tracks</span>
-            <span className="text-[11px] text-white/50">Tracks with the highest playback count</span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ homeShowMostPlayed: !settings.homeShowMostPlayed })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.homeShowMostPlayed !== false ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.homeShowMostPlayed !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* 5. Library Screen Customization (User Request 8) */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <Music2 className="w-4 h-4 text-emerald-400" />
-          <span>Library Customization</span>
-        </div>
-        <p className="text-xs text-white/50">
-          Configure default tab and layout density in your music library.
-        </p>
-
-        {/* Default Sub-Tab Selection */}
-        <div className="space-y-2">
-          <span className="text-xs font-semibold text-white/70">Default Library Tab</span>
-          <div className="grid grid-cols-3 gap-2">
-            {LIBRARY_SUB_TABS.map((tab) => {
-              const isSelected = (settings.libraryDefaultSubTab || 'tracks') === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => updateSettings?.({ libraryDefaultSubTab: tab.id as any })}
-                  className={`p-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
-                    isSelected
-                      ? 'border-white text-white font-bold shadow-md'
-                      : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
-                  }`}
-                  style={{
-                    backgroundColor: isSelected ? settings.accentColor : undefined,
-                    color: isSelected ? '#000000' : undefined,
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* View Mode */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Display Layout</span>
-            <span className="text-[11px] text-white/50">
-              {settings.libraryViewMode === 'grid' ? 'Grid square cards' : 'Vertical list view'}
-            </span>
-          </div>
-          <div className="flex rounded-xl bg-white/10 p-1">
-            <button
-              onClick={() => updateSettings?.({ libraryViewMode: 'list' })}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                settings.libraryViewMode === 'list' ? 'bg-white text-black' : 'text-white/60'
-              }`}
-            >
-              List
-            </button>
-            <button
-              onClick={() => updateSettings?.({ libraryViewMode: 'grid' })}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                settings.libraryViewMode === 'grid' ? 'bg-white text-black' : 'text-white/60'
-              }`}
-            >
-              Grid
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 6. Search Screen Customization (User Request 8) */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <Search className="w-4 h-4 text-violet-400" />
-          <span>Search Customization</span>
-        </div>
-        <p className="text-xs text-white/50">
-          Configure how fast and dynamically search responds to your queries.
-        </p>
-
-        {/* Instant Search Filter */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5">
-          <div>
-            <span className="text-xs font-semibold text-white block">Instant Live Filter</span>
-            <span className="text-[11px] text-white/50">
-              Filter songs, singers, and albums instantly on every keystroke
-            </span>
-          </div>
-          <button
-            onClick={() => updateSettings?.({ searchInstantFilter: !settings.searchInstantFilter })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              settings.searchInstantFilter !== false ? 'bg-emerald-500' : 'bg-white/20'
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                settings.searchInstantFilter !== false ? 'translate-x-6' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* 7. Theme & Appearance */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <Palette className="w-4 h-4" style={{ color: settings.accentColor }} />
-          <span>UI & Design Themes</span>
-        </div>
-
-        {/* Theme Options */}
-        <div className="space-y-2">
-          <span className="text-xs font-semibold text-white/60">Theme Selection</span>
-          <div className="grid grid-cols-2 gap-2">
-            {THEMES.map((theme) => {
-              const isSelected = settings.theme === theme.id;
-              return (
-                <button
-                  key={theme.id}
-                  onClick={() => updateTheme(theme.id as any)}
-                  className={`p-3 rounded-2xl text-left border transition-all flex items-center justify-between ${
-                    isSelected
-                      ? 'border-white bg-white/10 shadow-lg'
-                      : 'border-white/10 bg-white/5 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-4 h-4 rounded-full border border-white/20"
-                      style={{ backgroundColor: theme.bg }}
-                    />
-                    <span className="text-xs font-semibold text-white truncate">{theme.name}</span>
+              <div 
+                onClick={() => toggleSection('modes')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#6366F1] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Clock className="w-5 h-5 stroke-[2.2]" />
                   </div>
-                  {isSelected && <Check className="w-4 h-4 text-white" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Modes and Routines
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Sleep timer, auto-advance loop, infinite play
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {settings.autoAdvanceLoop && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400">
+                      Loop ON
+                    </span>
+                  )}
+                  {expandedSection === 'modes' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
 
-        {/* Accent Color Palettes */}
-        <div className="space-y-2 pt-2 border-t border-white/10">
-          <span className="text-xs font-semibold text-white/60">One UI Accent Colors</span>
-          <div className="flex flex-wrap gap-2.5">
-            {ACCENT_COLORS.map((col) => {
-              const isSelected = settings.accentColor.toLowerCase() === col.value.toLowerCase();
-              return (
-                <button
-                  key={col.value}
-                  onClick={() => updateAccentColor(col.value)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-110 relative ${
-                    isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-black scale-105' : ''
-                  }`}
-                  style={{ backgroundColor: col.value }}
-                  title={col.name}
-                >
-                  {isSelected && <Check className="w-4 h-4 text-black font-extrabold" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+              {expandedSection === 'modes' && (
+                <div className={`px-4 pb-4 pt-1 space-y-3 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  <div className="flex items-center justify-between pt-2">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Auto-Advance Queue Loop</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Loop back to top when last track ends</div>
+                    </div>
+                    <button
+                      onClick={() => updateSettings({ autoAdvanceLoop: !settings.autoAdvanceLoop })}
+                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                        settings.autoAdvanceLoop ? 'bg-indigo-600' : isLight ? 'bg-neutral-300' : 'bg-white/20'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                        settings.autoAdvanceLoop ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
 
-        {/* Custom Hex Code Picker */}
-        <form onSubmit={handleCustomHexSubmit} className="flex gap-2 pt-2">
-          <input
-            type="text"
-            value={customHex}
-            onChange={(e) => setCustomHex(e.target.value)}
-            placeholder="#7C6EFF"
-            className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-white/30"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-xl text-xs font-bold text-black shadow-md transition-opacity hover:opacity-90"
-            style={{ backgroundColor: settings.accentColor }}
-          >
-            Apply Hex
-          </button>
-        </form>
-      </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Sleep Timer</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Automatic music shutoff</div>
+                    </div>
+                    <button
+                      onClick={() => setSleepTimerOpen(true)}
+                      className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-600 text-white shadow active:scale-95 transition-transform"
+                    >
+                      Set Timer
+                    </button>
+                  </div>
+                </div>
+              )}
 
-      {/* 8. Scan Folders & Storage */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <FolderPlus className="w-4 h-4" style={{ color: settings.accentColor }} />
-            <span>Scan Folders & File Formats</span>
-          </div>
-          <button
-            onClick={() => setScannerOpen(true)}
-            className="text-xs font-bold px-3 py-1 rounded-full text-black"
-            style={{ backgroundColor: settings.accentColor }}
-          >
-            Scan Now
-          </button>
-        </div>
-
-        {/* Monitored directories */}
-        <div className="space-y-1.5">
-          <span className="text-xs font-semibold text-white/60">Monitored Music Folders</span>
-          {settings.scanFolders.map((folder) => (
-            <div key={folder} className="p-2.5 rounded-xl bg-white/5 text-xs text-white/70 font-mono truncate">
-              {folder}
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
             </div>
-          ))}
-        </div>
+          )}
 
-        {/* Supported Audio Formats */}
-        <div className="pt-2 border-t border-white/10">
-          <span className="text-xs font-semibold text-white/60 block mb-2">Supported Local Formats</span>
-          <div className="flex flex-wrap gap-1.5">
-            {['MP3', 'WAV', 'FLAC', 'AAC', 'OGG', 'M4A'].map((fmt) => (
-              <span key={fmt} className="text-xs font-bold px-2.5 py-1 rounded-lg bg-white/10 text-white/80">
-                {fmt}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+          {/* Row 2: Sounds and vibration (Blue Circle) */}
+          {matchesSearch(['sounds and vibration', 'crossfade', 'gapless', 'soundalive', 'transition']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('sounds')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#2563EB] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Volume2 className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Sounds and vibration
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Crossfade {settings.crossfadeSecs}s • Gapless {settings.gapless ? 'ON' : 'OFF'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {expandedSection === 'sounds' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
 
-      {/* 9. Cache & Storage Management */}
-      <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 shadow-xl space-y-3">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <HardDrive className="w-4 h-4 text-rose-400" />
-          <span>Cache & Memory Management</span>
-        </div>
-        <p className="text-xs text-white/50">
-          Stored metadata, playlists, and persistent audio data for {tracks.length} tracks.
-        </p>
+              {expandedSection === 'sounds' && (
+                <div className={`px-4 pb-4 pt-1 space-y-4 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  {/* Song Transition Delay */}
+                  <div className="space-y-1.5 pt-2">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Song Transition Delay</span>
+                      <span className="text-xs font-mono font-bold text-emerald-500">
+                        {settings.transitionDelaySecs <= 0.005 ? '0.005s (Ultra-Instant)' : `${settings.transitionDelaySecs}s`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[0.005, 0.5, 1, 2, 3].map((val) => {
+                        const isSelected = settings.transitionDelaySecs === val || (val === 0.005 && settings.transitionDelaySecs <= 0.005);
+                        return (
+                          <button
+                            key={val}
+                            onClick={() => updateSettings({ transitionDelaySecs: val })}
+                            className={`py-1.5 rounded-xl border text-[11px] font-semibold transition-all ${
+                              isSelected
+                                ? 'border-emerald-500 bg-emerald-500 text-white shadow'
+                                : isLight
+                                  ? 'border-neutral-200 bg-white text-neutral-700'
+                                  : 'border-white/10 bg-white/5 text-white/70'
+                            }`}
+                          >
+                            {val === 0.005 ? '0.005s' : `${val}s`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-        <div className="flex items-center justify-between pt-2">
-          <button
-            onClick={handleClearCache}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Clear Cache & Reset Library</span>
-          </button>
+                  {/* Crossfade */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Crossfade Blend</span>
+                      <span className="text-xs font-mono font-bold text-blue-500">
+                        {settings.crossfadeSecs === 0 ? 'Off' : `${settings.crossfadeSecs}s`}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="12"
+                      step="1"
+                      value={settings.crossfadeSecs}
+                      onChange={(e) => updateCrossfade(Number(e.target.value))}
+                      className="w-full accent-blue-600 h-1.5 rounded-lg cursor-pointer"
+                    />
+                  </div>
 
-          {cacheCleared && (
-            <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-              <Check className="w-3.5 h-3.5" /> Cache Cleared
-            </span>
+                  {/* Gapless Playback Toggle */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Gapless Playback</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Zero silence between live album tracks</div>
+                    </div>
+                    <button
+                      onClick={toggleGapless}
+                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                        settings.gapless ? 'bg-blue-600' : isLight ? 'bg-neutral-300' : 'bg-white/20'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                        settings.gapless ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* SoundAlive Spectrum */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>SoundAlive Live Spectrum</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Dynamic real-time waveform visualizer</div>
+                    </div>
+                    <button
+                      onClick={() => updateSettings({ soundAliveSpectrum: !settings.soundAliveSpectrum })}
+                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                        settings.soundAliveSpectrum ? 'bg-blue-600' : isLight ? 'bg-neutral-300' : 'bg-white/20'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                        settings.soundAliveSpectrum ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Row 3: Notifications (Orange Circle) */}
+          {matchesSearch(['notifications', 'lock screen shade', 'media session']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('notifications')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#F97316] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Bell className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Notifications
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Media controls & lock screen notification shade
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {notifPermission === 'granted' ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
+                      Enable
+                    </span>
+                  )}
+                  {expandedSection === 'notifications' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
+
+              {expandedSection === 'notifications' && (
+                <div className={`px-4 pb-4 pt-1 space-y-3 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  <div className="flex items-center justify-between pt-2">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>System Notification Controls</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Lock screen playback widget & notifications</div>
+                    </div>
+                    {notifPermission === 'granted' ? (
+                      <button
+                        onClick={() => updateSettings({ systemNotificationsEnabled: !settings.systemNotificationsEnabled })}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                          settings.systemNotificationsEnabled ? 'bg-orange-600' : isLight ? 'bg-neutral-300' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                          settings.systemNotificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleRequestNotificationPermission}
+                        className="text-xs font-bold px-3 py-1 rounded-full bg-orange-600 text-white shadow active:scale-95 transition-transform"
+                      >
+                        Allow
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* 11. About NOVA Player */}
-      <div className="p-6 rounded-3xl bg-neutral-900/90 border border-white/10 shadow-2xl space-y-4 text-center relative overflow-hidden">
-        {/* Glow accent */}
-        <div 
-          className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full blur-3xl opacity-20 pointer-events-none"
-          style={{ backgroundColor: settings.accentColor }}
-        />
+      {/* ============================================================== */}
+      {/* GROUP 2: DISPLAY & BATTERY (Matches Screenshot Middle)         */}
+      {/* ============================================================== */}
+      {(matchesSearch(['display', 'light mode', 'dark mode', 'color', 'screen', 'theme']) ||
+        matchesSearch(['battery', 'storage', 'cache', 'folders'])) && (
+        <div className={`rounded-3xl border overflow-hidden transition-all shadow-sm ${
+          isLight ? 'bg-white border-black/[0.06]' : 'bg-[#18191E] border-white/5'
+        }`}>
+          {/* Row 1: Display (Sun Lime/Yellow Circle) */}
+          {matchesSearch(['display', 'light mode', 'dark mode', 'color', 'screen', 'theme']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('display')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#84CC16] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Sun className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Display
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      {isLight ? 'Light mode' : 'Dark mode'} • Top status bar • Layout
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isLight ? 'bg-amber-500/10 text-amber-600' : 'bg-neutral-700 text-neutral-300'
+                  }`}>
+                    {isLight ? 'Light' : 'Dark'}
+                  </span>
+                  {expandedSection === 'display' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
 
-        <div className="relative z-10 space-y-3">
+              {expandedSection === 'display' && (
+                <div className={`px-4 pb-5 pt-2 space-y-4 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  
+                  {/* Authentic Samsung One UI Display Preview: Light vs Dark Side-by-Side Selector */}
+                  <div className="space-y-2">
+                    <div className={`text-xs font-bold tracking-tight uppercase ${isLight ? 'text-neutral-600' : 'text-white/50'}`}>
+                      Appearance Mode
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Light Mode Preview Phone */}
+                      <button
+                        type="button"
+                        onClick={() => updateTheme('light')}
+                        className={`p-3 rounded-2xl border flex flex-col items-center gap-2.5 transition-all text-center ${
+                          isLight 
+                            ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30' 
+                            : 'border-white/10 bg-white/5 hover:border-white/20'
+                        }`}
+                      >
+                        {/* Mini Phone Screen Mockup */}
+                        <div className="w-24 h-32 rounded-xl border border-neutral-300 bg-[#F2F4F8] p-2 flex flex-col justify-between shadow-sm overflow-hidden">
+                          <div className="space-y-1.5">
+                            <div className="w-8 h-1.5 rounded-full bg-neutral-400" />
+                            <div className="w-full h-7 rounded-lg bg-white border border-neutral-200 p-1 flex items-center gap-1">
+                              <div className="w-4 h-4 rounded bg-blue-500 shrink-0" />
+                              <div className="w-8 h-1 rounded bg-neutral-300" />
+                            </div>
+                            <div className="w-full h-5 rounded-lg bg-white border border-neutral-200 p-1">
+                              <div className="w-10 h-1 rounded bg-neutral-300" />
+                            </div>
+                          </div>
+                          <div className="w-10 h-1 rounded-full bg-neutral-400 mx-auto" />
+                        </div>
+                        {/* Radio selector */}
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                            isLight ? 'border-blue-500 bg-blue-500' : 'border-neutral-400'
+                          }`}>
+                            {isLight && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <span className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                            Light
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Dark Mode Preview Phone */}
+                      <button
+                        type="button"
+                        onClick={() => updateTheme('amoled')}
+                        className={`p-3 rounded-2xl border flex flex-col items-center gap-2.5 transition-all text-center ${
+                          !isLight 
+                            ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30' 
+                            : 'border-neutral-200 bg-white hover:border-neutral-300'
+                        }`}
+                      >
+                        {/* Mini Phone Screen Mockup */}
+                        <div className="w-24 h-32 rounded-xl border border-neutral-800 bg-[#000000] p-2 flex flex-col justify-between shadow-sm overflow-hidden">
+                          <div className="space-y-1.5">
+                            <div className="w-8 h-1.5 rounded-full bg-neutral-600" />
+                            <div className="w-full h-7 rounded-lg bg-[#18191E] border border-white/10 p-1 flex items-center gap-1">
+                              <div className="w-4 h-4 rounded bg-blue-500 shrink-0" />
+                              <div className="w-8 h-1 rounded bg-neutral-600" />
+                            </div>
+                            <div className="w-full h-5 rounded-lg bg-[#18191E] border border-white/10 p-1">
+                              <div className="w-10 h-1 rounded bg-neutral-600" />
+                            </div>
+                          </div>
+                          <div className="w-10 h-1 rounded-full bg-neutral-600 mx-auto" />
+                        </div>
+                        {/* Radio selector */}
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                            !isLight ? 'border-blue-500 bg-blue-500' : 'border-neutral-400'
+                          }`}>
+                            {!isLight && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <span className={`text-xs font-bold ${!isLight ? 'text-white' : 'text-neutral-900'}`}>
+                            Dark
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Now Playing Artwork Layout */}
+                  <div className="space-y-2 pt-1">
+                    <span className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>
+                      Now Playing Screen Style
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'immersive-backdrop', label: 'Backdrop' },
+                        { id: 'curved-card', label: 'Curved UI' },
+                        { id: 'vinyl-disc', label: '3D Vinyl' },
+                      ].map((opt) => {
+                        const isSelected = settings.nowPlayingConfig.layoutStyle === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            onClick={() => updateSettings({
+                              nowPlayingConfig: {
+                                ...settings.nowPlayingConfig,
+                                layoutStyle: opt.id as any
+                              }
+                            })}
+                            className="p-2 rounded-xl border text-center text-xs font-semibold transition-all"
+                            style={{
+                              borderColor: isSelected ? settings.accentColor : isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)',
+                              backgroundColor: isSelected ? `${settings.accentColor}20` : isLight ? '#ffffff' : 'rgba(255,255,255,0.03)',
+                              color: isSelected ? settings.accentColor : isLight ? '#374151' : 'rgba(255,255,255,0.7)'
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Top Status Bar Toggle */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Top Status Bar</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Hi-Res audio indicators & DSP tag</div>
+                    </div>
+                    <button
+                      onClick={() => updateSettings({ showTopStatusBar: !settings.showTopStatusBar })}
+                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                        settings.showTopStatusBar ? 'bg-lime-600' : isLight ? 'bg-neutral-300' : 'bg-white/20'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                        settings.showTopStatusBar ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Row 2: Battery & Storage (Green Circle) */}
+          {matchesSearch(['battery', 'storage', 'cache', 'folders']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('storage')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#22C55E] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Battery className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Battery and storage
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      {tracks.length} tracks cached • Folder auto-scanner
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {expandedSection === 'storage' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
+
+              {expandedSection === 'storage' && (
+                <div className={`px-4 pb-4 pt-1 space-y-3 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  <div className="flex items-center justify-between pt-2">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Local Folder Scanner</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Scan MP3, FLAC, WAV from device storage</div>
+                    </div>
+                    <button
+                      onClick={() => setScannerOpen(true)}
+                      className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-600 text-white shadow active:scale-95 transition-transform"
+                    >
+                      Scan
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-black/5">
+                    <button
+                      onClick={handleClearCache}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-semibold transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Clear Track Cache ({tracks.length})</span>
+                    </button>
+
+                    {cacheCleared && (
+                      <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Cache Cleared
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* GROUP 3: WALLPAPER, THEMES & HOME SCREEN (Matches Screenshot)  */}
+      {/* ============================================================== */}
+      {(matchesSearch(['wallpaper and style', 'accent color', 'color', 'palette']) ||
+        matchesSearch(['themes', 'light theme', 'dark theme', 'amoled', 'slate', 'cream']) ||
+        matchesSearch(['home screen', 'shelves', 'quick picks', 'mood', 'resume card']) ||
+        matchesSearch(['lock screen', 'widget'])) && (
+        <div className={`rounded-3xl border overflow-hidden transition-all shadow-sm ${
+          isLight ? 'bg-white border-black/[0.06]' : 'bg-[#18191E] border-white/5'
+        }`}>
+          {/* Row 1: Wallpaper and style (Pink Circle) */}
+          {matchesSearch(['wallpaper and style', 'accent color', 'color', 'palette']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('wallpaper')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#EC4899] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Palette className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Wallpaper and style
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Accent palette & custom color theme
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div 
+                    className="w-5 h-5 rounded-full ring-2 ring-white/30"
+                    style={{ backgroundColor: settings.accentColor }}
+                  />
+                  {expandedSection === 'wallpaper' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
+
+              {expandedSection === 'wallpaper' && (
+                <div className={`px-4 pb-4 pt-1 space-y-3 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  <div className="space-y-1.5 pt-2">
+                    <span className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Accent Color Palette</span>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {ACCENT_COLORS.map((col) => {
+                        const isSelected = settings.accentColor.toLowerCase() === col.value.toLowerCase();
+                        return (
+                          <button
+                            key={col.value}
+                            onClick={() => updateAccentColor(col.value)}
+                            className={`w-8 h-8 rounded-full transition-transform flex items-center justify-center ${
+                              isSelected ? 'ring-2 ring-offset-2 ring-black scale-110 shadow-md' : 'hover:scale-105'
+                            }`}
+                            style={{ backgroundColor: col.value }}
+                            title={col.name}
+                          >
+                            {isSelected && <Check className="w-4 h-4 text-white stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Custom Hex input */}
+                  <form onSubmit={handleCustomHexSubmit} className="flex items-center gap-2 pt-2">
+                    <input
+                      type="text"
+                      value={customHex}
+                      onChange={(e) => setCustomHex(e.target.value)}
+                      placeholder="#7C6EFF"
+                      className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-mono uppercase ${
+                        isLight 
+                          ? 'bg-white border-neutral-300 text-neutral-900' 
+                          : 'bg-white/5 border-white/10 text-white'
+                      }`}
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-pink-600 text-white shadow"
+                    >
+                      Apply
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Row 2: Themes (Magenta Circle) */}
+          {matchesSearch(['themes', 'light theme', 'dark theme', 'amoled', 'slate', 'cream']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('themes')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#D946EF] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Paintbrush className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Themes
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      AMOLED, Slate, One UI Light, Warm Cream
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {expandedSection === 'themes' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
+
+              {expandedSection === 'themes' && (
+                <div className={`px-4 pb-4 pt-1 space-y-3 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2">
+                    {THEMES.map((theme) => {
+                      const isSelected = settings.theme === theme.id;
+                      return (
+                        <button
+                          key={theme.id}
+                          onClick={() => updateTheme(theme.id as any)}
+                          className={`p-2.5 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                            isSelected 
+                              ? 'border-fuchsia-500 ring-2 ring-fuchsia-500/20 shadow-sm' 
+                              : isLight ? 'border-neutral-200 bg-white hover:border-neutral-300' : 'border-white/10 bg-white/5 hover:border-white/20'
+                          }`}
+                          style={{
+                            backgroundColor: isSelected ? (theme.mode === 'light' ? '#ffffff' : '#1a1824') : undefined
+                          }}
+                        >
+                          <div>
+                            <div className={`text-xs font-bold ${
+                              isSelected ? 'text-fuchsia-500' : isLight ? 'text-neutral-800' : 'text-white'
+                            }`}>
+                              {theme.name}
+                            </div>
+                            <div className={`text-[10px] uppercase font-mono ${isLight ? 'text-neutral-400' : 'text-white/40'}`}>
+                              {theme.mode}
+                            </div>
+                          </div>
+                          <div 
+                            className="w-4 h-4 rounded-full border border-black/20"
+                            style={{ backgroundColor: theme.bg }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Row 3: Home screen (Royal Blue Circle) */}
+          {matchesSearch(['home screen', 'shelves', 'quick picks', 'mood', 'resume card']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('home-screen')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#2563EB] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Home className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Home screen
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Hero resume card, recently played, mood shelves
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {expandedSection === 'home-screen' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
+
+              {expandedSection === 'home-screen' && (
+                <div className={`px-4 pb-4 pt-1 space-y-3 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  <div className="flex items-center justify-between pt-2">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Hero Resume Card</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Floating artwork with live progress bar</div>
+                    </div>
+                    <button
+                      onClick={() => updateSettings({ homeShowResumeCard: !settings.homeShowResumeCard })}
+                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                        settings.homeShowResumeCard ? 'bg-blue-600' : isLight ? 'bg-neutral-300' : 'bg-white/20'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                        settings.homeShowResumeCard ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-neutral-800' : 'text-white'}`}>Recently Played Shelf</div>
+                      <div className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>Carousel of recent listening history</div>
+                    </div>
+                    <button
+                      onClick={() => updateSettings({ homeShowRecent: !settings.homeShowRecent })}
+                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                        settings.homeShowRecent ? 'bg-blue-600' : isLight ? 'bg-neutral-300' : 'bg-white/20'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow ${
+                        settings.homeShowRecent ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={() => setCustomizerOpen(true)}
+                      className="text-xs font-bold px-3 py-1.5 rounded-full bg-blue-600 text-white shadow active:scale-95 transition-transform"
+                    >
+                      Customize Full Home Layout
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Row 4: Lock screen (Cyan Circle) */}
+          {matchesSearch(['lock screen', 'widget']) && (
+            <div>
+              <div 
+                onClick={() => setLockScreenOpen(true)}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#06B6D4] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Lock className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Lock screen
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      OLED ambient cover art & touch controls
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-500">
+                    Preview
+                  </span>
+                  <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* GROUP 4: AUDIO & DSP ENGINE + CAR MODE                         */}
+      {/* ============================================================== */}
+      {(matchesSearch(['equalizer', 'dsp', 'dolby', '8d audio', 'bass']) ||
+        matchesSearch(['car mode', 'driving'])) && (
+        <div className={`rounded-3xl border overflow-hidden transition-all shadow-sm ${
+          isLight ? 'bg-white border-black/[0.06]' : 'bg-[#18191E] border-white/5'
+        }`}>
+          {/* Audio & DSP Studio (Red Circle) */}
+          {matchesSearch(['equalizer', 'dsp', 'dolby', '8d audio', 'bass']) && (
+            <div>
+              <div 
+                onClick={() => setEqualizerOpen(true)}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#EF4444] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Sliders className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Audio & DSP Equalizer
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      10–Band EQ, Dolby Atmos Cinema, 360° 8D Spatial
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500">
+                    Open EQ
+                  </span>
+                  <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                </div>
+              </div>
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Car Mode (Amber Circle) */}
+          {matchesSearch(['car mode', 'driving']) && (
+            <div>
+              <div 
+                onClick={() => setCarModeOpen(true)}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#F59E0B] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Car className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Car Mode
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Oversized road controls for safe driving
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Inset Divider */}
+          <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+
+          {/* App Permissions & System Access (Emerald Shield) */}
+          {matchesSearch(['permission', 'access', 'storage', 'notification', 'media session', 'battery', 'wake lock']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('permissions')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      App Permissions & System Access
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Storage, Notifications, Wake Lock & Background Playback
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">
+                    5 Active
+                  </span>
+                  {expandedSection === 'permissions' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
+
+              {expandedSection === 'permissions' && (
+                <div className={`px-4 pb-4 pt-2 space-y-3 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  <p className={`text-xs leading-relaxed ${isLight ? 'text-neutral-600' : 'text-white/60'}`}>
+                    NOVA Player requires minimal device permissions to guarantee smooth background audio, lock screen controls, and offline song storage without battery drain.
+                  </p>
+
+                  <div className="space-y-2 pt-1">
+                    {/* 1. Storage & Files */}
+                    <div className={`p-3 rounded-2xl border flex items-start gap-3 ${
+                      isLight ? 'bg-white border-neutral-200' : 'bg-white/5 border-white/5'
+                    }`}>
+                      <HardDrive className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                            Storage & Local Media Access
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            Granted
+                          </span>
+                        </div>
+                        <p className={`text-[11px] leading-snug mt-1 ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                          Allows scanning offline MP3/M4A/FLAC files from your device folders and caching Telegram songs in IndexedDB for offline play.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 2. Media Notifications & Lock Screen */}
+                    <div className={`p-3 rounded-2xl border flex items-start gap-3 ${
+                      isLight ? 'bg-white border-neutral-200' : 'bg-white/5 border-white/5'
+                    }`}>
+                      <Bell className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                            System Notifications & Media Session
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            Active
+                          </span>
+                        </div>
+                        <p className={`text-[11px] leading-snug mt-1 ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                          Enables Android lock screen controls, pull-down notification shade playback controls, and track progress scrubbing.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 3. Screen Wake Lock & Background Audio */}
+                    <div className={`p-3 rounded-2xl border flex items-start gap-3 ${
+                      isLight ? 'bg-white border-neutral-200' : 'bg-white/5 border-white/5'
+                    }`}>
+                      <Battery className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                            Screen Wake Lock & Keep-Alive
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            Automatic
+                          </span>
+                        </div>
+                        <p className={`text-[11px] leading-snug mt-1 ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                          Prevents Android OS from pausing music playback when the screen turns off or while using other applications.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 4. Microphone (Speech Search) */}
+                    <div className={`p-3 rounded-2xl border flex items-start gap-3 ${
+                      isLight ? 'bg-white border-neutral-200' : 'bg-white/5 border-white/5'
+                    }`}>
+                      <Mic className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                            Microphone (Voice Search)
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                            On-Demand
+                          </span>
+                        </div>
+                        <p className={`text-[11px] leading-snug mt-1 ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                          Only accessed when you tap the microphone button in search to speak song or artist names. Never active in the background.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 5. Network Access (Telegram Private Cloud) */}
+                    <div className={`p-3 rounded-2xl border flex items-start gap-3 ${
+                      isLight ? 'bg-white border-neutral-200' : 'bg-white/5 border-white/5'
+                    }`}>
+                      <Smartphone className="w-5 h-5 text-purple-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                            High-Speed Network Streaming
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            Connected
+                          </span>
+                        </div>
+                        <p className={`text-[11px] leading-snug mt-1 ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                          Direct high-speed streaming from Telegram Bot API CDN and real-time lyrics synchronization.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* GROUP 5: ABOUT NOVA PLAYER (RESTORED CARD BY SOURAV PHUKAN)   */}
+      {/* ============================================================== */}
+      {matchesSearch(['about', 'sourav phukan', 'version', 'nova player', 'developer']) && (
+        <div className={`p-6 rounded-3xl border shadow-xl text-center space-y-5 transition-all ${
+          isLight ? 'bg-white border-black/[0.06]' : 'bg-[#18191E] border-white/5'
+        }`}>
+          {/* App Icon */}
           <div 
-            className="w-16 h-16 rounded-3xl mx-auto flex items-center justify-center text-black font-extrabold text-2xl shadow-xl transition-transform hover:scale-105"
+            className="w-20 h-20 rounded-3xl mx-auto flex items-center justify-center shadow-2xl transition-transform"
             style={{ backgroundColor: settings.accentColor }}
           >
-            <Smartphone className="w-8 h-8" />
+            <Smartphone className="w-10 h-10 text-black stroke-[2.2]" />
           </div>
 
-          <div>
-            <h3 className="text-lg font-black text-white tracking-tight">NOVA Player</h3>
-            <p className="text-xs text-white/50 mt-0.5">Proxy UI High-Fidelity Audio Player</p>
+          {/* Title & Subtitle */}
+          <div className="space-y-1">
+            <h2 className={`text-2xl font-black tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+              NOVA Player
+            </h2>
+            <p className={`text-xs sm:text-sm font-medium ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+              Proxy UI High-Fidelity Audio Player
+            </p>
           </div>
 
-          {/* Prominent Developed by Sourav Phukan Banner */}
+          {/* Creator & Lead Engineer Banner */}
           <div 
-            className="p-3.5 rounded-2xl border flex flex-col items-center justify-center gap-1 shadow-lg"
+            className="p-4 rounded-2xl border text-center space-y-1"
             style={{ 
-              backgroundColor: `${settings.accentColor}18`,
-              borderColor: `${settings.accentColor}40`
+              backgroundColor: `${settings.accentColor}12`, 
+              borderColor: `${settings.accentColor}30` 
             }}
           >
-            <span className="text-[11px] uppercase tracking-widest text-white/60 font-semibold">
-              Creator & Lead Engineer
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-white tracking-tight">
+            <div className={`text-[10px] font-bold tracking-widest uppercase ${isLight ? 'text-neutral-500' : 'text-white/40'}`}>
+              CREATOR & LEAD ENGINEER
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <span className={`text-sm sm:text-base font-extrabold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
                 Developed by Sourav Phukan
               </span>
               <span 
-                className="w-2 h-2 rounded-full animate-pulse"
-                style={{ backgroundColor: settings.accentColor }}
+                className="w-2.5 h-2.5 rounded-full inline-block animate-pulse" 
+                style={{ backgroundColor: settings.accentColor }} 
               />
             </div>
           </div>
 
-          {/* Technical Specifications */}
-          <div className="grid grid-cols-2 gap-2 text-left text-xs bg-white/5 p-3.5 rounded-2xl border border-white/5 text-white/80">
+          {/* App Specs Card (Clean version without DEVELOPER / DESIGN LANGUAGE box) */}
+          <div className={`p-4 rounded-2xl border grid grid-cols-2 gap-4 text-left ${
+            isLight ? 'bg-neutral-50 border-neutral-200/80' : 'bg-white/5 border-white/5'
+          }`}>
             <div>
-              <span className="text-white/40 block text-[10px] uppercase font-bold">Developer</span>
-              <span className="font-bold text-white">Sourav Phukan</span>
+              <div className={`text-[10px] font-bold tracking-wider uppercase ${isLight ? 'text-neutral-400' : 'text-white/40'}`}>
+                APP VERSION
+              </div>
+              <div className={`text-sm font-bold mt-0.5 ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                v3.5.0 Release
+              </div>
             </div>
             <div>
-              <span className="text-white/40 block text-[10px] uppercase font-bold">Design Language</span>
-              <span className="font-bold text-white">Proxy UI</span>
-            </div>
-            <div className="pt-2 border-t border-white/10">
-              <span className="text-white/40 block text-[10px] uppercase font-bold">App Version</span>
-              <span className="font-semibold text-white">v3.5.0 Release</span>
-            </div>
-            <div className="pt-2 border-t border-white/10">
-              <span className="text-white/40 block text-[10px] uppercase font-bold">DSP Engine</span>
-              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                10-Band Studio DSP
-              </span>
+              <div className={`text-[10px] font-bold tracking-wider uppercase ${isLight ? 'text-neutral-400' : 'text-white/40'}`}>
+                DSP ENGINE
+              </div>
+              <div className="text-sm font-bold text-emerald-500 mt-0.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>10–Band Studio DSP</span>
+              </div>
             </div>
           </div>
 
-          <p className="text-xs text-white/50 italic px-2">
+          {/* Dedication Quote */}
+          <p className={`text-xs italic px-2 leading-relaxed ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
             "Crafted with dedication by Sourav Phukan for music lovers who appreciate pristine audio quality."
           </p>
 
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-white/40 pt-1 border-t border-white/10">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          {/* Cloud & Audio Guarantee */}
+          <div className={`pt-3 border-t flex items-center justify-center gap-2 text-[11px] font-medium ${
+            isLight ? 'border-neutral-100 text-neutral-500' : 'border-white/10 text-white/45'
+          }`}>
+            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>Cloud Streaming & Local Playback • Zero Tracking • Studio Audio</span>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Bottom spacer for miniplayer and bottom navigation */}
-      <div className="h-28 w-full" aria-hidden="true" />
     </div>
   );
 };

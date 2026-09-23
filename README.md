@@ -48,7 +48,23 @@ npm run start
 
 ---
 
-## ⚡ Zero-Latency Playback (0.005s Instant Audio)
+## 📱 Mobile Home Screen Par App Logo & Installation Guide
+
+Jab aap GitHub se download karke ya live URL se phone ke Home Screen par add karenge:
+1. **Google Chrome / Samsung Internet** me app open karein: `http://<your-ip>:3000` ya Live URL.
+2. Browser ke top-right 3 dots `⋮` par click karein.
+3. **"Add to Home Screen"** / **"Install App"** par click karein.
+4. Phone ke home screen par aapka diya hua **NOVA Player custom official logo** show hoga (PWA manifest `public/icon-192.png`, `public/icon-512.png`, aur `public/icon-maskable-512.png` ke sath).
+
+Agar aap Capacitor se Android APK build kar rahe hain:
+```bash
+npm run build
+npx cap add android
+node scripts/prepare-android.cjs
+npx cap sync android
+```
+`prepare-android.cjs` automatically aapka official logo sabhi Android mipmap densities (`mipmap-mdpi`, `mipmap-hdpi`, `mipmap-xhdpi`, `mipmap-xxhdpi`, `mipmap-xxxhdpi`) me generate karke launcher icon set kar deta hai.
+
 * App me **SSD Disk Cache Engine** integrated hai jo songs ko `.cache/audio` me store karta hai.
 * Cache hone ke baad song click karte hi **0.002s – 0.005s (2ms to 5ms)** me instant play shuru ho jata hai bina kisi buffering delay ke.
 

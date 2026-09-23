@@ -700,23 +700,23 @@ function saveTracksDb() {
 // Cache resolved Telegram file_paths so we don't spam getFile API
 const filePathCache: Record<string, string> = {
   // Verified Telegram Cloud Audio File Paths (Current Active CDN Mapping)
-  'CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ': 'music/file_130',    // Arz Kiya Hai (.mp3)
-  'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ': 'music/file_140',    // Aaoge Tum Kabhi (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'music/file_143',    // Choo Lo (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'music/file_133',    // Kaahe Mose (.mp3)
-  'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_134',    // Raabta (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_138',    // Somewhere Only We Know (.mp3)
-  'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'music/file_135',    // Jo Tum Mere Ho (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'music/file_137',    // Dil Jhoom (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ': 'music/file_144',    // Nadaan Parinde (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E': 'music/file_132',    // Kaash Aisa Hota (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMPaqdEbjkP-BkClAG8uhUChRhEYboAAioiAAJ43yBVc65XGg18R5g9BA': 'music/file_129',    // Surili Akhiyon Wale (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMRaqdEciBcq_Oi6ITxKHZivW1iJFIAAmYiAAJ43yBVJY3mvGlpvE89BA': 'music/file_136',    // Bairan (.mp3)
-  'CQACAgUAAyEFAATTJi5KAAMSaqdEc68fEiSv-jsP130j9ZTGCuMAAgshAAJSFSFVxnJpxksfpto9BA': 'music/file_139',    // Faasle (.m4a)
-  'CQACAgUAAyEFAATTJi5KAAMUaqdEdKDph_plO7RTOtiXusbUqdoAAlwhAAJSFSFVOggH_w3abN89BA': 'music/file_142',    // Kaise Hua (.mp3)
-  'CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA': 'music/file_131',    // Come And Get Your Love (.mp3)
-  'CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA': 'music/file_141',    // Black Star (.mp3)
-  'CQACAgUAAyEFAATTJi5KAAMraqg_Q81zYqQjIIcB8OUFr672NkoAAl4hAAJOMkhVtiQNHA_O3Uo9BA': 'music/file_145',    // Muntazir (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ': 'music/file_146',    // Arz Kiya Hai (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ': 'music/file_151',    // Aaoge Tum Kabhi (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'music/file_150',    // Choo Lo (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'music/file_152',    // Kaahe Mose (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'music/file_153',    // Raabta (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'music/file_155',    // Somewhere Only We Know (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'music/file_154',    // Jo Tum Mere Ho (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'music/file_156',    // Dil Jhoom (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ': 'music/file_157',    // Nadaan Parinde (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E': 'music/file_158',    // Kaash Aisa Hota (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMPaqdEbjkP-BkClAG8uhUChRhEYboAAioiAAJ43yBVc65XGg18R5g9BA': 'music/file_159',    // Surili Akhiyon Wale (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMRaqdEciBcq_Oi6ITxKHZivW1iJFIAAmYiAAJ43yBVJY3mvGlpvE89BA': 'music/file_160',    // Bairan (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMSaqdEc68fEiSv-jsP130j9ZTGCuMAAgshAAJSFSFVxnJpxksfpto9BA': 'music/file_161',    // Faasle (.m4a)
+  'CQACAgUAAyEFAATTJi5KAAMUaqdEdKDph_plO7RTOtiXusbUqdoAAlwhAAJSFSFVOggH_w3abN89BA': 'music/file_149',    // Kaise Hua (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA': 'music/file_148',    // Come And Get Your Love (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA': 'music/file_162',    // Black Star (.mp3)
+  'CQACAgUAAyEFAATTJi5KAAMraqg_Q81zYqQjIIcB8OUFr672NkoAAl4hAAJOMkhVtiQNHA_O3Uo9BA': 'music/file_147',    // Muntazir (.m4a)
 
   // Real Uploaded Song Picture / Thumbnails
   'AAMCBQADIQUABNMmLkoAAwdqoD5UdZg0EQn-L922CHcsbVGNZAACwCEAApl-AVVtyL3L92UWEwEAB20AAz0E': 'thumbnails/file_87.jpg',
@@ -1897,78 +1897,115 @@ async function startServer() {
       };
       activeAudioDownloads.set(cacheKey, active);
 
-      const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
-      const reqTg = https.get(telegramFileUrl, (tgRes) => {
-        const statusCode = tgRes.statusCode || 200;
-        if (statusCode >= 400) {
-          active!.failed = true;
-          try { active!.writeStream.close(); } catch {}
-          try { fs.unlinkSync(tempPath); } catch {}
-          activeAudioDownloads.delete(cacheKey);
-          for (const client of active!.clients) {
-            if (!client.headersSent) {
-              client.status(statusCode).send('Audio stream not available');
+      const startDownload = (pathToUse: string, isRetry = false) => {
+        const telegramFileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${pathToUse}`;
+        const reqTg = https.get(telegramFileUrl, (tgRes) => {
+          const statusCode = tgRes.statusCode || 200;
+          if (statusCode >= 400) {
+            console.warn(`[Audio Stream] Telegram CDN responded with HTTP ${statusCode} for path: ${pathToUse}`);
+            // If path was stale (e.g. Telegram rotated CDN cache), re-resolve with forceFresh=true
+            if (!isRetry && fileId) {
+              console.log(`[Audio Stream] Attempting fresh getFile resolution for fileId: ${fileId}`);
+              resolveTelegramFilePath(fileId, true).then((freshPath) => {
+                if (freshPath && freshPath !== pathToUse) {
+                  console.log(`[Audio Stream] Retrying with fresh path: ${freshPath}`);
+                  startDownload(freshPath, true);
+                } else {
+                  active!.failed = true;
+                  try { active!.writeStream.close(); } catch {}
+                  try { fs.unlinkSync(tempPath); } catch {}
+                  activeAudioDownloads.delete(cacheKey);
+                  for (const client of active!.clients) {
+                    if (!client.headersSent) {
+                      client.status(statusCode).send('Audio stream not available');
+                    }
+                  }
+                }
+              }).catch(() => {
+                active!.failed = true;
+                try { active!.writeStream.close(); } catch {}
+                try { fs.unlinkSync(tempPath); } catch {}
+                activeAudioDownloads.delete(cacheKey);
+                for (const client of active!.clients) {
+                  if (!client.headersSent) {
+                    client.status(statusCode).send('Audio stream not available');
+                  }
+                }
+              });
+              return;
             }
-          }
-          return;
-        }
 
-        if (tgRes.headers['content-length']) {
-          active!.contentLength = parseInt(tgRes.headers['content-length'] as string, 10);
-        }
-        if (tgRes.headers['content-type']) {
-          active!.contentType = tgRes.headers['content-type'];
-        }
-
-        // Flowing mode: Never gets paused by browser buffer stalls
-        tgRes.on('data', (chunk: Buffer) => {
-          active!.totalBytes += chunk.length;
-          try { active!.writeStream.write(chunk); } catch {}
-          // Retain first 5MB in memory for instant delivery to any parallel client requests
-          if (active!.totalBytes < 5 * 1024 * 1024) {
-            active!.chunks.push(chunk);
-          }
-          // Broadcast in real-time to active listeners
-          for (const client of active!.clients) {
-            if (!client.writableEnded) {
-              try { client.write(chunk); } catch {}
-            }
-          }
-        });
-
-        tgRes.on('end', () => {
-          active!.completed = true;
-          active!.writeStream.end(() => {
-            fs.rename(tempPath, diskTarget, (err) => {
-              if (!err) {
-                console.log(`[Audio Cache] Successfully saved track to disk cache: ${path.basename(diskTarget)} (${active!.totalBytes} bytes)`);
+            active!.failed = true;
+            try { active!.writeStream.close(); } catch {}
+            try { fs.unlinkSync(tempPath); } catch {}
+            activeAudioDownloads.delete(cacheKey);
+            for (const client of active!.clients) {
+              if (!client.headersSent) {
+                client.status(statusCode).send('Audio stream not available');
               }
-            });
-          });
-          for (const client of active!.clients) {
-            if (!client.writableEnded) {
-              try { client.end(); } catch {}
             }
+            return;
           }
-          activeAudioDownloads.delete(cacheKey);
+
+          if (tgRes.headers['content-length']) {
+            active!.contentLength = parseInt(tgRes.headers['content-length'] as string, 10);
+          }
+          if (tgRes.headers['content-type']) {
+            active!.contentType = tgRes.headers['content-type'];
+          }
+
+          // Flowing mode: Never gets paused by browser buffer stalls
+          tgRes.on('data', (chunk: Buffer) => {
+            active!.totalBytes += chunk.length;
+            try { active!.writeStream.write(chunk); } catch {}
+            // Retain first 5MB in memory for instant delivery to any parallel client requests
+            if (active!.totalBytes < 5 * 1024 * 1024) {
+              active!.chunks.push(chunk);
+            }
+            // Broadcast in real-time to active listeners
+            for (const client of active!.clients) {
+              if (!client.writableEnded) {
+                try { client.write(chunk); } catch {}
+              }
+            }
+          });
+
+          tgRes.on('end', () => {
+            active!.completed = true;
+            active!.writeStream.end(() => {
+              fs.rename(tempPath, diskTarget, (err) => {
+                if (!err) {
+                  console.log(`[Audio Cache] Successfully saved track to disk cache: ${path.basename(diskTarget)} (${active!.totalBytes} bytes)`);
+                }
+              });
+            });
+            for (const client of active!.clients) {
+              if (!client.writableEnded) {
+                try { client.end(); } catch {}
+              }
+            }
+            activeAudioDownloads.delete(cacheKey);
+          });
+
+          tgRes.on('error', (err) => {
+            console.warn('[Audio Stream] Telegram download error:', err);
+            active!.failed = true;
+            try { active!.writeStream.close(); } catch {}
+            try { fs.unlinkSync(tempPath); } catch {}
+            activeAudioDownloads.delete(cacheKey);
+          });
         });
 
-        tgRes.on('error', (err) => {
-          console.warn('[Audio Stream] Telegram download error:', err);
+        reqTg.on('error', (err) => {
+          console.warn('[Audio Stream] Telegram request error:', err);
           active!.failed = true;
           try { active!.writeStream.close(); } catch {}
           try { fs.unlinkSync(tempPath); } catch {}
           activeAudioDownloads.delete(cacheKey);
         });
-      });
+      };
 
-      reqTg.on('error', (err) => {
-        console.warn('[Audio Stream] Telegram request error:', err);
-        active!.failed = true;
-        try { active!.writeStream.close(); } catch {}
-        try { fs.unlinkSync(tempPath); } catch {}
-        activeAudioDownloads.delete(cacheKey);
-      });
+      startDownload(filePath);
     }
 
     // Deliver audio to current response

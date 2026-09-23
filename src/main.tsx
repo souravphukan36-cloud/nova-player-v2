@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { audioEngine } from './services/audioEngine';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Global unlock on very first touch or click anywhere on the phone screen
 const unlockAudio = () => {
@@ -17,7 +18,9 @@ window.addEventListener('touchend', unlockAudio, { passive: true });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );
 

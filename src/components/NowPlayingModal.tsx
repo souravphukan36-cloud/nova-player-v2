@@ -11,8 +11,6 @@ import {
   SkipForward, 
   Play, 
   Pause, 
-  Volume2, 
-  VolumeX, 
   ListMusic, 
   MoreVertical,
   Music,
@@ -36,8 +34,6 @@ export const NowPlayingModal: React.FC = () => {
     currentTrack,
     isPlaying,
     duration,
-    volume,
-    isMuted,
     shuffle,
     repeat,
     queue,
@@ -55,8 +51,6 @@ export const NowPlayingModal: React.FC = () => {
     nextTrack,
     prevTrack,
     seek,
-    setVolume,
-    toggleMute,
     toggleFavorite,
     setShuffle,
     setRepeat,
@@ -66,15 +60,10 @@ export const NowPlayingModal: React.FC = () => {
     sleepTimer,
     settings,
     updateSettings,
-    linkAudioFileToTrack,
-    downloadTrack,
-    deleteDownloadedTrack,
     downloadedTrackIds,
-    isDownloading,
   } = usePlayer();
   const currentTime = usePlaybackTime();
 
-  const [downloading, setDownloading] = useState(false);
   const [showTrackDetails, setShowTrackDetails] = useState(false);
   const [dragY, setDragY] = useState(0);
   const [cardDragX, setCardDragX] = useState(0);
@@ -184,29 +173,20 @@ export const NowPlayingModal: React.FC = () => {
         transition: dragY === 0 ? 'transform 0.2s ease-out' : 'none'
       }}
     >
-      {/* Dynamic Background: Fullscreen Backdrop or Material You Ambient Mesh Glow */}
-      {npConfig.layoutStyle === 'immersive-backdrop' ? (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <img 
-            src={getTrackCoverArt(currentTrack)} 
-            alt="Backdrop" 
-            className="w-full h-full object-cover blur-2xl scale-125 opacity-40 transition-all duration-700"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black" />
-        </div>
-      ) : (
-        <>
-          <div 
-            className="absolute -top-24 left-1/2 -translate-x-1/2 w-[380px] h-[380px] rounded-full blur-[140px] opacity-35 pointer-events-none transition-all duration-700"
-            style={{ background: palette.primary || settings.accentColor }}
-          />
-          <div 
-            className="absolute bottom-1/3 -right-20 w-72 h-72 rounded-full blur-[120px] opacity-25 pointer-events-none transition-all duration-700"
-            style={{ background: palette.glow }}
-          />
-        </>
-      )}
+      {/* Dynamic Edge-to-Edge Backdrop: Fullscreen ambient blur matching artwork */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <img 
+          src={getTrackCoverArt(currentTrack)} 
+          alt="Backdrop" 
+          className="w-full h-full object-cover blur-3xl scale-125 opacity-35 transition-all duration-700"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black" />
+        <div 
+          className="absolute -top-24 left-1/2 -translate-x-1/2 w-[420px] h-[420px] rounded-full blur-[140px] opacity-40 pointer-events-none transition-all duration-700"
+          style={{ background: palette.primary || settings.accentColor }}
+        />
+      </div>
 
       {/* Top Drag Handle Pill */}
       <div 
@@ -223,7 +203,7 @@ export const NowPlayingModal: React.FC = () => {
       </div>
 
       {/* Top Bar Navigation */}
-      <div className="relative z-10 flex items-center justify-between px-5 py-2">
+      <div className="relative z-10 flex items-center justify-between px-5 py-2 max-w-lg mx-auto w-full">
         <button
           id="np-btn-collapse"
           onClick={() => setNowPlayingOpen(false)}
@@ -286,11 +266,11 @@ export const NowPlayingModal: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Area: Artwork / Queue View (One-Handed Thumb Zone) */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center px-6 overflow-y-auto no-scrollbar">
+      {/* Main Full-Screen Body */}
+      <div className="relative z-10 flex-1 flex flex-col justify-between px-6 py-2 max-w-md mx-auto w-full min-h-0 overflow-y-auto no-scrollbar">
         {queueOpen ? (
           // Queue Drawer
-          <div className="flex-1 flex flex-col py-2 max-h-[440px]">
+          <div className="flex-1 flex flex-col py-2 max-h-[500px]">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div>
                 <h3 className="text-sm font-bold text-white">Up Next</h3>
@@ -373,9 +353,9 @@ export const NowPlayingModal: React.FC = () => {
             </div>
           </div>
         ) : (
-          // Artwork Stage (Card, Fullscreen Backdrop, or Vinyl Disc) with One-Handed Swipe
+          // Full-Screen Artwork Stage with One-Handed Swipe
           <div 
-            className="flex flex-col items-center justify-center my-auto w-full touch-pan-y"
+            className="flex flex-col items-center justify-center flex-1 my-auto w-full touch-pan-y py-2"
             onTouchStart={handleCardTouchStart}
             onTouchMove={handleCardTouchMove}
             onTouchEnd={handleCardTouchEnd}
@@ -383,7 +363,7 @@ export const NowPlayingModal: React.FC = () => {
             {npConfig.layoutStyle === 'vinyl-disc' ? (
               // 3D Vinyl Disc Mode
               <div 
-                className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center transition-transform duration-200"
+                className="relative w-[78vw] max-w-[340px] aspect-square flex items-center justify-center transition-transform duration-200"
                 style={{
                   transform: cardDragX !== 0 ? `translateX(${cardDragX}px) rotate(${cardDragX * 0.08}deg)` : 'none'
                 }}
@@ -394,10 +374,9 @@ export const NowPlayingModal: React.FC = () => {
                   }`}
                   style={{ animationDuration: '12s', boxShadow: '0 0 35px rgba(0,0,0,0.9)' }}
                 >
-                  {/* Vinyl Grooves */}
                   <div className="w-4/5 h-4/5 rounded-full border border-neutral-800/80 flex items-center justify-center">
                     <div className="w-3/5 h-3/5 rounded-full border border-neutral-800/60 flex items-center justify-center">
-                      <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+                      <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
                         <img 
                           src={getTrackCoverArt(currentTrack)} 
                           alt={currentTrack.title} 
@@ -415,13 +394,12 @@ export const NowPlayingModal: React.FC = () => {
                 </div>
               </div>
             ) : (
-              // Card / Immersive Artwork with One-Hand Gesture Feedback
+              // Full-Screen Card Artwork
               <div 
-                className={`relative group w-64 h-64 sm:w-72 sm:h-72 rounded-3xl shadow-2xl overflow-hidden border border-white/10 flex items-center justify-center transition-transform duration-200 cursor-grab active:cursor-grabbing ${
-                  npConfig.layoutStyle === 'immersive-backdrop' ? 'shadow-black/80' : ''
-                }`}
+                className="relative group w-[82vw] max-w-[350px] aspect-square rounded-3xl shadow-2xl overflow-hidden border border-white/10 flex items-center justify-center transition-transform duration-200 cursor-grab active:cursor-grabbing"
                 style={{
-                  transform: cardDragX !== 0 ? `translateX(${cardDragX}px) rotate(${cardDragX * 0.06}deg)` : 'none'
+                  transform: cardDragX !== 0 ? `translateX(${cardDragX}px) rotate(${cardDragX * 0.06}deg)` : 'none',
+                  boxShadow: `0 20px 50px -10px rgba(0,0,0,0.8), 0 0 40px ${palette.glow || 'rgba(0,0,0,0.5)'}`
                 }}
               >
                 <img
@@ -439,50 +417,17 @@ export const NowPlayingModal: React.FC = () => {
             )}
 
             {/* Subtle One-Hand Gesture Indicator */}
-            <div className="text-[10px] text-white/30 font-medium tracking-wider uppercase mt-2 select-none flex items-center gap-2">
+            <div className="text-[10px] text-white/35 font-medium tracking-wider uppercase mt-3 select-none flex items-center gap-2">
               <span>‹ Swipe for Prev</span>
               <span>•</span>
               <span>Next ›</span>
-            </div>
-
-            {/* Song Title, Artist, Heart & 3-Dots (Photo 2 layout) */}
-            <div className="w-full max-w-sm mt-4 px-3 flex items-center justify-between">
-              <div className="min-w-0 flex-1 pr-3">
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">
-                  {currentTrack.title}
-                </h2>
-                <p className="text-sm font-medium text-white/65 mt-0.5 truncate">
-                  {currentTrack.artist}
-                </p>
-              </div>
-
-              {/* Heart and 3-dots buttons */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button
-                  id="np-btn-favorite"
-                  onClick={() => toggleFavorite(currentTrack.id)}
-                  className={`p-2.5 rounded-full hover:bg-white/10 transition-transform active:scale-125 ${
-                    currentTrack.isFavorite ? 'text-rose-500' : 'text-white/70 hover:text-white'
-                  }`}
-                  title="Toggle Favorite"
-                >
-                  <Heart className={`w-6 h-6 ${currentTrack.isFavorite ? 'fill-current' : ''}`} />
-                </button>
-
-                <button
-                  onClick={() => setShowTrackDetails(!showTrackDetails)}
-                  className="p-2.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-                >
-                  <MoreVertical className="w-5 h-5" />
-                </button>
-              </div>
             </div>
           </div>
         )}
 
         {/* Track Details Modal popup */}
         {showTrackDetails && (
-          <div className="p-4 rounded-2xl bg-neutral-900 border border-white/15 my-2 text-xs space-y-1.5 shadow-2xl animate-in zoom-in-95">
+          <div className="p-4 rounded-2xl bg-neutral-900/95 border border-white/15 my-2 text-xs space-y-1.5 shadow-2xl animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-white/10 pb-1">
               <span className="font-bold text-white">Track Metadata</span>
               <button 
@@ -499,7 +444,7 @@ export const NowPlayingModal: React.FC = () => {
               <div><span className="text-white/40">Play Count:</span> {currentTrack.playCount} times</div>
               <div className="col-span-2 truncate"><span className="text-white/40">Folder:</span> {currentTrack.folder}</div>
               <div className="col-span-2 flex items-center justify-between pt-1 border-t border-white/10">
-                <span className="text-white/40">Offline Storage:</span>
+                <span className="text-white/40">Storage:</span>
                 <span className={downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded ? "text-emerald-400 font-semibold" : "text-white/50"}>
                   {downloadedTrackIds.has(currentTrack.id) || currentTrack.isDownloaded ? "✓ Downloaded (0s Offline Play)" : "Cloud Stream"}
                 </span>
@@ -508,160 +453,166 @@ export const NowPlayingModal: React.FC = () => {
           </div>
         )}
 
-        {/* Scrub Bar (Timeline with Elapsed & Negative Remaining Time from Photo 2) */}
-        <div className="w-full max-w-sm mx-auto mt-4 px-3">
-          <div className="relative group">
-            <input
-              id="np-slider-seek"
-              type="range"
-              min="0"
-              max={duration || 100}
-              step="0.5"
-              value={currentTime}
-              onChange={(e) => seek(parseFloat(e.target.value))}
-              className="w-full h-1 bg-white/20 rounded-lg cursor-pointer accent-white"
-            />
-            {/* Custom filled track */}
-            <div 
-              className="absolute top-0 left-0 h-1 rounded-lg pointer-events-none transition-all"
-              style={{ 
-                width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
-                backgroundColor: palette.primary || settings.accentColor 
-              }}
-            />
+        {/* Lower Controls Section: Title, Timeline, Playback, and Modes (Volume bar removed as requested) */}
+        <div className="w-full space-y-4 pt-2">
+          {/* Song Title, Artist, Heart & 3-Dots */}
+          <div className="w-full flex items-center justify-between">
+            <div className="min-w-0 flex-1 pr-3">
+              <h2 className="text-2xl font-black text-white tracking-tight truncate">
+                {currentTrack.title}
+              </h2>
+              <p className="text-sm font-medium text-white/65 mt-0.5 truncate">
+                {currentTrack.artist}
+              </p>
+            </div>
+
+            {/* Heart and 3-dots buttons */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                id="np-btn-favorite"
+                onClick={() => toggleFavorite(currentTrack.id)}
+                className={`p-2.5 rounded-full hover:bg-white/10 transition-transform active:scale-125 ${
+                  currentTrack.isFavorite ? 'text-rose-500' : 'text-white/70 hover:text-white'
+                }`}
+                title="Toggle Favorite"
+              >
+                <Heart className={`w-6 h-6 ${currentTrack.isFavorite ? 'fill-current' : ''}`} />
+              </button>
+
+              <button
+                onClick={() => setShowTrackDetails(!showTrackDetails)}
+                className="p-2.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center justify-between mt-1 text-xs font-mono font-medium text-white/50">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatRemainingTime(currentTime)}</span>
+
+          {/* Scrub Bar (Timeline with Elapsed & Negative Remaining Time) */}
+          <div className="w-full">
+            <div className="relative group">
+              <input
+                id="np-slider-seek"
+                type="range"
+                min="0"
+                max={duration || 100}
+                step="0.5"
+                value={currentTime}
+                onChange={(e) => seek(parseFloat(e.target.value))}
+                className="w-full h-1 bg-white/20 rounded-lg cursor-pointer accent-white"
+              />
+              <div 
+                className="absolute top-0 left-0 h-1 rounded-lg pointer-events-none transition-all"
+                style={{ 
+                  width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+                  backgroundColor: palette.primary || settings.accentColor 
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-1 text-xs font-mono font-medium text-white/50">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatRemainingTime(currentTime)}</span>
+            </div>
           </div>
-        </div>
 
-        {/* Primary Controls: Previous, Big Play/Pause, Next (Photo 2) */}
-        <div className="w-full max-w-sm mx-auto flex items-center justify-center gap-8 mt-2">
-          <button
-            id="np-btn-prev"
-            onClick={prevTrack}
-            className="p-3 rounded-full hover:bg-white/10 text-white transition-transform active:scale-90"
-            title="Previous"
-          >
-            <SkipBack className="w-8 h-8 fill-current" />
-          </button>
-
-          <button
-            id="np-btn-play"
-            onClick={togglePlayPause}
-            className="w-18 h-18 rounded-full flex items-center justify-center text-black font-extrabold shadow-2xl transition-transform active:scale-95"
-            style={{ 
-              backgroundColor: palette.primary || settings.accentColor,
-              boxShadow: `0 0 30px ${palette.glow}` 
-            }}
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? (
-              <Pause className="w-8 h-8 fill-current" />
-            ) : (
-              <Play className="w-8 h-8 fill-current ml-1" />
-            )}
-          </button>
-
-          <button
-            id="np-btn-next"
-            onClick={nextTrack}
-            className="p-3 rounded-full hover:bg-white/10 text-white transition-transform active:scale-90"
-            title="Next"
-          >
-            <SkipForward className="w-8 h-8 fill-current" />
-          </button>
-        </div>
-
-        {/* Dedicated Volume Slider (Photo 2) */}
-        {npConfig.showVolumeBar && (
-          <div className="w-full max-w-sm mx-auto flex items-center gap-3 mt-4 px-3 py-1.5 bg-white/5 rounded-2xl border border-white/5">
-            <button 
-              onClick={toggleMute}
-              className="text-white/60 hover:text-white transition-colors"
-              title={isMuted ? 'Unmute' : 'Mute'}
+          {/* Primary Controls: Previous, Big Play/Pause, Next */}
+          <div className="w-full flex items-center justify-center gap-8 py-1">
+            <button
+              id="np-btn-prev"
+              onClick={prevTrack}
+              className="p-3 rounded-full hover:bg-white/10 text-white transition-transform active:scale-90"
+              title="Previous"
             >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="w-4 h-4 text-rose-400" />
+              <SkipBack className="w-8 h-8 fill-current" />
+            </button>
+
+            <button
+              id="np-btn-play"
+              onClick={togglePlayPause}
+              className="w-18 h-18 rounded-full flex items-center justify-center text-black font-extrabold shadow-2xl transition-transform active:scale-95"
+              style={{ 
+                backgroundColor: palette.primary || settings.accentColor,
+                boxShadow: `0 0 30px ${palette.glow}` 
+              }}
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <Pause className="w-8 h-8 fill-current" />
               ) : (
-                <Volume2 className="w-4 h-4" />
+                <Play className="w-8 h-8 fill-current ml-1" />
               )}
             </button>
-            <input
-              id="np-slider-volume"
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={isMuted ? 0 : volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-full h-1 bg-white/20 rounded-lg cursor-pointer accent-white"
-            />
-            <span className="text-[10px] font-mono text-white/50 w-8 text-right">
-              {Math.round((isMuted ? 0 : volume) * 100)}%
-            </span>
+
+            <button
+              id="np-btn-next"
+              onClick={nextTrack}
+              className="p-3 rounded-full hover:bg-white/10 text-white transition-transform active:scale-90"
+              title="Next"
+            >
+              <SkipForward className="w-8 h-8 fill-current" />
+            </button>
           </div>
-        )}
 
-        {/* Bottom Mode Icons: Shuffle, Repeat, Infinite Autoplay (∞), and Queue (Photo 2) */}
-        <div className="w-full max-w-sm mx-auto flex items-center justify-around mt-4 pt-2 pb-6">
-          {/* Shuffle */}
-          <button
-            id="np-btn-shuffle"
-            onClick={() => setShuffle(shuffle === 'off' ? 'all' : 'off')}
-            className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
-              shuffle === 'all' ? 'text-white' : 'text-white/40 hover:text-white/70'
-            }`}
-            style={{ color: shuffle === 'all' ? settings.accentColor : undefined }}
-            title={`Shuffle: ${shuffle}`}
-          >
-            <Shuffle className="w-5 h-5" />
-          </button>
+          {/* Bottom Mode Icons: Shuffle, Repeat, Infinite Autoplay (∞), and Queue */}
+          <div className="w-full flex items-center justify-around pt-2 pb-6">
+            {/* Shuffle */}
+            <button
+              id="np-btn-shuffle"
+              onClick={() => setShuffle(shuffle === 'off' ? 'all' : 'off')}
+              className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
+                shuffle === 'all' ? 'text-white' : 'text-white/40 hover:text-white/70'
+              }`}
+              style={{ color: shuffle === 'all' ? settings.accentColor : undefined }}
+              title={`Shuffle: ${shuffle}`}
+            >
+              <Shuffle className="w-5 h-5" />
+            </button>
 
-          {/* Repeat */}
-          <button
-            id="np-btn-repeat"
-            onClick={() => {
-              if (repeat === 'off') setRepeat('all');
-              else if (repeat === 'all') setRepeat('one');
-              else setRepeat('off');
-            }}
-            className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
-              repeat !== 'off' ? 'text-white' : 'text-white/40 hover:text-white/70'
-            }`}
-            style={{ color: repeat !== 'off' ? settings.accentColor : undefined }}
-            title={`Repeat: ${repeat}`}
-          >
-            {repeat === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
-          </button>
+            {/* Repeat */}
+            <button
+              id="np-btn-repeat"
+              onClick={() => {
+                if (repeat === 'off') setRepeat('all');
+                else if (repeat === 'all') setRepeat('one');
+                else setRepeat('off');
+              }}
+              className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
+                repeat !== 'off' ? 'text-white' : 'text-white/40 hover:text-white/70'
+              }`}
+              style={{ color: repeat !== 'off' ? settings.accentColor : undefined }}
+              title={`Repeat: ${repeat}`}
+            >
+              {repeat === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+            </button>
 
-          {/* Infinite Autoplay Loop (∞) - Photo 2 */}
-          <button
-            id="np-btn-infinite-radio"
-            onClick={toggleInfiniteAutoplay}
-            className={`p-2.5 rounded-full transition-all ${
-              npConfig.infiniteAutoplay ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
-            }`}
-            style={{ color: npConfig.infiniteAutoplay ? settings.accentColor : undefined }}
-            title={`Infinite Autoplay Loop: ${npConfig.infiniteAutoplay ? 'Enabled' : 'Disabled'}`}
-          >
-            <Infinity className="w-5 h-5" />
-          </button>
+            {/* Infinite Autoplay Loop (∞) */}
+            <button
+              id="np-btn-infinite-radio"
+              onClick={toggleInfiniteAutoplay}
+              className={`p-2.5 rounded-full transition-all ${
+                npConfig.infiniteAutoplay ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
+              }`}
+              style={{ color: npConfig.infiniteAutoplay ? settings.accentColor : undefined }}
+              title={`Infinite Autoplay Loop: ${npConfig.infiniteAutoplay ? 'Enabled' : 'Disabled'}`}
+            >
+              <Infinity className="w-5 h-5" />
+            </button>
 
-          {/* Queue / Up Next */}
-          <button
-            id="np-btn-queue-toggle"
-            onClick={() => setQueueOpen(!queueOpen)}
-            className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
-              queueOpen ? 'text-white bg-white/15' : 'text-white/70 hover:text-white'
-            }`}
-            title={`Up Next Queue (${queue.length})`}
-          >
-            <ListMusic className="w-5 h-5" />
-          </button>
+            {/* Queue / Up Next */}
+            <button
+              id="np-btn-queue-toggle"
+              onClick={() => setQueueOpen(!queueOpen)}
+              className={`p-2.5 rounded-full hover:bg-white/10 transition-colors ${
+                queueOpen ? 'text-white bg-white/15' : 'text-white/70 hover:text-white'
+              }`}
+              title={`Up Next Queue (${queue.length})`}
+            >
+              <ListMusic className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
