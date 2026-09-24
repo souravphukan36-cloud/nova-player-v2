@@ -53,11 +53,20 @@ export type EQPreset =
   | 'Vocal' 
   | 'Custom';
 
+export interface ClarityEngineState {
+  enabled: boolean;
+  ultraAirHz: number; // 0 to 100% (20,000Hz ultra-high air harmonic restoration)
+  vocalTransparency: number; // 0 to 100% (anti-mud vocal clarity filter)
+  analogWarmth: number; // 0 to 100% (tube analog silk & even harmonics)
+  transientSnap: number; // 0 to 100% (crisp acoustic pluck & drum attack)
+  hiResUpsampling: boolean; // 96kHz / 24-bit studio oversampling
+}
+
 export interface EqualizerState {
   enabled: boolean;
   preset: EQPreset;
-  bands: number[]; // 5 or 10 band gains (-12dB to +12dB)
-  bandMode: '5-band' | '10-band';
+  bands: number[]; // 5, 10, or 12 band gains (-12dB to +12dB)
+  bandMode: '5-band' | '10-band' | '12-band';
   bassBoost: number; // 0 to 100
   reverb: number; // 0 to 100
   stereoWidening: number; // 0 to 100
@@ -68,6 +77,24 @@ export interface EqualizerState {
   eightDSpeed?: 'slow' | 'medium' | 'fast';
   eightDDistance?: 'near' | 'medium' | 'far';
   eightDMode?: 'orbit' | 'pendulum';
+  clarityEngine?: ClarityEngineState; // NOVA CrystalClear™ Ultra-Hz Engine
+}
+
+export type IEMTargetCurve = 
+  | 'harman-in-ear'     // Harman In-Ear Target 2019 (Audiophile Gold Standard)
+  | 'dynamic-slam'      // Dynamic Driver Punch & Warmth (Tactile Kick)
+  | 'balanced-armature' // Multi-BA / Knowles Vocal Intimacy & Micro-Detail
+  | 'planar-speed'      // Planar Magnetic Ultrawide Separation & Speed
+  | 'crinacle-neutral'  // Crinacle IEF Neutral Studio Monitor
+  | 'fun-v-shaped';     // V-Shaped Bass & High Energy
+
+export interface IEMSoundStageState {
+  enabled: boolean;
+  targetCurve: IEMTargetCurve;
+  crossfeed: 'off' | 'subtle' | 'studio' | 'holographic'; // Binaural Out-of-Head Soundstage
+  subBassRumble: number; // 0 to 100% (In-Ear Acoustic Seal 35-55Hz boost)
+  trebleAir: number; // 0 to 100% (16kHz harmonic air shimmer)
+  driverImpedance: 'high-sensitivity' | 'standard' | 'high-drive'; // 16Ω, 32Ω, High Gain
 }
 
 export type ShuffleMode = 'off' | 'all';

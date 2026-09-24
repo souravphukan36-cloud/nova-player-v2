@@ -516,57 +516,69 @@
               </div>
             </div>
 
-            <!-- Right: Real-time Live Phone Simulator -->
+            <!-- Right: Real-time Live Phone Simulator matching Home Screen Layout -->
             <div class="lg:col-span-5 flex flex-col items-center">
-              <span class="text-[11px] font-bold text-white/40 uppercase tracking-wider mb-2 self-start flex items-center gap-1.5 font-mono">
-                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                <span>Live Mobile App Simulator</span>
-              </span>
+              <div class="flex items-center justify-between w-full mb-2">
+                <span class="text-[11px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                  <span>Real App Home Simulator</span>
+                </span>
+                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Live Sync Active</span>
+              </div>
 
-              <div id="previewCardContainer" class="w-full rounded-3xl border border-purple-500/30 bg-[#080B12] p-4 shadow-2xl relative overflow-hidden transition-all duration-300">
+              <div id="previewCardContainer" class="w-full rounded-3xl border border-purple-500/40 bg-[#0A0A12] p-4 sm:p-5 shadow-2xl relative overflow-hidden transition-all duration-300">
                 <!-- Ambient Blur Backdrop -->
-                <div class="absolute inset-0 pointer-events-none overflow-hidden opacity-40 filter blur-xl scale-110">
+                <div class="absolute inset-0 pointer-events-none overflow-hidden opacity-30 filter blur-xl scale-110">
                   <img id="previewBackdropImg" src="/covers/choo-lo.jpg" class="w-full h-full object-cover">
                   <video id="previewBackdropVid" src="" class="hidden w-full h-full object-cover" autoplay loop muted playsinline></video>
                 </div>
-                <div class="absolute inset-0 bg-gradient-to-r from-[#080B12] via-[#080B12]/85 to-[#080B12]/65"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-[#0A0A12] via-[#0A0A12]/85 to-[#0A0A12]/60"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A12] via-transparent to-transparent"></div>
 
-                <!-- Card Content -->
-                <div class="relative z-10 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <span id="previewBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                      LIVE EVENT POSTER
-                    </span>
-                    <span id="previewDateBadge" class="text-[10px] font-semibold text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
-                      Today
+                <!-- Live Layout Matching Mobile App Home -->
+                <div class="relative z-10 space-y-3.5">
+                  <!-- Header: Day Name + Badge + Schedule -->
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-baseline gap-2">
+                      <span id="previewDayName" class="text-2xl font-black text-white tracking-tight">Today</span>
+                      <span id="previewDateBadge" class="text-xs font-semibold text-white/60">• Live Event</span>
+                    </div>
+                    <span id="previewBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span>
+                      <span>LIVE EVENT POSTER</span>
                     </span>
                   </div>
 
-                  <div class="flex items-start gap-3">
-                    <div class="w-24 h-24 rounded-2xl overflow-hidden bg-black border border-white/20 flex-shrink-0 relative shadow-lg">
-                      <img id="previewCoverImg" src="/covers/choo-lo.jpg" class="w-full h-full object-cover">
-                      <video id="previewCoverVid" src="" class="hidden w-full h-full object-cover" autoplay loop muted playsinline></video>
-                      <div class="absolute bottom-1 left-1.5 text-[8px] font-bold text-white/90 uppercase tracking-wider bg-black/70 px-1 rounded">
-                        HD LIVE
-                      </div>
+                  <!-- Edge-to-Edge Poster Visual -->
+                  <div class="relative w-full aspect-[16/10] rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black">
+                    <img id="previewCoverImg" src="/covers/choo-lo.jpg" class="w-full h-full object-cover">
+                    <video id="previewCoverVid" src="" class="hidden w-full h-full object-cover" autoplay loop muted playsinline></video>
+                    
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none"></div>
+
+                    <!-- Overlay Tag on Poster -->
+                    <div class="absolute top-2.5 left-2.5">
+                      <span id="previewOverlayTag" class="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-black/75 text-purple-300 border border-purple-500/40 backdrop-blur-md">
+                        FEATURED EVENT
+                      </span>
                     </div>
 
-                    <div class="min-w-0 flex-1">
-                      <h4 id="previewTitle" class="text-sm font-black text-white leading-snug">Monsoon Melodies Festival</h4>
-                      <p id="previewDesc" class="text-[11px] text-white/70 line-clamp-2 mt-1">Immerse in the deepest acoustic sessions curated exclusively for today.</p>
-                      
-                      <div class="mt-2.5">
-                        <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-600 text-white text-[11px] font-black shadow-md">
-                          ▶ Play Event Vibe
-                        </span>
-                      </div>
+                    <!-- Live Play indicator pill -->
+                    <div class="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-xl bg-purple-600/90 text-white text-[10px] font-black flex items-center gap-1 shadow-lg backdrop-blur-md">
+                      <span>▶ Play Event</span>
                     </div>
                   </div>
 
-                  <!-- Wish Banner preview -->
-                  <div id="previewWishBanner" class="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-purple-500/20 border border-amber-400/30 text-amber-200 text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
-                    <span>✨</span>
-                    <span id="previewWishText" class="truncate">Wishing you infinite smiles and acoustic bliss today!</span>
+                  <!-- Event Title & Description -->
+                  <div>
+                    <h4 id="previewTitle" class="text-base font-black text-white leading-tight">Monsoon Melodies Festival</h4>
+                    <p id="previewDesc" class="text-xs text-white/70 line-clamp-2 mt-1">Immerse in the deepest acoustic sessions curated exclusively for today.</p>
+                  </div>
+
+                  <!-- Wish Banner -->
+                  <div id="previewWishBanner" class="p-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-purple-500/20 border border-amber-400/30 text-amber-200 text-xs font-bold flex items-center gap-2 shadow-sm">
+                    <span class="text-sm">✨</span>
+                    <span id="previewWishText" class="truncate flex-1">Wishing you infinite smiles and acoustic bliss today!</span>
                   </div>
                 </div>
               </div>
@@ -1406,9 +1418,14 @@
       const wish = document.getElementById('posterWishInput').value.trim();
       const media = document.getElementById('posterMediaInput').value.trim();
 
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const todayDay = dayNames[new Date().getDay()];
+      const dayEl = document.getElementById('previewDayName');
+      if (dayEl) dayEl.textContent = todayDay;
+
       document.getElementById('previewTitle').textContent = title;
       document.getElementById('previewDesc').textContent = desc;
-      document.getElementById('previewDateBadge').textContent = date;
+      document.getElementById('previewDateBadge').textContent = `• ${date}`;
 
       const wishBanner = document.getElementById('previewWishBanner');
       if (wish) {
@@ -1422,6 +1439,7 @@
       const coverVid = document.getElementById('previewCoverVid');
       const backImg = document.getElementById('previewBackdropImg');
       const backVid = document.getElementById('previewBackdropVid');
+      const overlayTag = document.getElementById('previewOverlayTag');
 
       if (posterMediaType === 'video') {
         coverImg.classList.add('hidden');
@@ -1430,7 +1448,8 @@
         backVid.classList.remove('hidden');
         coverVid.src = media;
         backVid.src = media;
-        document.getElementById('previewBadge').textContent = 'LIVE VIDEO BROADCAST';
+        document.getElementById('previewBadge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span><span>LIVE VIDEO BROADCAST</span>';
+        if (overlayTag) overlayTag.textContent = 'VIDEO BROADCAST';
       } else {
         coverVid.classList.add('hidden');
         coverImg.classList.remove('hidden');
@@ -1438,7 +1457,8 @@
         backImg.classList.remove('hidden');
         coverImg.src = media || '/covers/choo-lo.jpg';
         backImg.src = media || '/covers/choo-lo.jpg';
-        document.getElementById('previewBadge').textContent = 'LIVE EVENT POSTER';
+        document.getElementById('previewBadge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span><span>LIVE EVENT POSTER</span>';
+        if (overlayTag) overlayTag.textContent = 'FEATURED EVENT';
       }
     }
 
@@ -1519,7 +1539,9 @@
             }
 
             updatePosterPreview();
-            showToast(`📱 Attached ${isVideo ? 'video' : 'photo'} from phone storage!`, 'success');
+            // Automatically publish to mobile app in real-time so the user sees it immediately
+            await publishPosterToApp();
+            showToast(`📱 Photo attached and published to Mobile App in real time!`, 'success');
           } else {
             throw new Error(data.error || 'Upload error');
           }

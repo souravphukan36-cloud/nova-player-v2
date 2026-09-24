@@ -24,20 +24,16 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Service Worker handling: only in production to prevent caching Vite dev modules
-if ('serviceWorker' in navigator) {
-  if (import.meta.env.PROD) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
-        console.warn('PWA service worker registration:', err);
+// Service Worker registration for PWA installability and background notification handling
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then((reg) => {
+        // Check for updates
+        reg.update().catch(() => {});
+      })
+      .catch((err) => {
+        console.warn('PWA service worker registration notice:', err);
       });
-    });
-  } else {
-    // In dev mode, unregister any stale service workers to ensure live preview works smoothly
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const registration of registrations) {
-        registration.unregister();
-      }
-    }).catch(() => {});
-  }
+  });
 }

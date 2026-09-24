@@ -32,8 +32,19 @@ class NotificationService {
   }
 
   public async showPlaybackNotification(track: Track, isPlaying: boolean) {
-    if (!this.hasPermission || typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
       return;
+    }
+
+    if (!this.hasPermission) {
+      if (Notification.permission === 'default') {
+        const granted = await this.requestPermission();
+        if (!granted) return;
+      } else if (Notification.permission === 'granted') {
+        this.hasPermission = true;
+      } else {
+        return;
+      }
     }
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -42,11 +53,13 @@ class NotificationService {
       : `${origin}/icon-192.png`;
 
     const title = isPlaying ? `▶ ${track.title}` : `❚❚ ${track.title}`;
-    const options: NotificationOptions & { actions?: Array<{ action: string; title: string; icon?: string }> } = {
+    const options: any = {
       body: `${track.artist} • ${track.album || 'NOVA Player'}`,
       icon,
+      image: icon,
       badge: `${origin}/icon-192.png`,
       tag: 'nova-player-active',
+      renotify: false,
       silent: true,
       actions: [
         { action: 'prev', title: '⏮ Previous' },

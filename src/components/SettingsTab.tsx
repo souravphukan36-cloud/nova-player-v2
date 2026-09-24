@@ -11,6 +11,7 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Car, 
+  Headphones,
   Sparkles, 
   Smartphone, 
   ShieldCheck,
@@ -67,6 +68,9 @@ export const SettingsTab: React.FC = () => {
     setEqualizerOpen,
     setCustomizerOpen,
     setCarModeOpen,
+    setIEMModalOpen,
+    iemSoundStage,
+    updateIEMSoundStage,
     setLockScreenOpen,
     setSleepTimerOpen,
     tracks,
@@ -323,6 +327,49 @@ export const SettingsTab: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Dedicated IEM Audiophile Stage (Emerald Circle) */}
+          {matchesSearch(['iem', 'headphone', 'earphone', 'harman', 'audiophile', 'crossfeed']) && (
+            <div>
+              <div 
+                onClick={() => setIEMModalOpen(true)}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#10B981] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Headphones className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                        IEM Audiophile Stage
+                      </h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        iemSoundStage.enabled 
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                          : isLight ? 'bg-neutral-200 text-neutral-600' : 'bg-white/10 text-white/50'
+                      }`}>
+                        {iemSoundStage.enabled ? 'ACTIVE' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      {iemSoundStage.enabled 
+                        ? `${iemSoundStage.targetCurve.replace('-', ' ').toUpperCase()} • Crossfeed ${iemSoundStage.crossfeed}`
+                        : 'Harman In-Ear curve, sub-bass rumble & crossfeed stage'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                </div>
+              </div>
 
               {/* Inset Divider */}
               <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />

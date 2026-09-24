@@ -24,16 +24,16 @@ const FREQUENCIES_5 = [
 ];
 
 const FREQUENCIES_10 = [
-  { label: '31Hz', desc: 'Sub-low' },
-  { label: '62Hz', desc: 'Sub-bass' },
+  { label: '20Hz', desc: 'Ultra-Sub' },
+  { label: '60Hz', desc: 'Sub-bass' },
   { label: '125Hz', desc: 'Bass' },
   { label: '250Hz', desc: 'Low-mid' },
-  { label: '500Hz', desc: 'Mid' },
+  { label: '500Hz', desc: 'Vocal Mid' },
   { label: '1kHz', desc: 'Center' },
   { label: '2kHz', desc: 'Upper-mid' },
   { label: '4kHz', desc: 'Presence' },
   { label: '8kHz', desc: 'Brilliance' },
-  { label: '16kHz', desc: 'Air' },
+  { label: '20kHz', desc: 'Ultra-Air' },
 ];
 
 // Touch and Pointer friendly Vertical EQ Band Column
@@ -323,7 +323,7 @@ export const EqualizerModal: React.FC = () => {
               is10Band ? 'bg-emerald-500 text-black shadow-lg' : 'text-white/60 hover:text-white'
             }`}
           >
-            10-Band Studio DSP (SoundAlive)
+            10-Band Studio DSP (20Hz – 20kHz)
           </button>
           <button
             onClick={() => setEQBandMode('5-band')}

@@ -1083,6 +1083,7 @@ async function startServer() {
     eventDate?: string;
     themeColor?: string;
     updatedAt: number;
+    isCustom?: boolean;
   }
   function getDailyDefaultAnnouncement(): AnnouncementData {
     const now = new Date();
@@ -1109,7 +1110,8 @@ async function startServer() {
       wishText: d.wish,
       eventDate: now.toISOString().slice(0, 10),
       themeColor: d.color,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      isCustom: false
     };
   }
 
@@ -1211,10 +1213,12 @@ async function startServer() {
 
   // Public Announcement Endpoint for user app
   app.get('/api/announcement', (req: Request, res: Response) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    // If eventDate is missing or from a past date, update to today's daily event
-    if (!currentAnnouncement.eventDate || currentAnnouncement.eventDate < todayStr) {
-      currentAnnouncement = getDailyDefaultAnnouncement();
+    // Only roll over if it's NOT a custom admin upload/poster
+    if (!currentAnnouncement.isCustom) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (!currentAnnouncement.eventDate || currentAnnouncement.eventDate < todayStr) {
+        currentAnnouncement = getDailyDefaultAnnouncement();
+      }
     }
     res.json({
       success: true,
@@ -1224,7 +1228,19 @@ async function startServer() {
 
   // Admin Announcement Update
   app.post('/api/admin/announcement', (req: Request, res: Response) => {
-    const { title, text, imageUrl, videoUrl, mediaType, linkUrl, enabled, type, wishText, eventDate, themeColor } = req.body || {};
+    const { title, text, imageUrl, videoUrl, mediaType, linkUrl, enabled, type, wishText, eventDate, themeColor, resetToDefault } = req.body || {};
+    
+    if (resetToDefault) {
+      currentAnnouncement = getDailyDefaultAnnouncement();
+      currentAnnouncement.isCustom = false;
+      try {
+        fs.writeFileSync(ANNOUNCEMENT_FILE, JSON.stringify(currentAnnouncement, null, 2), 'utf-8');
+      } catch {}
+      res.json({ success: true, announcement: currentAnnouncement });
+      return;
+    }
+
+    currentAnnouncement.isCustom = true;
     if (title !== undefined) currentAnnouncement.title = String(title);
     if (text !== undefined) currentAnnouncement.text = String(text);
     if (imageUrl !== undefined) currentAnnouncement.imageUrl = String(imageUrl);
@@ -1232,6 +1248,7 @@ async function startServer() {
     if (mediaType !== undefined) currentAnnouncement.mediaType = mediaType === 'video' ? 'video' : 'image';
     if (linkUrl !== undefined) currentAnnouncement.linkUrl = String(linkUrl);
     if (enabled !== undefined) currentAnnouncement.enabled = Boolean(enabled);
+    else currentAnnouncement.enabled = true;
     if (type !== undefined) currentAnnouncement.type = String(type);
     if (wishText !== undefined) currentAnnouncement.wishText = String(wishText);
     if (eventDate !== undefined) currentAnnouncement.eventDate = String(eventDate);
@@ -1241,6 +1258,8 @@ async function startServer() {
     try {
       fs.writeFileSync(ANNOUNCEMENT_FILE, JSON.stringify(currentAnnouncement, null, 2), 'utf-8');
     } catch {}
+
+    console.log(`[Announcement] Saved live custom poster: "${currentAnnouncement.title}" (image: ${currentAnnouncement.imageUrl})`);
 
     res.json({
       success: true,

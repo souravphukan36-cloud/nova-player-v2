@@ -6,7 +6,8 @@ import {
   EQPreset, 
   ShuffleMode, 
   RepeatMode, 
-  SettingsState 
+  SettingsState,
+  IEMSoundStageState
 } from '../types';
 import { DEFAULT_TRACKS, INITIAL_PLAYLISTS } from '../data/defaultTracks';
 import { audioEngine } from '../services/audioEngine';
@@ -62,6 +63,10 @@ interface PlayerContextType {
   setCustomizerOpen: (open: boolean) => void;
   carModeOpen: boolean;
   setCarModeOpen: (open: boolean) => void;
+  iemModalOpen: boolean;
+  setIEMModalOpen: (open: boolean) => void;
+  iemSoundStage: IEMSoundStageState;
+  updateIEMSoundStage: (updates: Partial<IEMSoundStageState>) => void;
 
   // Actions
   playTrack: (track: Track, newQueue?: Track[]) => void;
@@ -360,6 +365,36 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [playlistModalOpen, setPlaylistModalOpen] = useState<boolean>(false);
   const [customizerOpen, setCustomizerOpen] = useState<boolean>(false);
   const [carModeOpen, setCarModeOpen] = useState<boolean>(false);
+  const [iemModalOpen, setIEMModalOpen] = useState<boolean>(false);
+  const [iemSoundStage, setIEMSoundStage] = useState<IEMSoundStageState>(() => {
+    try {
+      const saved = localStorage.getItem('nova_iem_soundstage');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      enabled: false,
+      targetCurve: 'harman-in-ear',
+      crossfeed: 'studio',
+      subBassRumble: 60,
+      trebleAir: 50,
+      driverImpedance: 'standard',
+    };
+  });
+
+  const updateIEMSoundStage = (updates: Partial<IEMSoundStageState>) => {
+    setIEMSoundStage(prev => {
+      const next = { ...prev, ...updates };
+      try {
+        localStorage.setItem('nova_iem_soundstage', JSON.stringify(next));
+      } catch {}
+      audioEngine.applyIEMSoundStage(next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    audioEngine.applyIEMSoundStage(iemSoundStage);
+  }, [iemSoundStage]);
   const [downloadedTrackIds, setDownloadedTrackIds] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
@@ -1389,6 +1424,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCustomizerOpen,
     carModeOpen,
     setCarModeOpen,
+    iemModalOpen,
+    setIEMModalOpen,
+    iemSoundStage,
+    updateIEMSoundStage,
 
     playTrack,
     togglePlayPause,

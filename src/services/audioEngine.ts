@@ -1,4 +1,4 @@
-import { Track, EqualizerState } from '../types';
+import { Track, EqualizerState, IEMSoundStageState } from '../types';
 import { getStoredAudio } from './storageDb';
 import { 
   resolveAudioStreamUrl, 
@@ -19,6 +19,19 @@ class AudioEngine {
   private reverbFeedback: GainNode | null = null;
   private mainGain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
+
+  // Dedicated Audiophile In-Ear Monitor (IEM) Hardware DSP Engine
+  private iemSubBass: BiquadFilterNode | null = null;
+  private iemTargetFilter1: BiquadFilterNode | null = null;
+  private iemTargetFilter2: BiquadFilterNode | null = null;
+  private iemTrebleAir: BiquadFilterNode | null = null;
+  private iemGain: GainNode | null = null;
+
+  // NOVA CrystalClear™ Ultra-Hz Harmonic Exciter & Transparency DSP
+  private clarityAirFilter: BiquadFilterNode | null = null;
+  private clarityMudFilter: BiquadFilterNode | null = null;
+  private clarityPresenceFilter: BiquadFilterNode | null = null;
+  private clarityTransientFilter: BiquadFilterNode | null = null;
 
   // Media element for local/external audio files
   private audioElement: HTMLAudioElement | null = null;
@@ -142,8 +155,10 @@ class AudioEngine {
       this.dolbyCompressor.attack.value = 0.012;
       this.dolbyCompressor.release.value = 0.22;
 
-      // 10-band Audiophile EQ frequencies: 31Hz, 63Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz
-      const frequencies = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+      // 12-band Master Audiophile EQ frequencies extending up to 20,000 Hz:
+      // 20Hz (Sub-low), 40Hz (Sub-bass), 80Hz (Bass), 160Hz (Warmth), 320Hz (Body), 640Hz (Mid), 
+      // 1.25kHz (Center), 2.5kHz (Upper-mid), 5kHz (Presence), 10kHz (Brilliance), 16kHz (Air), 20kHz (Ultra-Air Shimmer)
+      const frequencies = [20, 40, 80, 160, 320, 640, 1250, 2500, 5000, 10000, 16000, 20000];
       this.eqFilters = frequencies.map((freq, idx) => {
         const filter = this.ctx!.createBiquadFilter();
         if (idx === 0) {
@@ -169,6 +184,56 @@ class AudioEngine {
       this.headShadowFilter = this.ctx.createBiquadFilter();
       this.headShadowFilter.type = 'lowpass';
       this.headShadowFilter.frequency.value = 20000;
+
+      // Dedicated Audiophile In-Ear Monitor (IEM) Hardware DSP Nodes
+      this.iemSubBass = this.ctx.createBiquadFilter();
+      this.iemSubBass.type = 'lowshelf';
+      this.iemSubBass.frequency.value = 45; // In-ear acoustic seal resonance
+      this.iemSubBass.gain.value = 0;
+
+      this.iemTargetFilter1 = this.ctx.createBiquadFilter();
+      this.iemTargetFilter1.type = 'peaking';
+      this.iemTargetFilter1.frequency.value = 350; // Low-mid warmth/scoop
+      this.iemTargetFilter1.Q.value = 1.0;
+      this.iemTargetFilter1.gain.value = 0;
+
+      this.iemTargetFilter2 = this.ctx.createBiquadFilter();
+      this.iemTargetFilter2.type = 'peaking';
+      this.iemTargetFilter2.frequency.value = 3000; // Ear-gain pinna compensation
+      this.iemTargetFilter2.Q.value = 1.6;
+      this.iemTargetFilter2.gain.value = 0;
+
+      this.iemTrebleAir = this.ctx.createBiquadFilter();
+      this.iemTrebleAir.type = 'highshelf';
+      this.iemTrebleAir.frequency.value = 15000; // Micro-detail air shimmer
+      this.iemTrebleAir.gain.value = 0;
+
+      this.iemGain = this.ctx.createGain();
+      this.iemGain.gain.value = 1.0;
+
+      // CrystalClear™ Ultra-Hz Harmonic Exciter & Transparency DSP Nodes
+      this.clarityAirFilter = this.ctx.createBiquadFilter();
+      this.clarityAirFilter.type = 'highshelf';
+      this.clarityAirFilter.frequency.value = 16000;
+      this.clarityAirFilter.gain.value = 0;
+
+      this.clarityMudFilter = this.ctx.createBiquadFilter();
+      this.clarityMudFilter.type = 'peaking';
+      this.clarityMudFilter.frequency.value = 320;
+      this.clarityMudFilter.Q.value = 1.8;
+      this.clarityMudFilter.gain.value = 0;
+
+      this.clarityPresenceFilter = this.ctx.createBiquadFilter();
+      this.clarityPresenceFilter.type = 'peaking';
+      this.clarityPresenceFilter.frequency.value = 3800;
+      this.clarityPresenceFilter.Q.value = 1.4;
+      this.clarityPresenceFilter.gain.value = 0;
+
+      this.clarityTransientFilter = this.ctx.createBiquadFilter();
+      this.clarityTransientFilter.type = 'peaking';
+      this.clarityTransientFilter.frequency.value = 6200;
+      this.clarityTransientFilter.Q.value = 1.2;
+      this.clarityTransientFilter.gain.value = 0;
 
       // Stereo Widening Panner (where supported)
       if (this.ctx.createStereoPanner) {
@@ -207,6 +272,25 @@ class AudioEngine {
       for (const filter of this.eqFilters) {
         lastNode.connect(filter);
         lastNode = filter;
+      }
+
+      // Connect Dedicated IEM Hardware Stage
+      if (this.iemSubBass && this.iemTargetFilter1 && this.iemTargetFilter2 && this.iemTrebleAir && this.iemGain) {
+        lastNode.connect(this.iemSubBass);
+        this.iemSubBass.connect(this.iemTargetFilter1);
+        this.iemTargetFilter1.connect(this.iemTargetFilter2);
+        this.iemTargetFilter2.connect(this.iemTrebleAir);
+        this.iemTrebleAir.connect(this.iemGain);
+        lastNode = this.iemGain;
+      }
+
+      // Connect NOVA CrystalClear™ Ultra-Hz Harmonic & Transparency Chain
+      if (this.clarityAirFilter && this.clarityMudFilter && this.clarityPresenceFilter && this.clarityTransientFilter) {
+        lastNode.connect(this.clarityAirFilter);
+        this.clarityAirFilter.connect(this.clarityMudFilter);
+        this.clarityMudFilter.connect(this.clarityPresenceFilter);
+        this.clarityPresenceFilter.connect(this.clarityTransientFilter);
+        lastNode = this.clarityTransientFilter;
       }
 
       lastNode.connect(this.headShadowFilter);
@@ -594,28 +678,43 @@ class AudioEngine {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
-    // Apply bands: if 10 bands provided, map directly. If 5 bands provided, interpolate across the 10 filters.
-    if (eq.bands.length === 10) {
+    // Apply bands: 12-band master, 10-band, or 5-band
+    if (eq.bands.length === 12) {
       eq.bands.forEach((val, idx) => {
         if (this.eqFilters[idx]) {
           const gain = eq.enabled ? val : 0;
           this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
         }
       });
+    } else if (eq.bands.length === 10) {
+      const b = eq.bands;
+      const mapped = [
+        b[0] || 0, // 20Hz
+        b[0] || 0, // 40Hz
+        b[1] || 0, // 80Hz
+        b[2] || 0, // 160Hz
+        b[3] || 0, // 320Hz
+        b[4] || 0, // 640Hz
+        b[5] || 0, // 1.25kHz
+        b[6] || 0, // 2.5kHz
+        b[7] || 0, // 5kHz
+        b[8] || 0, // 10kHz
+        b[9] || 0, // 16kHz
+        b[9] || 0  // 20kHz Ultra-Air
+      ];
+      mapped.forEach((gainVal, idx) => {
+        if (this.eqFilters[idx]) {
+          const gain = eq.enabled ? gainVal : 0;
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
+        }
+      });
     } else {
-      // 5-band interpolation across 10 filters
+      // 5-band interpolation across 12 filters
       const band5 = eq.bands;
       const mappedGains = [
-        band5[0] || 0, // 31Hz
-        band5[0] || 0, // 63Hz
-        band5[1] || 0, // 125Hz
-        band5[1] || 0, // 250Hz
-        band5[2] || 0, // 500Hz
-        band5[2] || 0, // 1kHz
-        band5[3] || 0, // 2kHz
-        band5[3] || 0, // 4kHz
-        band5[4] || 0, // 8kHz
-        band5[4] || 0, // 16kHz
+        band5[0] || 0, band5[0] || 0, band5[1] || 0, band5[1] || 0,
+        band5[2] || 0, band5[2] || 0, band5[3] || 0, band5[3] || 0,
+        band5[4] || 0, band5[4] || 0, band5[4] || 0, band5[4] || 0
       ];
       mappedGains.forEach((gainVal, idx) => {
         if (this.eqFilters[idx]) {
@@ -623,6 +722,31 @@ class AudioEngine {
           this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
         }
       });
+    }
+
+    // NOVA CrystalClear™ Harmonic Exciter & Ultra-Hz Air Engine
+    if (this.clarityAirFilter && this.clarityMudFilter && this.clarityPresenceFilter && this.clarityTransientFilter) {
+      const clarity = eq.clarityEngine;
+      if (eq.enabled && clarity && clarity.enabled) {
+        // Ultra-Air restoration (16,000Hz – 20,000Hz shimmer)
+        const airGain = (clarity.ultraAirHz / 100) * 8.0;
+        this.clarityAirFilter.gain.setTargetAtTime(airGain, now, 0.05);
+
+        // Anti-mud vocal transparency (removes 320Hz boxiness, lifts 3.8kHz vocal presence)
+        const mudDip = -((clarity.vocalTransparency / 100) * 3.8);
+        const presGain = (clarity.vocalTransparency / 100) * 3.8;
+        this.clarityMudFilter.gain.setTargetAtTime(mudDip, now, 0.05);
+        this.clarityPresenceFilter.gain.setTargetAtTime(presGain, now, 0.05);
+
+        // Transient attack snap (6.2kHz pluck definition)
+        const snapGain = (clarity.transientSnap / 100) * 4.5;
+        this.clarityTransientFilter.gain.setTargetAtTime(snapGain, now, 0.05);
+      } else {
+        this.clarityAirFilter.gain.setTargetAtTime(0, now, 0.05);
+        this.clarityMudFilter.gain.setTargetAtTime(0, now, 0.05);
+        this.clarityPresenceFilter.gain.setTargetAtTime(0, now, 0.05);
+        this.clarityTransientFilter.gain.setTargetAtTime(0, now, 0.05);
+      }
     }
 
     // Bass boost (deep sub-bass enhancement)
@@ -736,6 +860,88 @@ class AudioEngine {
       if (this.headShadowFilter) {
         this.headShadowFilter.frequency.setTargetAtTime(20000, now, 0.05);
       }
+    }
+  }
+
+  public applyIEMSoundStage(iem: IEMSoundStageState) {
+    if (!this.ctx || !this.iemSubBass || !this.iemTargetFilter1 || !this.iemTargetFilter2 || !this.iemTrebleAir || !this.iemGain) return;
+    const now = this.ctx.currentTime;
+
+    if (!iem.enabled) {
+      this.iemSubBass.gain.setTargetAtTime(0, now, 0.04);
+      this.iemTargetFilter1.gain.setTargetAtTime(0, now, 0.04);
+      this.iemTargetFilter2.gain.setTargetAtTime(0, now, 0.04);
+      this.iemTrebleAir.gain.setTargetAtTime(0, now, 0.04);
+      this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
+      return;
+    }
+
+    // 1. In-Ear Seal Sub-bass rumble (35-50Hz acoustic resonance)
+    const rumbleGain = (iem.subBassRumble / 100) * 8.5; // up to +8.5dB clean sub-bass
+    this.iemSubBass.gain.setTargetAtTime(rumbleGain, now, 0.04);
+
+    // 2. Micro-Detail Treble Air (15kHz shimmer)
+    const airGain = (iem.trebleAir / 100) * 6.0; // up to +6.0dB air
+    this.iemTrebleAir.gain.setTargetAtTime(airGain, now, 0.04);
+
+    // 3. IEM Target Curve tuning
+    switch (iem.targetCurve) {
+      case 'harman-in-ear':
+        // Harman In-Ear Target 2019: Clean lower mids (-1.5dB at 320Hz), +3.8dB pinna ear-gain
+        this.iemTargetFilter1.frequency.setTargetAtTime(320, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(-1.5, now, 0.04);
+        this.iemTargetFilter2.frequency.setTargetAtTime(2850, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(3.8, now, 0.04);
+        break;
+
+      case 'dynamic-slam':
+        // Dynamic Driver Punch: Warmth at 200Hz, smooth highs
+        this.iemTargetFilter1.frequency.setTargetAtTime(200, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(3.2, now, 0.04);
+        this.iemTargetFilter2.frequency.setTargetAtTime(3500, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(1.5, now, 0.04);
+        break;
+
+      case 'balanced-armature':
+        // Multi-BA Knowles clarity: Vocal presence and instrument attack
+        this.iemTargetFilter1.frequency.setTargetAtTime(450, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(-1.0, now, 0.04);
+        this.iemTargetFilter2.frequency.setTargetAtTime(3200, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(4.5, now, 0.04);
+        break;
+
+      case 'planar-speed':
+        // Planar Magnetic: Holographic linear clarity with high transient response
+        this.iemTargetFilter1.frequency.setTargetAtTime(600, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(0.5, now, 0.04);
+        this.iemTargetFilter2.frequency.setTargetAtTime(4200, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(3.0, now, 0.04);
+        break;
+
+      case 'crinacle-neutral':
+        // Crinacle IEF Neutral Target: Studio reference
+        this.iemTargetFilter1.frequency.setTargetAtTime(300, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(0, now, 0.04);
+        this.iemTargetFilter2.frequency.setTargetAtTime(2700, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(1.8, now, 0.04);
+        break;
+
+      case 'fun-v-shaped':
+        // V-Shaped Euphoria: Deep punch and sparkling presence
+        this.iemTargetFilter1.frequency.setTargetAtTime(500, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(-2.2, now, 0.04);
+        this.iemTargetFilter2.frequency.setTargetAtTime(3600, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(4.0, now, 0.04);
+        break;
+    }
+
+    // 4. Driver Impedance Matcher
+    if (iem.driverImpedance === 'high-sensitivity') {
+      this.iemGain.gain.setTargetAtTime(0.88, now, 0.04); // -1.1dB noise floor reduction
+    } else if (iem.driverImpedance === 'high-drive') {
+      this.iemGain.gain.setTargetAtTime(1.25, now, 0.04); // +2dB clean headroom
+    } else {
+      this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
     }
   }
 

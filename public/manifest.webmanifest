@@ -2,7 +2,7 @@
   "id": "com.souravphukan.novaplayer",
   "name": "NOVA Player",
   "short_name": "NOVA Player",
-  "description": "High Fidelity Offline Audio Player with 5-Band Studio DSP Equalizer and Bass Boost. Developed by Sourav Phukan.",
+  "description": "Native Android high fidelity music player with AMOLED dark theme, 10-band Studio DSP equalizer, Telegram Private Library Cloud integration, local file scanner, playlists, lock screen and notification controls. Developed by Sourav Phukan.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",

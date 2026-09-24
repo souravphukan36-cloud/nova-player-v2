@@ -56,14 +56,28 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
   const [dismissedAnnouncement, setDismissedAnnouncement] = useState(false);
 
   useEffect(() => {
-    fetch('/api/announcement')
-      .then(res => res.json())
-      .then(data => {
-        if (data?.announcement?.enabled && (data.announcement.text || data.announcement.imageUrl || data.announcement.videoUrl || data.announcement.wishText)) {
-          setAnnouncement(data.announcement);
-        }
-      })
-      .catch(() => {});
+    const fetchAnnouncement = () => {
+      fetch('/api/announcement')
+        .then(res => res.json())
+        .then(data => {
+          if (data?.announcement?.enabled && (data.announcement.text || data.announcement.imageUrl || data.announcement.videoUrl || data.announcement.wishText)) {
+            setAnnouncement(data.announcement);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchAnnouncement();
+    const interval = setInterval(fetchAnnouncement, 6000);
+    const handleFocus = () => fetchAnnouncement();
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, []);
 
   const shelves = settings.homeShelves;

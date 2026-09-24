@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+import sharp from 'sharp';
+import fs from 'fs';
+import path from 'path';
+
+const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <!-- Background Gradient -->
     <radialGradient id="novaSpaceBg" cx="50%" cy="40%" r="70%">
@@ -87,4 +91,68 @@
 
   <!-- High-Tech Studio Badge Text: "NOVA" -->
   <text x="256" y="475" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="900" font-size="28" letter-spacing="8" fill="#E2E8F0" opacity="0.9">NOVA</text>
-</svg>
+</svg>`;
+
+async function generate() {
+  fs.writeFileSync('./public/icon.svg', svgContent, 'utf-8');
+  console.log('Written /public/icon.svg');
+
+  const svgBuffer = Buffer.from(svgContent);
+
+  // 192x192 PNG
+  await sharp(svgBuffer)
+    .resize(192, 192)
+    .png({ quality: 100, compressionLevel: 9 })
+    .toFile('./public/icon-192.png');
+  console.log('Created icon-192.png');
+
+  // 512x512 PNG (Standard Any icon)
+  await sharp(svgBuffer)
+    .resize(512, 512)
+    .png({ quality: 100, compressionLevel: 9 })
+    .toFile('./public/icon-512.png');
+  console.log('Created icon-512.png');
+
+  // Apple Touch Icon (180x180 PNG with solid background for iOS)
+  await sharp(svgBuffer)
+    .resize(180, 180)
+    .png({ quality: 100 })
+    .toFile('./public/apple-touch-icon.png');
+  console.log('Created apple-touch-icon.png');
+
+  // Favicon PNG (64x64)
+  await sharp(svgBuffer)
+    .resize(64, 64)
+    .png()
+    .toFile('./public/favicon.png');
+  console.log('Created favicon.png');
+
+  // Logo PNG (512x512)
+  await sharp(svgBuffer)
+    .resize(512, 512)
+    .png()
+    .toFile('./public/logo.png');
+  console.log('Created logo.png');
+
+  // Maskable Icon for Samsung One UI & Android Home Screen
+  // Android requires a safe-zone margin (10-15% padding so circular/squircle crops don't cut the logo)
+  await sharp(svgBuffer)
+    .resize(380, 380)
+    .extend({
+      top: 66,
+      bottom: 66,
+      left: 66,
+      right: 66,
+      background: { r: 4, g: 5, b: 8, alpha: 1 } // Matches dark cosmic background
+    })
+    .png({ quality: 100 })
+    .toFile('./public/icon-maskable-512.png');
+  console.log('Created icon-maskable-512.png with safe-zone margin for Android One UI!');
+
+  console.log('All PWA and mobile launcher icons successfully generated!');
+}
+
+generate().catch(err => {
+  console.error('Error generating icons:', err);
+  process.exit(1);
+});

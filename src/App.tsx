@@ -17,6 +17,7 @@ import { SleepTimerModal } from './components/SleepTimerModal';
 import { FileScannerModal } from './components/FileScannerModal';
 import { CustomizerModal } from './components/CustomizerModal';
 import { CarModeModal } from './components/CarModeModal';
+import { IEMStageModal } from './components/IEMStageModal';
 import { AdminWebPortal } from './components/AdminWebPortal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainTab, LibrarySubTab } from './types';
@@ -181,6 +182,7 @@ const MainLayout: React.FC = () => {
       <FileScannerModal />
       <CustomizerModal />
       <CarModeModal />
+      <IEMStageModal />
     </div>
   );
 };

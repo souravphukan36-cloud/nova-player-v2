@@ -21,6 +21,7 @@ import {
   Sparkles,
   SlidersHorizontal,
   Car,
+  Headphones,
   Upload,
   Download,
   CheckCircle2,
@@ -47,6 +48,9 @@ export const NowPlayingModal: React.FC = () => {
     setQueueOpen,
     carModeOpen,
     setCarModeOpen,
+    iemModalOpen,
+    setIEMModalOpen,
+    iemSoundStage,
     togglePlayPause,
     nextTrack,
     prevTrack,
@@ -244,6 +248,20 @@ export const NowPlayingModal: React.FC = () => {
             title="Sleep Timer"
           >
             <Moon className="w-5 h-5" />
+          </button>
+
+          <button
+            id="np-btn-iem"
+            onClick={() => setIEMModalOpen(true)}
+            className={`p-2.5 rounded-full hover:bg-white/10 transition-colors relative ${
+              iemSoundStage.enabled ? 'text-emerald-400' : 'text-white/80 hover:text-white'
+            }`}
+            title="IEM Audiophile Stage (Headphone Monitor DSP)"
+          >
+            <Headphones className="w-5 h-5" />
+            {iemSoundStage.enabled && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400" />
+            )}
           </button>
 
           <button
@@ -461,9 +479,20 @@ export const NowPlayingModal: React.FC = () => {
               <h2 className="text-2xl font-black text-white tracking-tight truncate">
                 {currentTrack.title}
               </h2>
-              <p className="text-sm font-medium text-white/65 mt-0.5 truncate">
-                {currentTrack.artist}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-sm font-medium text-white/65 truncate">
+                  {currentTrack.artist}
+                </p>
+                {iemSoundStage.enabled && (
+                  <button 
+                    onClick={() => setIEMModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex-shrink-0 active:scale-95"
+                  >
+                    <Headphones className="w-2.5 h-2.5" />
+                    <span>IEM: {iemSoundStage.targetCurve.split('-')[0].toUpperCase()}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Heart and 3-dots buttons */}
