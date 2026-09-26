@@ -36,16 +36,11 @@ class NotificationService {
       return;
     }
 
-    if (!this.hasPermission) {
-      if (Notification.permission === 'default') {
-        const granted = await this.requestPermission();
-        if (!granted) return;
-      } else if (Notification.permission === 'granted') {
-        this.hasPermission = true;
-      } else {
-        return;
-      }
+    // Only proceed if user has already granted permission
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+      return;
     }
+    this.hasPermission = true;
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const icon = track.coverArt
@@ -53,7 +48,7 @@ class NotificationService {
       : `${origin}/icon-192.png`;
 
     const title = isPlaying ? `▶ ${track.title}` : `❚❚ ${track.title}`;
-    const options: any = {
+    const swOptions: any = {
       body: `${track.artist} • ${track.album || 'NOVA Player'}`,
       icon,
       image: icon,
@@ -68,12 +63,12 @@ class NotificationService {
       ],
     };
 
-    // Prefer serviceWorker.showNotification on Android mobile browsers
+    // Prefer serviceWorker.showNotification on Android mobile browsers for full interactive controls
     if ('serviceWorker' in navigator) {
       try {
         const reg = await navigator.serviceWorker.getRegistration();
         if (reg && reg.showNotification) {
-          await reg.showNotification(title, options);
+          await reg.showNotification(title, swOptions);
           return;
         }
       } catch {
@@ -86,7 +81,13 @@ class NotificationService {
         if (this.currentNotification) {
           this.currentNotification.close();
         }
-        this.currentNotification = new Notification(title, options);
+        // Safe standard notification without 'actions' array to prevent Android Chrome TypeError
+        this.currentNotification = new Notification(title, {
+          body: `${track.artist} • ${track.album || 'NOVA Player'}`,
+          icon,
+          tag: 'nova-player-active',
+          silent: true
+        });
       } catch {
         // ignore
       }

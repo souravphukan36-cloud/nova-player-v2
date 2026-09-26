@@ -84,6 +84,8 @@ if (fs.existsSync(androidResPath) && fs.existsSync(logoSrcPath)) {
       if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
       sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher.png')).catch(() => {});
       sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher_round.png')).catch(() => {});
+      // In modern Android (Android 8 through 15), ic_launcher_foreground is required for phone home screen launcher icon!
+      sharp(logoSrcPath).resize(Math.round(d.size * 1.5), Math.round(d.size * 1.5)).png().toFile(path.join(targetDir, 'ic_launcher_foreground.png')).catch(() => {});
     }
     console.log('Android mipmap launcher icons populated from user logo.');
   } catch (err) {

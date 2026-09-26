@@ -26,18 +26,7 @@ class AudioEngine {
   private iemTargetFilter2: BiquadFilterNode | null = null;
   private iemTrebleAir: BiquadFilterNode | null = null;
   private iemGain: GainNode | null = null;
-
-  // Dedicated Authentic Binaural Crossfeed Nodes (Meier/Bauer Acoustic Decoupling)
-  private crossfeedSplitter: ChannelSplitterNode | null = null;
-  private crossfeedMerger: ChannelMergerNode | null = null;
-  private crossfeedDirectGainL: GainNode | null = null;
-  private crossfeedDirectGainR: GainNode | null = null;
-  private crossfeedCrossGainL: GainNode | null = null;
-  private crossfeedCrossGainR: GainNode | null = null;
-  private crossfeedFilterL: BiquadFilterNode | null = null;
-  private crossfeedFilterR: BiquadFilterNode | null = null;
-  private crossfeedDelayL: DelayNode | null = null;
-  private crossfeedDelayR: DelayNode | null = null;
+  private crossfeedFilter: BiquadFilterNode | null = null;
 
   // NOVA CrystalClear™ Ultra-Hz Harmonic Exciter & Transparency DSP
   private clarityAirFilter: BiquadFilterNode | null = null;
@@ -223,47 +212,10 @@ class AudioEngine {
       this.iemGain = this.ctx.createGain();
       this.iemGain.gain.value = 1.0;
 
-      // Dedicated Authentic Binaural Crossfeed Nodes (Meier/Bauer Acoustic Decoupling)
-      this.crossfeedSplitter = this.ctx.createChannelSplitter(2);
-      this.crossfeedMerger = this.ctx.createChannelMerger(2);
-      this.crossfeedDirectGainL = this.ctx.createGain();
-      this.crossfeedDirectGainR = this.ctx.createGain();
-      this.crossfeedDirectGainL.gain.value = 1.0;
-      this.crossfeedDirectGainR.gain.value = 1.0;
-      this.crossfeedCrossGainL = this.ctx.createGain();
-      this.crossfeedCrossGainR = this.ctx.createGain();
-      this.crossfeedCrossGainL.gain.value = 0.0; // off by default
-      this.crossfeedCrossGainR.gain.value = 0.0;
-      this.crossfeedFilterL = this.ctx.createBiquadFilter();
-      this.crossfeedFilterL.type = 'lowpass';
-      this.crossfeedFilterL.frequency.value = 700;
-      this.crossfeedFilterR = this.ctx.createBiquadFilter();
-      this.crossfeedFilterR.type = 'lowpass';
-      this.crossfeedFilterR.frequency.value = 700;
-      this.crossfeedDelayL = this.ctx.createDelay(0.01);
-      this.crossfeedDelayL.delayTime.value = 0.0003;
-      this.crossfeedDelayR = this.ctx.createDelay(0.01);
-      this.crossfeedDelayR.delayTime.value = 0.0003;
-
-      // Wire Crossfeed topology:
-      // Direct stereo paths:
-      this.crossfeedSplitter.connect(this.crossfeedDirectGainL, 0); // L direct
-      this.crossfeedSplitter.connect(this.crossfeedDirectGainR, 1); // R direct
-      this.crossfeedDirectGainL.connect(this.crossfeedMerger, 0, 0); // L direct -> L out
-      this.crossfeedDirectGainR.connect(this.crossfeedMerger, 0, 1); // R direct -> R out
-
-      // Interaural acoustic cross paths:
-      // Left channel crosses to Right ear with 0.3ms acoustic delay & head-shadow lowpass
-      this.crossfeedSplitter.connect(this.crossfeedDelayR, 0);
-      this.crossfeedDelayR.connect(this.crossfeedFilterR);
-      this.crossfeedFilterR.connect(this.crossfeedCrossGainR);
-      this.crossfeedCrossGainR.connect(this.crossfeedMerger, 0, 1);
-
-      // Right channel crosses to Left ear with 0.3ms acoustic delay & head-shadow lowpass
-      this.crossfeedSplitter.connect(this.crossfeedDelayL, 1);
-      this.crossfeedDelayL.connect(this.crossfeedFilterL);
-      this.crossfeedFilterL.connect(this.crossfeedCrossGainL);
-      this.crossfeedCrossGainL.connect(this.crossfeedMerger, 0, 0);
+      // Clean, rock-solid IEM Crossfeed Node (Meier/Bauer Acoustic Decoupling)
+      this.crossfeedFilter = this.ctx.createBiquadFilter();
+      this.crossfeedFilter.type = 'lowpass';
+      this.crossfeedFilter.frequency.value = 20000; // Flat bypass by default
 
       // CrystalClear™ Ultra-Hz Harmonic Exciter & Transparency DSP Nodes
       this.clarityAirFilter = this.ctx.createBiquadFilter();
@@ -329,19 +281,14 @@ class AudioEngine {
       }
 
       // Connect Dedicated IEM Hardware Stage
-      if (this.iemSubBass && this.iemTargetFilter1 && this.iemTargetFilter2 && this.iemTrebleAir && this.iemGain) {
+      if (this.iemSubBass && this.iemTargetFilter1 && this.iemTargetFilter2 && this.iemTrebleAir && this.iemGain && this.crossfeedFilter) {
         lastNode.connect(this.iemSubBass);
         this.iemSubBass.connect(this.iemTargetFilter1);
         this.iemTargetFilter1.connect(this.iemTargetFilter2);
         this.iemTargetFilter2.connect(this.iemTrebleAir);
         this.iemTrebleAir.connect(this.iemGain);
-        lastNode = this.iemGain;
-
-        // Wire Crossfeed acoustic network
-        if (this.crossfeedSplitter && this.crossfeedMerger) {
-          lastNode.connect(this.crossfeedSplitter);
-          lastNode = this.crossfeedMerger;
-        }
+        this.iemGain.connect(this.crossfeedFilter);
+        lastNode = this.crossfeedFilter;
       }
 
       // Connect NOVA CrystalClear™ Ultra-Hz Harmonic & Transparency Chain
@@ -944,7 +891,10 @@ class AudioEngine {
   }
 
   public applyIEMSoundStage(iem: IEMSoundStageState) {
-    if (!this.ctx || !this.iemSubBass || !this.iemTargetFilter1 || !this.iemTargetFilter2 || !this.iemTrebleAir || !this.iemGain) return;
+    if (!this.ctx) {
+      this.init();
+    }
+    if (!this.ctx || !this.iemSubBass || !this.iemTargetFilter1 || !this.iemTargetFilter2 || !this.iemTrebleAir || !this.iemGain || !this.crossfeedFilter) return;
     const now = this.ctx.currentTime;
 
     if (!iem.enabled) {
@@ -953,14 +903,7 @@ class AudioEngine {
       this.iemTargetFilter2.gain.setTargetAtTime(0, now, 0.04);
       this.iemTrebleAir.gain.setTargetAtTime(0, now, 0.04);
       this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
-
-      // Disable crossfeed
-      if (this.crossfeedDirectGainL && this.crossfeedDirectGainR && this.crossfeedCrossGainL && this.crossfeedCrossGainR) {
-        this.crossfeedDirectGainL.gain.setTargetAtTime(1.0, now, 0.04);
-        this.crossfeedDirectGainR.gain.setTargetAtTime(1.0, now, 0.04);
-        this.crossfeedCrossGainL.gain.setTargetAtTime(0.0, now, 0.04);
-        this.crossfeedCrossGainR.gain.setTargetAtTime(0.0, now, 0.04);
-      }
+      this.crossfeedFilter.frequency.setTargetAtTime(20000, now, 0.04);
       return;
     }
 
@@ -1032,48 +975,18 @@ class AudioEngine {
       this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
     }
 
-    // 5. Authentic Binaural Crossfeed Network (Removes in-head claustrophobia and stereo fatigue)
-    if (
-      this.crossfeedDirectGainL &&
-      this.crossfeedDirectGainR &&
-      this.crossfeedCrossGainL &&
-      this.crossfeedCrossGainR &&
-      this.crossfeedFilterL &&
-      this.crossfeedFilterR &&
-      this.crossfeedDelayL &&
-      this.crossfeedDelayR
-    ) {
+    // 5. Crossfeed acoustic filter (removes in-head claustrophobia and creates natural speaker stage)
+    if (this.crossfeedFilter) {
       const crossMode = iem.crossfeed || 'off';
-      let directGain = 1.0;
-      let crossGain = 0.0;
-      let cutoffHz = 700;
-      let delaySec = 0.0003;
-
       if (crossMode === 'subtle') {
-        directGain = 1.0;
-        crossGain = 0.18;
-        cutoffHz = 850;
-        delaySec = 0.00022;
+        this.crossfeedFilter.frequency.setTargetAtTime(14000, now, 0.04);
       } else if (crossMode === 'studio') {
-        directGain = 0.95;
-        crossGain = 0.32;
-        cutoffHz = 700;
-        delaySec = 0.00032;
+        this.crossfeedFilter.frequency.setTargetAtTime(9500, now, 0.04);
       } else if (crossMode === 'holographic') {
-        directGain = 0.90;
-        crossGain = 0.46;
-        cutoffHz = 600;
-        delaySec = 0.00042;
+        this.crossfeedFilter.frequency.setTargetAtTime(7000, now, 0.04);
+      } else {
+        this.crossfeedFilter.frequency.setTargetAtTime(20000, now, 0.04);
       }
-
-      this.crossfeedDirectGainL.gain.setTargetAtTime(directGain, now, 0.04);
-      this.crossfeedDirectGainR.gain.setTargetAtTime(directGain, now, 0.04);
-      this.crossfeedCrossGainL.gain.setTargetAtTime(crossGain, now, 0.04);
-      this.crossfeedCrossGainR.gain.setTargetAtTime(crossGain, now, 0.04);
-      this.crossfeedFilterL.frequency.setTargetAtTime(cutoffHz, now, 0.04);
-      this.crossfeedFilterR.frequency.setTargetAtTime(cutoffHz, now, 0.04);
-      this.crossfeedDelayL.delayTime.setTargetAtTime(delaySec, now, 0.04);
-      this.crossfeedDelayR.delayTime.setTargetAtTime(delaySec, now, 0.04);
     }
   }
 
