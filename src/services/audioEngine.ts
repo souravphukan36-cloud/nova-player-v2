@@ -344,18 +344,6 @@ class AudioEngine {
         this.audioElement = new Audio();
       }
       this.audioElement.preload = 'auto';
-      this.audioElement.crossOrigin = 'anonymous';
-
-      // Connect HTML5 Audio Element to the Web Audio DSP Graph
-      if (!this.mediaSourceNode && this.audioElement && this.dspInput) {
-        try {
-          this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
-          this.mediaSourceNode.connect(this.dspInput);
-          console.log('[AudioEngine] ⚡ Successfully wired HTML5 audio into 20Hz-20kHz Audiophile DSP chain!');
-        } catch (e) {
-          console.warn('[AudioEngine] MediaElementSource wire notice:', e);
-        }
-      }
 
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
@@ -448,13 +436,6 @@ class AudioEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
-    if (!this.mediaSourceNode && this.audioElement && this.ctx && this.dspInput) {
-      try {
-        this.audioElement.crossOrigin = 'anonymous';
-        this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
-        this.mediaSourceNode.connect(this.dspInput);
-      } catch {}
-    }
     if (this.audioElement) {
       this.audioElement.muted = this.isMuted;
       this.audioElement.volume = this.isMuted ? 0 : Math.max(0.1, this.volume || 0.85);
@@ -543,7 +524,6 @@ class AudioEngine {
 
       if (this.audioElement.src !== targetUrl) {
         this.audioElement.src = targetUrl;
-        this.audioElement.load();
       }
 
       if (startTime > 0 && !isNaN(startTime)) {

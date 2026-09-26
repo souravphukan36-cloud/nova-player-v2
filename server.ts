@@ -1201,7 +1201,7 @@ async function startServer() {
   // Manual or automatic sync trigger
   app.post('/api/telegram/sync', async (req: Request, res: Response) => {
     const customToken = req.body?.botToken || req.query.bot_token as string;
-    await fetchTelegramUpdates(customToken);
+    await fetchTelegramUpdates(customToken, true);
     const finalizedTracks = dynamicTracks.map(t => {
       const track = applyTrackOverrides(t);
       const p = track.filePath || (track.fileId && filePathCache[track.fileId]);
