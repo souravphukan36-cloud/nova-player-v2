@@ -1,10 +1,13 @@
-const CACHE_NAME = 'nova-player-v4';
+const CACHE_NAME = 'nova-player-v5';
 const OFFLINE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+  '/favicon.png',
   '/icon.svg'
 ];
 

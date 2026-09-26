@@ -1061,6 +1061,12 @@ async function startServer() {
   app.use('/api/uploads', express.static(UPLOADS_DIR, {
     maxAge: '7d',
     immutable: true,
+    setHeaders: (res) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Access-Control-Expose-Headers', '*');
+    }
   }));
 
   // Health check

@@ -27,6 +27,18 @@ class AudioEngine {
   private iemTrebleAir: BiquadFilterNode | null = null;
   private iemGain: GainNode | null = null;
 
+  // Dedicated Authentic Binaural Crossfeed Nodes (Meier/Bauer Acoustic Decoupling)
+  private crossfeedSplitter: ChannelSplitterNode | null = null;
+  private crossfeedMerger: ChannelMergerNode | null = null;
+  private crossfeedDirectGainL: GainNode | null = null;
+  private crossfeedDirectGainR: GainNode | null = null;
+  private crossfeedCrossGainL: GainNode | null = null;
+  private crossfeedCrossGainR: GainNode | null = null;
+  private crossfeedFilterL: BiquadFilterNode | null = null;
+  private crossfeedFilterR: BiquadFilterNode | null = null;
+  private crossfeedDelayL: DelayNode | null = null;
+  private crossfeedDelayR: DelayNode | null = null;
+
   // NOVA CrystalClear™ Ultra-Hz Harmonic Exciter & Transparency DSP
   private clarityAirFilter: BiquadFilterNode | null = null;
   private clarityMudFilter: BiquadFilterNode | null = null;
@@ -211,6 +223,48 @@ class AudioEngine {
       this.iemGain = this.ctx.createGain();
       this.iemGain.gain.value = 1.0;
 
+      // Dedicated Authentic Binaural Crossfeed Nodes (Meier/Bauer Acoustic Decoupling)
+      this.crossfeedSplitter = this.ctx.createChannelSplitter(2);
+      this.crossfeedMerger = this.ctx.createChannelMerger(2);
+      this.crossfeedDirectGainL = this.ctx.createGain();
+      this.crossfeedDirectGainR = this.ctx.createGain();
+      this.crossfeedDirectGainL.gain.value = 1.0;
+      this.crossfeedDirectGainR.gain.value = 1.0;
+      this.crossfeedCrossGainL = this.ctx.createGain();
+      this.crossfeedCrossGainR = this.ctx.createGain();
+      this.crossfeedCrossGainL.gain.value = 0.0; // off by default
+      this.crossfeedCrossGainR.gain.value = 0.0;
+      this.crossfeedFilterL = this.ctx.createBiquadFilter();
+      this.crossfeedFilterL.type = 'lowpass';
+      this.crossfeedFilterL.frequency.value = 700;
+      this.crossfeedFilterR = this.ctx.createBiquadFilter();
+      this.crossfeedFilterR.type = 'lowpass';
+      this.crossfeedFilterR.frequency.value = 700;
+      this.crossfeedDelayL = this.ctx.createDelay(0.01);
+      this.crossfeedDelayL.delayTime.value = 0.0003;
+      this.crossfeedDelayR = this.ctx.createDelay(0.01);
+      this.crossfeedDelayR.delayTime.value = 0.0003;
+
+      // Wire Crossfeed topology:
+      // Direct stereo paths:
+      this.crossfeedSplitter.connect(this.crossfeedDirectGainL, 0); // L direct
+      this.crossfeedSplitter.connect(this.crossfeedDirectGainR, 1); // R direct
+      this.crossfeedDirectGainL.connect(this.crossfeedMerger, 0, 0); // L direct -> L out
+      this.crossfeedDirectGainR.connect(this.crossfeedMerger, 0, 1); // R direct -> R out
+
+      // Interaural acoustic cross paths:
+      // Left channel crosses to Right ear with 0.3ms acoustic delay & head-shadow lowpass
+      this.crossfeedSplitter.connect(this.crossfeedDelayR, 0);
+      this.crossfeedDelayR.connect(this.crossfeedFilterR);
+      this.crossfeedFilterR.connect(this.crossfeedCrossGainR);
+      this.crossfeedCrossGainR.connect(this.crossfeedMerger, 0, 1);
+
+      // Right channel crosses to Left ear with 0.3ms acoustic delay & head-shadow lowpass
+      this.crossfeedSplitter.connect(this.crossfeedDelayL, 1);
+      this.crossfeedDelayL.connect(this.crossfeedFilterL);
+      this.crossfeedFilterL.connect(this.crossfeedCrossGainL);
+      this.crossfeedCrossGainL.connect(this.crossfeedMerger, 0, 0);
+
       // CrystalClear™ Ultra-Hz Harmonic Exciter & Transparency DSP Nodes
       this.clarityAirFilter = this.ctx.createBiquadFilter();
       this.clarityAirFilter.type = 'highshelf';
@@ -282,6 +336,12 @@ class AudioEngine {
         this.iemTargetFilter2.connect(this.iemTrebleAir);
         this.iemTrebleAir.connect(this.iemGain);
         lastNode = this.iemGain;
+
+        // Wire Crossfeed acoustic network
+        if (this.crossfeedSplitter && this.crossfeedMerger) {
+          lastNode.connect(this.crossfeedSplitter);
+          lastNode = this.crossfeedMerger;
+        }
       }
 
       // Connect NOVA CrystalClear™ Ultra-Hz Harmonic & Transparency Chain
@@ -320,6 +380,7 @@ class AudioEngine {
           existing.setAttribute('webkit-playsinline', 'true');
           existing.setAttribute('x-webkit-airplay', 'allow');
           existing.setAttribute('controlsList', 'nodownload noplaybackrate');
+          existing.crossOrigin = 'anonymous';
           // Style as invisible but layout-rendered so Android MediaSession controller activates lock screen controls
           existing.style.position = 'fixed';
           existing.style.bottom = '0px';
@@ -336,6 +397,18 @@ class AudioEngine {
         this.audioElement = new Audio();
       }
       this.audioElement.preload = 'auto';
+      this.audioElement.crossOrigin = 'anonymous';
+
+      // Connect HTML5 Audio Element to the Web Audio DSP Graph
+      if (!this.mediaSourceNode && this.audioElement && this.dspInput) {
+        try {
+          this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
+          this.mediaSourceNode.connect(this.dspInput);
+          console.log('[AudioEngine] ⚡ Successfully wired HTML5 audio into 20Hz-20kHz Audiophile DSP chain!');
+        } catch (e) {
+          console.warn('[AudioEngine] MediaElementSource wire notice:', e);
+        }
+      }
 
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
@@ -427,6 +500,13 @@ class AudioEngine {
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
+    }
+    if (!this.mediaSourceNode && this.audioElement && this.ctx && this.dspInput) {
+      try {
+        this.audioElement.crossOrigin = 'anonymous';
+        this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
+        this.mediaSourceNode.connect(this.dspInput);
+      } catch {}
     }
     if (this.audioElement) {
       this.audioElement.muted = this.isMuted;
@@ -873,83 +953,139 @@ class AudioEngine {
       this.iemTargetFilter2.gain.setTargetAtTime(0, now, 0.04);
       this.iemTrebleAir.gain.setTargetAtTime(0, now, 0.04);
       this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
+
+      // Disable crossfeed
+      if (this.crossfeedDirectGainL && this.crossfeedDirectGainR && this.crossfeedCrossGainL && this.crossfeedCrossGainR) {
+        this.crossfeedDirectGainL.gain.setTargetAtTime(1.0, now, 0.04);
+        this.crossfeedDirectGainR.gain.setTargetAtTime(1.0, now, 0.04);
+        this.crossfeedCrossGainL.gain.setTargetAtTime(0.0, now, 0.04);
+        this.crossfeedCrossGainR.gain.setTargetAtTime(0.0, now, 0.04);
+      }
       return;
     }
 
     // 1. In-Ear Seal Sub-bass rumble (35-50Hz acoustic resonance)
-    const rumbleGain = (iem.subBassRumble / 100) * 8.5; // up to +8.5dB clean sub-bass
+    const rumbleGain = (iem.subBassRumble / 100) * 11.5; // up to +11.5dB clean sub-bass
     this.iemSubBass.gain.setTargetAtTime(rumbleGain, now, 0.04);
 
     // 2. Micro-Detail Treble Air (15kHz shimmer)
-    const airGain = (iem.trebleAir / 100) * 6.0; // up to +6.0dB air
+    const airGain = (iem.trebleAir / 100) * 8.5; // up to +8.5dB air
     this.iemTrebleAir.gain.setTargetAtTime(airGain, now, 0.04);
 
     // 3. IEM Target Curve tuning
     switch (iem.targetCurve) {
       case 'harman-in-ear':
-        // Harman In-Ear Target 2019: Clean lower mids (-1.5dB at 320Hz), +3.8dB pinna ear-gain
+        // Harman In-Ear Target 2019: Clean lower mids (-2.0dB at 320Hz), +4.8dB pinna ear-gain
         this.iemTargetFilter1.frequency.setTargetAtTime(320, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(-1.5, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(-2.0, now, 0.04);
         this.iemTargetFilter2.frequency.setTargetAtTime(2850, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(3.8, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(4.8, now, 0.04);
         break;
 
       case 'dynamic-slam':
-        // Dynamic Driver Punch: Warmth at 200Hz, smooth highs
+        // Dynamic Driver Punch: Warmth at 200Hz (+4.2dB), smooth relaxed highs
         this.iemTargetFilter1.frequency.setTargetAtTime(200, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(3.2, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(4.2, now, 0.04);
         this.iemTargetFilter2.frequency.setTargetAtTime(3500, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(1.5, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(1.8, now, 0.04);
         break;
 
       case 'balanced-armature':
-        // Multi-BA Knowles clarity: Vocal presence and instrument attack
+        // Multi-BA Knowles clarity: Razor vocal presence (+5.5dB at 3200Hz) and instrument attack
         this.iemTargetFilter1.frequency.setTargetAtTime(450, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(-1.0, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(-1.5, now, 0.04);
         this.iemTargetFilter2.frequency.setTargetAtTime(3200, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(4.5, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(5.5, now, 0.04);
         break;
 
       case 'planar-speed':
         // Planar Magnetic: Holographic linear clarity with high transient response
         this.iemTargetFilter1.frequency.setTargetAtTime(600, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(0.5, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(1.0, now, 0.04);
         this.iemTargetFilter2.frequency.setTargetAtTime(4200, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(3.0, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(4.2, now, 0.04);
         break;
 
       case 'crinacle-neutral':
-        // Crinacle IEF Neutral Target: Studio reference
+        // Crinacle IEF Neutral Target: Studio reference flat monitoring
         this.iemTargetFilter1.frequency.setTargetAtTime(300, now, 0.04);
         this.iemTargetFilter1.gain.setTargetAtTime(0, now, 0.04);
         this.iemTargetFilter2.frequency.setTargetAtTime(2700, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(1.8, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(2.2, now, 0.04);
         break;
 
       case 'fun-v-shaped':
         // V-Shaped Euphoria: Deep punch and sparkling presence
         this.iemTargetFilter1.frequency.setTargetAtTime(500, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(-2.2, now, 0.04);
+        this.iemTargetFilter1.gain.setTargetAtTime(-3.5, now, 0.04);
         this.iemTargetFilter2.frequency.setTargetAtTime(3600, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(4.0, now, 0.04);
+        this.iemTargetFilter2.gain.setTargetAtTime(5.2, now, 0.04);
         break;
     }
 
     // 4. Driver Impedance Matcher
     if (iem.driverImpedance === 'high-sensitivity') {
-      this.iemGain.gain.setTargetAtTime(0.88, now, 0.04); // -1.1dB noise floor reduction
+      this.iemGain.gain.setTargetAtTime(0.82, now, 0.04); // -1.7dB noise floor reduction
     } else if (iem.driverImpedance === 'high-drive') {
-      this.iemGain.gain.setTargetAtTime(1.25, now, 0.04); // +2dB clean headroom
+      this.iemGain.gain.setTargetAtTime(1.30, now, 0.04); // +2.3dB clean dynamic headroom
     } else {
       this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
+    }
+
+    // 5. Authentic Binaural Crossfeed Network (Removes in-head claustrophobia and stereo fatigue)
+    if (
+      this.crossfeedDirectGainL &&
+      this.crossfeedDirectGainR &&
+      this.crossfeedCrossGainL &&
+      this.crossfeedCrossGainR &&
+      this.crossfeedFilterL &&
+      this.crossfeedFilterR &&
+      this.crossfeedDelayL &&
+      this.crossfeedDelayR
+    ) {
+      const crossMode = iem.crossfeed || 'off';
+      let directGain = 1.0;
+      let crossGain = 0.0;
+      let cutoffHz = 700;
+      let delaySec = 0.0003;
+
+      if (crossMode === 'subtle') {
+        directGain = 1.0;
+        crossGain = 0.18;
+        cutoffHz = 850;
+        delaySec = 0.00022;
+      } else if (crossMode === 'studio') {
+        directGain = 0.95;
+        crossGain = 0.32;
+        cutoffHz = 700;
+        delaySec = 0.00032;
+      } else if (crossMode === 'holographic') {
+        directGain = 0.90;
+        crossGain = 0.46;
+        cutoffHz = 600;
+        delaySec = 0.00042;
+      }
+
+      this.crossfeedDirectGainL.gain.setTargetAtTime(directGain, now, 0.04);
+      this.crossfeedDirectGainR.gain.setTargetAtTime(directGain, now, 0.04);
+      this.crossfeedCrossGainL.gain.setTargetAtTime(crossGain, now, 0.04);
+      this.crossfeedCrossGainR.gain.setTargetAtTime(crossGain, now, 0.04);
+      this.crossfeedFilterL.frequency.setTargetAtTime(cutoffHz, now, 0.04);
+      this.crossfeedFilterR.frequency.setTargetAtTime(cutoffHz, now, 0.04);
+      this.crossfeedDelayL.delayTime.setTargetAtTime(delaySec, now, 0.04);
+      this.crossfeedDelayR.delayTime.setTargetAtTime(delaySec, now, 0.04);
     }
   }
 
   public getVisualizerData(): Uint8Array {
-    if (this.isSynthPlaying && this.analyser) {
+    if (this.analyser) {
       const data = new Uint8Array(this.analyser.frequencyBinCount);
       this.analyser.getByteFrequencyData(data);
-      return data;
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      if (sum > 0) {
+        return data;
+      }
     }
 
     // Dynamic frequency spectrum for hardware audio playback
@@ -1170,39 +1306,32 @@ class AudioEngine {
         navigator.mediaSession.playbackState = 'playing';
         this.updateMediaSessionPosition(0, track.duration);
 
-        navigator.mediaSession.setActionHandler('play', () => {
-          this.resume();
-          window.dispatchEvent(new CustomEvent('nova-play'));
-        });
-        navigator.mediaSession.setActionHandler('pause', () => {
-          this.pause();
-          window.dispatchEvent(new CustomEvent('nova-pause'));
-        });
-        navigator.mediaSession.setActionHandler('stop', () => {
-          this.pause();
-          window.dispatchEvent(new CustomEvent('nova-pause'));
-        });
-        navigator.mediaSession.setActionHandler('previoustrack', () => {
-          window.dispatchEvent(new CustomEvent('nova-prev-track'));
-        });
-        navigator.mediaSession.setActionHandler('nexttrack', () => {
-          window.dispatchEvent(new CustomEvent('nova-next-track'));
-        });
-        navigator.mediaSession.setActionHandler('seekto', (details) => {
-          if (details.seekTime !== undefined) {
-            this.seek(details.seekTime);
+        const actionHandlers: [MediaSessionAction, MediaSessionActionHandler][] = [
+          ['play', () => { this.resume(); window.dispatchEvent(new CustomEvent('nova-play')); }],
+          ['pause', () => { this.pause(); window.dispatchEvent(new CustomEvent('nova-pause')); }],
+          ['stop', () => { this.pause(); window.dispatchEvent(new CustomEvent('nova-pause')); }],
+          ['previoustrack', () => { window.dispatchEvent(new CustomEvent('nova-prev-track')); }],
+          ['nexttrack', () => { window.dispatchEvent(new CustomEvent('nova-next-track')); }],
+          ['seekto', (details) => { if (details.seekTime !== undefined) this.seek(details.seekTime); }],
+          ['seekbackward', (details) => {
+            const skip = details.seekOffset || 10;
+            const cur = this.audioElement ? this.audioElement.currentTime : this.synthTime;
+            this.seek(Math.max(0, cur - skip));
+          }],
+          ['seekforward', (details) => {
+            const skip = details.seekOffset || 10;
+            const cur = this.audioElement ? this.audioElement.currentTime : this.synthTime;
+            this.seek(cur + skip);
+          }],
+        ];
+
+        for (const [action, handler] of actionHandlers) {
+          try {
+            navigator.mediaSession.setActionHandler(action, handler);
+          } catch {
+            // Some actions may not be supported by all mobile web engines
           }
-        });
-        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-          const skip = details.seekOffset || 10;
-          const cur = this.audioElement ? this.audioElement.currentTime : this.synthTime;
-          this.seek(Math.max(0, cur - skip));
-        });
-        navigator.mediaSession.setActionHandler('seekforward', (details) => {
-          const skip = details.seekOffset || 10;
-          const cur = this.audioElement ? this.audioElement.currentTime : this.synthTime;
-          this.seek(cur + skip);
-        });
+        }
       } catch (e) {
         console.warn('MediaSession error', e);
       }

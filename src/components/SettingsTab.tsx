@@ -74,6 +74,9 @@ export const SettingsTab: React.FC = () => {
     setLockScreenOpen,
     setSleepTimerOpen,
     tracks,
+    isInstallable,
+    promptInstall,
+    requestNotificationPermission,
   } = usePlayer();
 
   const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';
@@ -88,6 +91,8 @@ export const SettingsTab: React.FC = () => {
   const [cacheCleared, setCacheCleared] = useState(false);
   const [customHex, setCustomHex] = useState(settings.accentColor);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
+  const [notifBlockedNotice, setNotifBlockedNotice] = useState(false);
+  const [installSuccessNotice, setInstallSuccessNotice] = useState(false);
 
   useEffect(() => {
     setNotifPermission(notificationService.getPermissionStatus());
@@ -96,13 +101,22 @@ export const SettingsTab: React.FC = () => {
   const handleRequestNotificationPermission = async () => {
     const current = notificationService.getPermissionStatus();
     if (current === 'denied') {
-      alert("Please allow notifications in your phone Settings > Apps > NOVA Player.");
+      setNotifBlockedNotice(true);
+      setTimeout(() => setNotifBlockedNotice(false), 5000);
       return;
     }
-    const granted = await notificationService.requestPermission();
+    const granted = await requestNotificationPermission();
     setNotifPermission(notificationService.getPermissionStatus());
     if (granted && updateSettings) {
       updateSettings({ systemNotificationsEnabled: true });
+    }
+  };
+
+  const handleInstallAppClick = async () => {
+    const success = await promptInstall();
+    if (success) {
+      setInstallSuccessNotice(true);
+      setTimeout(() => setInstallSuccessNotice(false), 4000);
     }
   };
 
@@ -443,10 +457,58 @@ export const SettingsTab: React.FC = () => {
                       </button>
                     )}
                   </div>
+
+                  {notifBlockedNotice && (
+                    <div className="p-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs">
+                      Notifications are currently blocked in your browser. Tap the tune/lock icon in your address bar to set Notifications to "Allow".
+                    </div>
+                  )}
+
+                  {/* Native Android Media Notification Info */}
+                  <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                    <span className="text-[11px] font-bold text-white block">Android Live Notification & Lock Screen:</span>
+                    <p className="text-[10px] text-white/50 leading-relaxed">
+                      Plays directly through Android's Native MediaSession engine. Shows album artwork, song title, artist, live scrubber, and prev/play/pause/next buttons on your phone lock screen and notification shade.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
           )}
+
+          {/* Dedicated Home Screen App Icon Card */}
+          <div className={`p-4 border-t ${isLight ? 'border-neutral-100 bg-neutral-50/50' : 'border-white/5 bg-white/[0.01]'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/icon-192.png" 
+                  alt="NOVA Logo" 
+                  className="w-10 h-10 rounded-2xl shadow-lg border border-white/10 shrink-0" 
+                />
+                <div>
+                  <h4 className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                    Phone Home Screen App Logo
+                  </h4>
+                  <p className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                    {installSuccessNotice 
+                      ? '✅ App logo installed on your phone home screen!'
+                      : isInstallable 
+                        ? 'Install official NOVA icon to phone launcher'
+                        : 'Installed or ready in browser menu (Add to Home screen)'}
+                  </p>
+                </div>
+              </div>
+
+              {isInstallable && (
+                <button
+                  onClick={handleInstallAppClick}
+                  className="py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 active:scale-95 transition-all shrink-0"
+                >
+                  Install App
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

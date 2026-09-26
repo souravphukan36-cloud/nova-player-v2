@@ -126,6 +126,12 @@ interface PlayerContextType {
   toggleGapless: () => void;
   clearCache: () => void;
   updateSettings: (partial: Partial<SettingsState>) => void;
+
+  // PWA Home Screen Installation & System Notification Integration
+  isInstallable: boolean;
+  promptInstall: () => Promise<boolean>;
+  requestNotificationPermission: () => Promise<boolean>;
+  notificationPermission: NotificationPermission | 'unsupported';
 }
 
 const EQ_PRESETS_5: Record<EQPreset, number[]> = {
@@ -397,6 +403,64 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [iemSoundStage]);
   const [downloadedTrackIds, setDownloadedTrackIds] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
+
+  // Native PWA Home Screen Installation & Notification Listeners
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState<boolean>(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleBeforeInstall = (e: any) => {
+        e.preventDefault();
+        setDeferredInstallPrompt(e);
+        setIsInstallable(true);
+      };
+      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+      const handleAppInstalled = () => {
+        setIsInstallable(false);
+        setDeferredInstallPrompt(null);
+      };
+      window.addEventListener('appinstalled', handleAppInstalled);
+
+      if ('Notification' in window) {
+        setNotificationPermission(Notification.permission);
+      }
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+        window.removeEventListener('appinstalled', handleAppInstalled);
+      };
+    }
+  }, []);
+
+  const promptInstall = async (): Promise<boolean> => {
+    if (!deferredInstallPrompt) {
+      return false;
+    }
+    try {
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        setIsInstallable(false);
+        setDeferredInstallPrompt(null);
+        return true;
+      }
+    } catch (e) {
+      console.warn('Install prompt error:', e);
+    }
+    return false;
+  };
+
+  const requestNotificationPermission = async (): Promise<boolean> => {
+    const granted = await notificationService.requestPermission();
+    setNotificationPermission(notificationService.getPermissionStatus());
+    if (granted && currentTrack) {
+      notificationService.showPlaybackNotification(currentTrack, isPlaying);
+    }
+    return granted;
+  };
 
   // Load offline stored track IDs on startup
   useEffect(() => {
@@ -1482,6 +1546,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     toggleGapless,
     clearCache,
     updateSettings,
+
+    isInstallable,
+    promptInstall,
+    requestNotificationPermission,
+    notificationPermission,
   }), [
     tracks,
     playlists,
@@ -1510,6 +1579,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     carModeOpen,
     downloadedTrackIds,
     isDownloading,
+    isInstallable,
+    notificationPermission,
   ]);
 
   return (
