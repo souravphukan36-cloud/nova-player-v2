@@ -65,31 +65,74 @@ configurations.all {
   console.log('Updated build.gradle for Java 21 and Kotlin successfully.');
 }
 
-// 4. Generate Android mipmap launcher icons from user logo if android directory exists
-const androidResPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
-const logoSrcPath = path.join(__dirname, '..', 'src', 'assets', 'images', 'nova_app_logo_1789977858779.jpg');
+// 4. Generate Android mipmap launcher icons and adaptive icon files from user logo
+async function generateAndroidIcons() {
+  const androidResPath = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
+  const logoSrcPath = path.join(__dirname, '..', 'src', 'assets', 'images', 'nova_app_logo_1789977858779.jpg');
 
-if (fs.existsSync(androidResPath) && fs.existsSync(logoSrcPath)) {
-  try {
-    const sharp = require('sharp');
-    const densities = [
-      { dir: 'mipmap-mdpi', size: 48 },
-      { dir: 'mipmap-hdpi', size: 72 },
-      { dir: 'mipmap-xhdpi', size: 96 },
-      { dir: 'mipmap-xxhdpi', size: 144 },
-      { dir: 'mipmap-xxxhdpi', size: 192 },
-    ];
-    for (const d of densities) {
-      const targetDir = path.join(androidResPath, d.dir);
-      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-      sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher.png')).catch(() => {});
-      sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher_round.png')).catch(() => {});
-      // In modern Android (Android 8 through 15), ic_launcher_foreground is required for phone home screen launcher icon!
-      sharp(logoSrcPath).resize(Math.round(d.size * 1.5), Math.round(d.size * 1.5)).png().toFile(path.join(targetDir, 'ic_launcher_foreground.png')).catch(() => {});
+  if (fs.existsSync(androidResPath) && fs.existsSync(logoSrcPath)) {
+    try {
+      const sharp = require('sharp');
+      const densities = [
+        { dir: 'mipmap-mdpi', size: 48, fg: 108 },
+        { dir: 'mipmap-hdpi', size: 72, fg: 162 },
+        { dir: 'mipmap-xhdpi', size: 96, fg: 216 },
+        { dir: 'mipmap-xxhdpi', size: 144, fg: 324 },
+        { dir: 'mipmap-xxxhdpi', size: 192, fg: 432 },
+      ];
+
+      for (const d of densities) {
+        const targetDir = path.join(androidResPath, d.dir);
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        // Legacy / Standard icons
+        await sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher.png'));
+        await sharp(logoSrcPath).resize(d.size, d.size).png().toFile(path.join(targetDir, 'ic_launcher_round.png'));
+
+        // Adaptive Icon Foreground: 108dp canvas with safe zone padding so logo sits prominently in center
+        await sharp(logoSrcPath)
+          .resize(Math.round(d.fg * 0.72), Math.round(d.fg * 0.72))
+          .extend({
+            top: Math.round(d.fg * 0.14),
+            bottom: Math.round(d.fg * 0.14),
+            left: Math.round(d.fg * 0.14),
+            right: Math.round(d.fg * 0.14),
+            background: { r: 0, g: 0, b: 0, alpha: 0 }
+          })
+          .resize(d.fg, d.fg)
+          .png()
+          .toFile(path.join(targetDir, 'ic_launcher_foreground.png'));
+      }
+
+      // 5. Ensure values/ic_launcher_background.xml exists
+      const valuesDir = path.join(androidResPath, 'values');
+      if (!fs.existsSync(valuesDir)) fs.mkdirSync(valuesDir, { recursive: true });
+      fs.writeFileSync(path.join(valuesDir, 'ic_launcher_background.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#000000</color>
+</resources>
+`, 'utf8');
+
+      // 6. Ensure mipmap-anydpi-v26 contains adaptive icon definitions for Android 8 - 15
+      const anydpiDir = path.join(androidResPath, 'mipmap-anydpi-v26');
+      if (!fs.existsSync(anydpiDir)) fs.mkdirSync(anydpiDir, { recursive: true });
+      const adaptiveXml = `<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
+`;
+      fs.writeFileSync(path.join(anydpiDir, 'ic_launcher.xml'), adaptiveXml, 'utf8');
+      fs.writeFileSync(path.join(anydpiDir, 'ic_launcher_round.xml'), adaptiveXml, 'utf8');
+
+      console.log('Android adaptive mipmap launcher icons and XML generated successfully from official NOVA logo.');
+    } catch (err) {
+      console.log('Mipmap generation note:', err);
     }
-    console.log('Android mipmap launcher icons populated from user logo.');
-  } catch (err) {
-    console.log('Mipmap generation note:', err);
   }
 }
+
+generateAndroidIcons().then(() => {
+  console.log('prepare-android.cjs execution completed.');
+});
 

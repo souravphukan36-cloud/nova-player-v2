@@ -16,7 +16,8 @@ import {
   Check,
   Bell,
   X,
-  Star
+  Star,
+  Headphones
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
@@ -37,6 +38,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
     toggleFavorite,
     setNowPlayingOpen,
     setCustomizerOpen,
+    setIEMModalOpen,
+    iemSoundStage,
     settings,
   } = usePlayer();
 
@@ -147,6 +150,19 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
             className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all active:scale-95"
           >
             Albums
+          </button>
+          <button
+            id="btn-iem-stage-home"
+            onClick={() => setIEMModalOpen(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 shrink-0 ${
+              iemSoundStage.enabled
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'bg-white/10 hover:bg-white/15 text-white/80 hover:text-white'
+            }`}
+            title="Open In-Ear Monitor (IEM) Audiophile Stage DSP"
+          >
+            <Headphones className="w-3.5 h-3.5 text-emerald-400" />
+            <span>IEM Stage</span>
           </button>
         </div>
 

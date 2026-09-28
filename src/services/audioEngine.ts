@@ -327,7 +327,6 @@ class AudioEngine {
           existing.setAttribute('webkit-playsinline', 'true');
           existing.setAttribute('x-webkit-airplay', 'allow');
           existing.setAttribute('controlsList', 'nodownload noplaybackrate');
-          existing.crossOrigin = 'anonymous';
           // Style as invisible but layout-rendered so Android MediaSession controller activates lock screen controls
           existing.style.position = 'fixed';
           existing.style.bottom = '0px';
@@ -339,10 +338,13 @@ class AudioEngine {
           existing.style.zIndex = '-9999';
           document.body.appendChild(existing);
         }
+        // Ensure no CORS restrictions block audio playback from external CDNs, proxies, or blobs
+        existing.removeAttribute('crossorigin');
         this.audioElement = existing;
       } else {
         this.audioElement = new Audio();
       }
+      this.audioElement.removeAttribute('crossorigin');
       this.audioElement.preload = 'auto';
 
       this.audioElement.addEventListener('timeupdate', () => {
@@ -522,8 +524,10 @@ class AudioEngine {
         ? `${window.location.origin}${streamUrl}`
         : streamUrl;
 
+      this.audioElement.removeAttribute('crossorigin');
       if (this.audioElement.src !== targetUrl) {
         this.audioElement.src = targetUrl;
+        this.audioElement.load();
       }
 
       if (startTime > 0 && !isNaN(startTime)) {

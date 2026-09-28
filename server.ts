@@ -41,7 +41,44 @@ function detectAudioContentType(filePath: string): string {
   return filePath.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4';
 }
 
+const LOCAL_AUDIO_MAP: Record<string, string> = {
+  'CQACAgUAAyEFAATTJi5KAAMEaqBCEBwPUmlyqTcWfoipPLVtC7kAAjc3AAL02QABVW7eevC-lMmhPQQ': 'arz-kiya-hai.mp3',
+  'CQACAgUAAyEFAATTJi5KAAMFaqBCLba3K3viyRgu4Na7ln7vukQAAjg3AAL02QABVQevV5-sQ44CPQQ': 'aaoge-tum-kabhi.wav',
+  'CQACAgUAAyEFAATTJi5KAAMHaqA-VHWYNBEJ_i_dtgh3LG1RjWQAAsAhAAKZfgFVbci9y_dlFhM9BA': 'choo-lo.wav',
+  'CQACAgUAAyEFAATTJi5KAAMLaqEdV_mpw1IVSY0lKkmjEGXmKNgAAkkiAAKZfglVTyWcug4Tcw09BA': 'kaahe-mose.wav',
+  'CQACAgUAAyEFAATTJi5KAAMMaqFGvSgVq_6LXDs30BNu8iVQ3R0AAqsiAAKZfglV4rXjZQ0AAd0ePQQ': 'raabta.wav',
+  'CQACAgUAAyEFAATTJi5KAAMNaqJrxdBQOWhCzraO4FYFiM1HUisAAmkkAAJ43xhVYlNm0ZoiGFY9BA': 'somewhere-only-we-know.wav',
+  'CQACAgUAAyEFAATTJi5KAAMOaqMDbAUB0e5k6cBY53pwmcm3BiwAAmMmAAJ43xhVxq0mPZaPE2M9BA': 'jo-tum-mere-ho.wav',
+  'CQACAgUAAyEFAATTJi5KAAMWaqVQiNi6tERj-EPLcypjLCrbFrwAAtMgAAJSFSlVOlDM6c3xj1U9BA': 'dil-jhoom.wav',
+  'CQACAgUAAyEFAATTJi5KAAMXaqVdbmnRLq_no5gt3551AAF-tzh8AAL_IAACUhUpVV_Toj7i_CxKPQQ': 'halka-halka-suroor.wav',
+  'CQACAgUAAyEFAATTJi5KAAMoaqZjza0SgOWhP0ZLPgvjOlIFFwADFSEAAuafMVXIdun-EpLwaz0E': 'qismat-badaldi-vekhi.wav',
+  'CQACAgUAAyEFAATTJi5KAAMPaqdEbjkP-BkClAG8uhUChRhEYboAAioiAAJ43yBVc65XGg18R5g9BA': 'surili-akhiyon-wale.wav',
+  'CQACAgUAAyEFAATTJi5KAAMRaqdEciBcq_Oi6ITxKHZivW1iJFIAAmYiAAJ43yBVJY3mvGlpvE89BA': 'bairan.wav',
+  'CQACAgUAAyEFAATTJi5KAAMSaqdEc68fEiSv-jsP130j9ZTGCuMAAgshAAJSFSFVxnJpxksfpto9BA': 'faasle.wav',
+  'CQACAgUAAyEFAATTJi5KAAMUaqdEdKDph_plO7RTOtiXusbUqdoAAlwhAAJSFSFVOggH_w3abN89BA': 'come-and-get-your-love.wav',
+  'CQACAgUAAyEFAATTJi5KAAMVaqdEdMsNp8Vug3QuEDGvOLI0dm0AAjQfAAJSFSlVAvE-l__Lo4w9BA': 'the-last-letter.wav',
+  'CQACAgUAAyEFAATTJi5KAAMpaqZwvPiQMJL6J98RQ3pt-xzbTtYAAj4iAALmnzlVYvW0CUMSrJU9BA': 'black-star.wav',
+  'CQACAgUAAyEFAATTJi5KAAMraqg_Q81zYqQjIIcB8OUFr672NkoAAl4hAAJOMkhVtiQNHA_O3Uo9BA': 'muntazir.wav'
+};
+
 function findAudioCacheFile(fileId?: string, filePath?: string): { path: string; contentType: string } | null {
+  // 1. Direct local master audio check in public/audio/ (100% reliable, zero network latency)
+  if (fileId && LOCAL_AUDIO_MAP[fileId]) {
+    const filename = LOCAL_AUDIO_MAP[fileId];
+    const candidatePaths = [
+      path.join(AUDIO_CACHE_DIR, filename),
+      path.join(process.cwd(), '.cache', 'audio', filename),
+      path.join(process.cwd(), 'public', 'audio', filename),
+      path.join(process.cwd(), 'dist', 'audio', filename)
+    ];
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        return { path: p, contentType: p.endsWith('.mp3') ? 'audio/mpeg' : (p.endsWith('.wav') ? 'audio/wav' : 'audio/mp4') };
+      }
+    }
+  }
+
+  // 2. Check disk cache in .cache/audio/
   const ids: string[] = [];
   if (fileId) ids.push(fileId);
   if (filePath) ids.push(filePath);

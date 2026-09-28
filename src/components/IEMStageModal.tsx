@@ -101,9 +101,9 @@ export const IEMStageModal: React.FC = () => {
   const accent = iemSoundStage.enabled ? currentCurve.color : '#64748B';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-150 select-none">
       <div 
-        className="w-full sm:max-w-lg bg-[#08090D] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 duration-300"
+        className="w-full sm:max-w-lg bg-[#08090D] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 duration-150"
       >
         {/* Top Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/10 bg-[#0C0E14]">

@@ -44,10 +44,9 @@ jobs:
 
       - name: Setup Capacitor Android
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
           npx cap add android || true
-          node scripts/prepare-android.cjs
           npx cap sync android
+          node scripts/prepare-android.cjs
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3

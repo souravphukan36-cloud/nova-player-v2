@@ -393,7 +393,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         localStorage.setItem('nova_iem_soundstage', JSON.stringify(next));
       } catch {}
-      audioEngine.applyIEMSoundStage(next);
       return next;
     });
   };
@@ -651,30 +650,35 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const cloudIds = new Set(cloudTracks.map(c => c.id));
             const filteredLocal = localTracks.filter(l => !cloudIds.has(l.id));
             const merged = [...cloudTracks, ...filteredLocal];
+
+            // Only update state if tracks actually changed to prevent 20-second render blocking
+            if (
+              merged.length === prev.length &&
+              merged.every((t, idx) => t.id === prev[idx]?.id && t.title === prev[idx]?.title && t.audioUrl === prev[idx]?.audioUrl)
+            ) {
+              return prev;
+            }
+
             try {
               localStorage.setItem('nova_tracks', JSON.stringify(merged.map(({ file, ...rest }) => rest)));
             } catch {}
             return merged;
           });
 
-          // Keep queue up-to-date with new cloud tracks
+          // Keep queue up-to-date with new cloud tracks only if new tracks were added
           setQueue(prev => {
             const queueIds = new Set(prev.map(t => t.id));
             const toAdd = cloudTracks.filter(c => !queueIds.has(c.id));
             if (toAdd.length > 0) {
               return [...prev, ...toAdd];
             }
-            return prev.map(p => {
-              const fresh = cloudTracks.find(c => c.id === p.id);
-              return fresh ? { ...p, ...fresh } : p;
-            });
+            return prev;
           });
 
-          // Ensure current track is refreshed with fresh coverArt, audioUrl and singer details
+          // Set initial track if none is set
           setCurrentTrack(prev => {
             if (!prev) return cloudTracks[0];
-            const fresh = cloudTracks.find(c => c.id === prev.id || c.title.toLowerCase().trim() === prev.title.toLowerCase().trim());
-            return fresh ? { ...prev, ...fresh } : prev;
+            return prev;
           });
         }
       } catch (err) {
@@ -702,7 +706,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const localTracks = prev.filter(t => t.file || !t.id.startsWith('tg-'));
           const cloudIds = new Set(updatedList.map(c => c.id));
           const filteredLocal = localTracks.filter(l => !cloudIds.has(l.id));
-          return [...updatedList, ...filteredLocal];
+          const merged = [...updatedList, ...filteredLocal];
+          if (
+            merged.length === prev.length &&
+            merged.every((t, idx) => t.id === prev[idx]?.id && t.title === prev[idx]?.title)
+          ) {
+            return prev;
+          }
+          return merged;
         });
         setQueue(prev => {
           const queueIds = new Set(prev.map(t => t.id));
@@ -713,8 +724,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
     window.addEventListener('nova-cloud-tracks-updated', handleTracksUpdated);
 
-    // Periodic background check every 6 seconds
-    const interval = setInterval(syncTelegramCloud, 6000);
+    // Periodic gentle background check every 45 seconds (focus/visibility triggers immediately)
+    const interval = setInterval(syncTelegramCloud, 45000);
 
     return () => {
       window.removeEventListener('focus', handleFocusOrVisible);
