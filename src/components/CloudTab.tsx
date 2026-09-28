@@ -21,6 +21,7 @@ import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
 import { telegramCloudService, CloudArtistShelf } from '../services/telegramCloudService';
 import { DEFAULT_FALLBACK_ART, getResolvedCoverArt, getTrackCoverArt } from '../utils/dynamicColor';
+import { getApiBaseUrl } from '../services/apiConfig';
 import { NovaStudio } from './NovaStudio';
 
 export const CloudTab: React.FC = () => {
@@ -79,7 +80,8 @@ export const CloudTab: React.FC = () => {
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      const syncRes = await fetch('/api/telegram/sync', {
+      const apiBase = getApiBaseUrl();
+      const syncRes = await fetch(`${apiBase}/api/telegram/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ botToken: channelConfig.botToken, channelId: channelConfig.channelId })

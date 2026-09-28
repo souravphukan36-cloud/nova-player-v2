@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { StatusBar } from './components/StatusBar';
 import { OneUIHeader } from './components/OneUIHeader';
@@ -46,7 +47,151 @@ const MainLayout: React.FC = () => {
 
   const [currentTab, setCurrentTab] = useState<MainTab>('home');
   const [librarySubTab, setLibrarySubTab] = useState<LibrarySubTab>('songs');
-  const { settings, currentTrack } = usePlayer();
+  const [exitToastVisible, setExitToastVisible] = useState(false);
+  const lastBackPressRef = useRef(0);
+
+  const { 
+    settings, 
+    currentTrack,
+    nowPlayingOpen, setNowPlayingOpen,
+    equalizerOpen, setEqualizerOpen,
+    iemModalOpen, setIEMModalOpen,
+    queueOpen, setQueueOpen,
+    lyricsOpen, setLyricsOpen,
+    lockScreenOpen, setLockScreenOpen,
+    notificationShadeOpen, setNotificationShadeOpen,
+    sleepTimerOpen, setSleepTimerOpen,
+    scannerOpen, setScannerOpen,
+    customizerOpen, setCustomizerOpen,
+    carModeOpen, setCarModeOpen,
+  } = usePlayer();
+
+  // One UI Native Android Hardware Back Button & Gesture Navigation Handler
+  const handleBackNavigation = useCallback(() => {
+    // 1. First priority: Close any open modal or drawer in order
+    if (isAdminRoute) {
+      window.history.pushState({}, '', '/');
+      setIsAdminRoute(false);
+      return true;
+    }
+    if (iemModalOpen) {
+      setIEMModalOpen(false);
+      return true;
+    }
+    if (equalizerOpen) {
+      setEqualizerOpen(false);
+      return true;
+    }
+    if (queueOpen) {
+      setQueueOpen(false);
+      return true;
+    }
+    if (lyricsOpen) {
+      setLyricsOpen(false);
+      return true;
+    }
+    if (customizerOpen) {
+      setCustomizerOpen(false);
+      return true;
+    }
+    if (scannerOpen) {
+      setScannerOpen(false);
+      return true;
+    }
+    if (sleepTimerOpen) {
+      setSleepTimerOpen(false);
+      return true;
+    }
+    if (carModeOpen) {
+      setCarModeOpen(false);
+      return true;
+    }
+    if (nowPlayingOpen) {
+      setNowPlayingOpen(false);
+      return true;
+    }
+    if (notificationShadeOpen) {
+      setNotificationShadeOpen(false);
+      return true;
+    }
+    if (lockScreenOpen) {
+      setLockScreenOpen(false);
+      return true;
+    }
+
+    // 2. Second priority: If on a sub-tab (library, cloud, search, settings), return to Home tab
+    if (currentTab !== 'home') {
+      setCurrentTab('home');
+      return true;
+    }
+
+    // 3. User is on Home screen with no modals open: double-press back to exit
+    const now = Date.now();
+    if (now - lastBackPressRef.current < 2000) {
+      try {
+        CapacitorApp.exitApp();
+      } catch {}
+      return false;
+    } else {
+      lastBackPressRef.current = now;
+      setExitToastVisible(true);
+      setTimeout(() => setExitToastVisible(false), 2000);
+      return true;
+    }
+  }, [
+    isAdminRoute,
+    iemModalOpen,
+    equalizerOpen,
+    queueOpen,
+    lyricsOpen,
+    customizerOpen,
+    scannerOpen,
+    sleepTimerOpen,
+    carModeOpen,
+    nowPlayingOpen,
+    notificationShadeOpen,
+    lockScreenOpen,
+    currentTab,
+    setIEMModalOpen,
+    setEqualizerOpen,
+    setQueueOpen,
+    setLyricsOpen,
+    setCustomizerOpen,
+    setScannerOpen,
+    setSleepTimerOpen,
+    setCarModeOpen,
+    setNowPlayingOpen,
+    setNotificationShadeOpen,
+    setLockScreenOpen
+  ]);
+
+  useEffect(() => {
+    let listener: any = null;
+
+    try {
+      CapacitorApp.addListener('backButton', () => {
+        handleBackNavigation();
+      }).then(l => {
+        listener = l;
+      }).catch(() => {});
+    } catch {}
+
+    const handlePop = (e: PopStateEvent) => {
+      e.preventDefault();
+      const consumed = handleBackNavigation();
+      if (consumed) {
+        window.history.pushState({ page: 'nova' }, '', window.location.href);
+      }
+    };
+
+    window.history.pushState({ page: 'nova' }, '', window.location.href);
+    window.addEventListener('popstate', handlePop);
+
+    return () => {
+      if (listener?.remove) listener.remove();
+      window.removeEventListener('popstate', handlePop);
+    };
+  }, [handleBackNavigation]);
 
   // If user navigates to /admin, show full-page Admin Web Portal
   if (isAdminRoute) {
@@ -183,6 +328,19 @@ const MainLayout: React.FC = () => {
       <CustomizerModal />
       <CarModeModal />
       <IEMStageModal />
+
+      {/* 7. Samsung One UI Double-Back Exit Toast */}
+      {exitToastVisible && (
+        <div 
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[250] px-5 py-2.5 rounded-full shadow-2xl border border-white/15 text-xs font-bold tracking-wide pointer-events-none animate-in fade-in zoom-in-95 duration-150"
+          style={{
+            backgroundColor: isLight ? 'rgba(0,0,0,0.85)' : 'rgba(28,30,38,0.95)',
+            color: '#FFFFFF'
+          }}
+        >
+          Press back again to exit
+        </div>
+      )}
     </div>
   );
 };

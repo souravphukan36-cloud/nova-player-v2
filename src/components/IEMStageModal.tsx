@@ -12,7 +12,8 @@ import {
   ShieldCheck, 
   Sliders,
   Layers,
-  Activity
+  Activity,
+  X
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { IEMTargetCurve } from '../types';
@@ -101,12 +102,18 @@ export const IEMStageModal: React.FC = () => {
   const accent = iemSoundStage.enabled ? currentCurve.color : '#64748B';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-150 select-none">
+    <div 
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/85 animate-in fade-in duration-100 select-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setIEMModalOpen(false);
+      }}
+    >
       <div 
-        className="w-full sm:max-w-lg bg-[#08090D] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 duration-150"
+        className="w-full sm:max-w-lg bg-[#0C0E14] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-150"
+        style={{ transform: 'translateZ(0)' }}
       >
         {/* Top Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/10 bg-[#0C0E14]">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/10 bg-[#10121A]">
           <div className="flex items-center gap-3">
             <div 
               className="w-10 h-10 rounded-2xl flex items-center justify-center transition-colors shadow-lg"
@@ -120,41 +127,69 @@ export const IEMStageModal: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-white tracking-tight">IEM Audiophile Stage</h3>
-                {iemSoundStage.enabled && (
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse">
-                    ACTIVE DSP
+                {iemSoundStage.enabled ? (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    DSP ACTIVE
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/10 text-white/50">
+                    BYPASS
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-white/50">Dedicated In-Ear Monitor Engine • Separate from EQ</p>
+              <p className="text-[11px] text-white/50">In-Ear Monitor Hardware DSP Engine</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Master Toggle Switch */}
-            <button
-              onClick={() => updateIEMSoundStage({ enabled: !iemSoundStage.enabled })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                iemSoundStage.enabled ? 'bg-emerald-500' : 'bg-white/15'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  iemSoundStage.enabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
             <button
               onClick={() => setIEMModalOpen(false)}
-              className="p-1.5 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 active:scale-90 text-white/70 hover:text-white transition-all"
+              title="Close"
             >
-              <ChevronDown className="w-5 h-5" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scroll">
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scroll">
+
+          {/* Master Power Toggle Button (Full-width, large touch target) */}
+          <button
+            onClick={() => updateIEMSoundStage({ enabled: !iemSoundStage.enabled })}
+            className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between active:scale-[0.98] ${
+              iemSoundStage.enabled
+                ? 'bg-emerald-500/15 border-emerald-500/40 shadow-lg'
+                : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3 text-left">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                iemSoundStage.enabled ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 text-white/40'
+              }`}>
+                <Headphones className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-black text-white">
+                  {iemSoundStage.enabled ? 'IEM DSP IS ACTIVE' : 'IEM DSP IS TURNED OFF'}
+                </div>
+                <div className="text-[10px] text-white/50">
+                  {iemSoundStage.enabled ? 'Acoustic seal, pinna gain & crossfeed enabled' : 'Tap here to instantly activate In-Ear Stage'}
+                </div>
+              </div>
+            </div>
+
+            <div className={`relative inline-flex h-7 w-13 items-center rounded-full transition-colors ${
+              iemSoundStage.enabled ? 'bg-emerald-500' : 'bg-white/20'
+            }`}>
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
+                  iemSoundStage.enabled ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </div>
+          </button>
 
           {/* Quick Notice Banner */}
           <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex items-start gap-3">

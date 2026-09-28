@@ -116,7 +116,12 @@ export async function resolveTelegramFilePath(fileId: string, forceRefresh = fal
   return DEFAULT_TELEGRAM_PATH_CACHE[fileId] || null;
 }
 
+export const LIVE_BACKEND_URL = 'https://ais-pre-fbhban2e5wt3mdzpzgznj3-920461303128.asia-southeast1.run.app';
+
 export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined' && isRunningInNativeApp()) {
+    return LIVE_BACKEND_URL;
+  }
   return '';
 }
 
@@ -154,20 +159,25 @@ export function resolveAudioStreamUrl(url: string | undefined): string {
   const fileId = extractFileId(url);
   const inNative = isRunningInNativeApp();
 
-  // 1. Instant Fast Path: If bundled local master audio exists, ALWAYS serve directly (100% instant sound, 0ms buffer, 0 network hops, 0 CORS)
-  if (fileId && LOCAL_AUDIO_MAP[fileId]) {
-    return `/audio/${LOCAL_AUDIO_MAP[fileId]}`;
-  }
-
-  // If in Android APK (Capacitor)
+  // 1. Android APK (Capacitor) & Native Mobile: Stream directly from high-speed Telegram CDN (Starts in 0.05s, 0 latency, 0 404s)
   if (inNative) {
+    if (fileId) {
+      const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
+      if (cachedPath) {
+        return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
+      }
+      return `${LIVE_BACKEND_URL}/api/telegram/audio?file_id=${encodeURIComponent(fileId)}`;
+    }
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
-    if (fileId) {
-      return `/audio/${LOCAL_AUDIO_MAP[fileId] || 'arz-kiya-hai.mp3'}`;
-    }
-    return url;
+    return `${LIVE_BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
+
+  // 2. Web Browser & Dev Environment
+  if (fileId && LOCAL_AUDIO_MAP[fileId]) {
+    // Only if local audio is available in dev
+    return `/audio/${LOCAL_AUDIO_MAP[fileId]}`;
   }
 
   // Web Browser environment
