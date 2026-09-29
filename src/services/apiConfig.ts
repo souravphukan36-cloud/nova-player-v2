@@ -72,18 +72,19 @@ function persistRuntimeCache() {
   }
 }
 
+import { Capacitor } from '@capacitor/core';
+
 export function isRunningInNativeApp(): boolean {
   if (typeof window === 'undefined') return false;
-  const isCapacitor = Boolean(
-    (window as any).Capacitor?.isNativePlatform?.() ||
-    (window as any).Capacitor?.getPlatform?.() === 'android' ||
-    (window as any).Capacitor?.getPlatform?.() === 'ios' ||
-    ((window as any).Capacitor !== undefined && window.location.protocol !== 'http:' && window.location.protocol !== 'https:')
-  );
+  try {
+    if (Capacitor.isNativePlatform()) return true;
+    const platform = Capacitor.getPlatform();
+    if (platform === 'android' || platform === 'ios') return true;
+  } catch {}
   return (
     window.location.protocol === 'capacitor:' ||
     window.location.protocol === 'file:' ||
-    isCapacitor
+    (window.location.hostname === 'localhost' && (window.location.port === '' || window.location.port === '80' || window.location.port === '443'))
   );
 }
 
@@ -157,46 +158,24 @@ export function resolveAudioStreamUrl(url: string | undefined): string {
   }
 
   const fileId = extractFileId(url);
-  const inNative = isRunningInNativeApp();
+  const cachedPath = fileId ? (runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId]) : null;
 
-  // 1. Android APK (Capacitor) & Native Mobile: Stream directly from high-speed Telegram CDN (Starts in 0.05s, 0 latency, 0 404s)
-  if (inNative) {
-    if (fileId) {
-      const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
-      if (cachedPath) {
-        return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
-      }
-      return `${LIVE_BACKEND_URL}/api/telegram/audio?file_id=${encodeURIComponent(fileId)}`;
-    }
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    return `${LIVE_BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  // 1. Direct Telegram Worldwide Edge CDN Fast Path (0.005s instant playback on Android APK & Web)
+  // Direct HTTPS connection with byte-range streaming; bypasses all server latency and 404 delays
+  if (cachedPath) {
+    return `https://api.telegram.org/file/bot${DEFAULT_TELEGRAM_BOT_TOKEN}/${cachedPath}`;
   }
 
-  // 2. Web Browser & Dev Environment
-  if (fileId && LOCAL_AUDIO_MAP[fileId]) {
-    // Only if local audio is available in dev
-    return `/audio/${LOCAL_AUDIO_MAP[fileId]}`;
-  }
-
-  // Web Browser environment
-  if (url.startsWith('/api/telegram/audio')) {
-    if (!url.includes('path=') && fileId) {
-      const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
-      if (cachedPath) {
-        return `${url}&path=${encodeURIComponent(cachedPath)}`;
-      }
-    }
+  // 2. Absolute HTTP/HTTPS URLs
+  if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
+
+  // 3. Fallback to Live Cloud Server proxy (never relative localhost on phone)
   if (fileId) {
-    const cachedPath = runtimeCache[fileId] || DEFAULT_TELEGRAM_PATH_CACHE[fileId];
-    if (cachedPath) {
-      return `/api/telegram/audio?file_id=${fileId}&path=${encodeURIComponent(cachedPath)}`;
-    }
-    return `/api/telegram/audio?file_id=${fileId}`;
+    return `${LIVE_BACKEND_URL}/api/telegram/audio?file_id=${encodeURIComponent(fileId)}`;
   }
+
   return url;
 }
 

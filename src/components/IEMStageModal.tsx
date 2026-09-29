@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { IEMTargetCurve } from '../types';
+import { audioEngine } from '../services/audioEngine';
 
 interface TargetCurveOption {
   id: IEMTargetCurve;
@@ -95,11 +96,23 @@ export const IEMStageModal: React.FC = () => {
   } = usePlayer();
 
   const [abBypass, setAbBypass] = React.useState(false);
+  const [localEnabled, setLocalEnabled] = React.useState(iemSoundStage.enabled);
+
+  React.useEffect(() => {
+    setLocalEnabled(iemSoundStage.enabled);
+  }, [iemSoundStage.enabled]);
+
+  const handleMasterToggle = () => {
+    const next = !localEnabled;
+    setLocalEnabled(next);
+    audioEngine.setIEMEnabled(next);
+    updateIEMSoundStage({ enabled: next });
+  };
 
   if (!iemModalOpen) return null;
 
   const currentCurve = TARGET_CURVES.find(c => c.id === iemSoundStage.targetCurve) || TARGET_CURVES[0];
-  const accent = iemSoundStage.enabled ? currentCurve.color : '#64748B';
+  const accent = localEnabled ? currentCurve.color : '#64748B';
 
   return (
     <div 
@@ -118,16 +131,16 @@ export const IEMStageModal: React.FC = () => {
             <div 
               className="w-10 h-10 rounded-2xl flex items-center justify-center transition-colors shadow-lg"
               style={{ 
-                backgroundColor: iemSoundStage.enabled ? `${currentCurve.color}25` : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${iemSoundStage.enabled ? currentCurve.color : 'rgba(255,255,255,0.1)'}`
+                backgroundColor: localEnabled ? `${currentCurve.color}25` : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${localEnabled ? currentCurve.color : 'rgba(255,255,255,0.1)'}`
               }}
             >
-              <Headphones className="w-5 h-5" style={{ color: iemSoundStage.enabled ? currentCurve.color : '#94A3B8' }} />
+              <Headphones className="w-5 h-5" style={{ color: localEnabled ? currentCurve.color : '#94A3B8' }} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-white tracking-tight">IEM Audiophile Stage</h3>
-                {iemSoundStage.enabled ? (
+                {localEnabled ? (
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     DSP ACTIVE
                   </span>
@@ -157,35 +170,35 @@ export const IEMStageModal: React.FC = () => {
 
           {/* Master Power Toggle Button (Full-width, large touch target) */}
           <button
-            onClick={() => updateIEMSoundStage({ enabled: !iemSoundStage.enabled })}
+            onClick={handleMasterToggle}
             className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between active:scale-[0.98] ${
-              iemSoundStage.enabled
+              localEnabled
                 ? 'bg-emerald-500/15 border-emerald-500/40 shadow-lg'
                 : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-3 text-left">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                iemSoundStage.enabled ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 text-white/40'
+                localEnabled ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 text-white/40'
               }`}>
                 <Headphones className="w-4 h-4" />
               </div>
               <div>
                 <div className="text-xs font-black text-white">
-                  {iemSoundStage.enabled ? 'IEM DSP IS ACTIVE' : 'IEM DSP IS TURNED OFF'}
+                  {localEnabled ? 'IEM DSP IS ACTIVE' : 'IEM DSP IS TURNED OFF'}
                 </div>
                 <div className="text-[10px] text-white/50">
-                  {iemSoundStage.enabled ? 'Acoustic seal, pinna gain & crossfeed enabled' : 'Tap here to instantly activate In-Ear Stage'}
+                  {localEnabled ? 'Acoustic seal, pinna gain & crossfeed enabled' : 'Tap here to instantly activate In-Ear Stage'}
                 </div>
               </div>
             </div>
 
             <div className={`relative inline-flex h-7 w-13 items-center rounded-full transition-colors ${
-              iemSoundStage.enabled ? 'bg-emerald-500' : 'bg-white/20'
+              localEnabled ? 'bg-emerald-500' : 'bg-white/20'
             }`}>
               <span
                 className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
-                  iemSoundStage.enabled ? 'translate-x-7' : 'translate-x-1'
+                  localEnabled ? 'translate-x-7' : 'translate-x-1'
                 }`}
               />
             </div>

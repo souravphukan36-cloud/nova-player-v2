@@ -874,7 +874,25 @@ class AudioEngine {
     }
   }
 
+  private lastIEMState: IEMSoundStageState | null = null;
+
+  public setIEMEnabled(enabled: boolean) {
+    if (this.lastIEMState) {
+      this.applyIEMSoundStage({ ...this.lastIEMState, enabled });
+    } else {
+      this.applyIEMSoundStage({
+        enabled,
+        targetCurve: 'harman-in-ear',
+        crossfeed: 'studio',
+        subBassRumble: 60,
+        trebleAir: 50,
+        driverImpedance: 'standard',
+      });
+    }
+  }
+
   public applyIEMSoundStage(iem: IEMSoundStageState) {
+    this.lastIEMState = iem;
     if (!this.ctx) {
       this.init();
     }
@@ -882,12 +900,12 @@ class AudioEngine {
     const now = this.ctx.currentTime;
 
     if (!iem.enabled) {
-      this.iemSubBass.gain.setTargetAtTime(0, now, 0.04);
-      this.iemTargetFilter1.gain.setTargetAtTime(0, now, 0.04);
-      this.iemTargetFilter2.gain.setTargetAtTime(0, now, 0.04);
-      this.iemTrebleAir.gain.setTargetAtTime(0, now, 0.04);
-      this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
-      this.crossfeedFilter.frequency.setTargetAtTime(20000, now, 0.04);
+      this.iemSubBass.gain.setValueAtTime(0, now);
+      this.iemTargetFilter1.gain.setValueAtTime(0, now);
+      this.iemTargetFilter2.gain.setValueAtTime(0, now);
+      this.iemTrebleAir.gain.setValueAtTime(0, now);
+      this.iemGain.gain.setValueAtTime(1.0, now);
+      this.crossfeedFilter.frequency.setValueAtTime(20000, now);
       return;
     }
 

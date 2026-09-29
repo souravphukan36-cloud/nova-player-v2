@@ -23,6 +23,7 @@ import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
 import { isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
 import { DailyLivePoster } from './DailyLivePoster';
+import { audioEngine } from '../services/audioEngine';
 
 interface HomeTabProps {
   onNavigateToLibrary: (subTab?: string) => void;
@@ -40,6 +41,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
     setCustomizerOpen,
     setIEMModalOpen,
     iemSoundStage,
+    updateIEMSoundStage,
     settings,
   } = usePlayer();
 
@@ -151,19 +153,33 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
           >
             Albums
           </button>
-          <button
-            id="btn-iem-stage-home"
-            onClick={() => setIEMModalOpen(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 shrink-0 ${
-              iemSoundStage.enabled
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                : 'bg-white/10 hover:bg-white/15 text-white/80 hover:text-white'
-            }`}
-            title="Open In-Ear Monitor (IEM) Audiophile Stage DSP"
-          >
-            <Headphones className="w-3.5 h-3.5 text-emerald-400" />
-            <span>IEM Stage</span>
-          </button>
+          {/* Instant 1-Tap IEM Stage Quick Toggle */}
+          <div className="flex items-center rounded-full border border-white/15 bg-white/5 overflow-hidden shrink-0 shadow-sm">
+            <button
+              id="btn-iem-stage-home"
+              onClick={() => setIEMModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white/90 hover:text-white transition-colors"
+              title="Open In-Ear Monitor (IEM) Audiophile Stage DSP Settings"
+            >
+              <Headphones className="w-3.5 h-3.5 text-emerald-400" />
+              <span>IEM Stage</span>
+            </button>
+            <button
+              onClick={() => {
+                const next = !iemSoundStage.enabled;
+                audioEngine.setIEMEnabled(next);
+                updateIEMSoundStage({ enabled: next });
+              }}
+              className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all border-l border-white/10 active:scale-95 ${
+                iemSoundStage.enabled 
+                  ? 'bg-emerald-500 text-white font-extrabold shadow-inner' 
+                  : 'bg-white/10 text-white/60 hover:text-white'
+              }`}
+              title="Quick Toggle IEM DSP On/Off (0.001s instant)"
+            >
+              {iemSoundStage.enabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
         </div>
 
         {/* Prominent Customizer Button */}

@@ -1,6 +1,6 @@
 import { Track, TelegramChannelConfig } from '../types';
 import { saveTrackWithAudio } from './storageDb';
-import { getApiBaseUrl, resolveAudioStreamUrl, isRunningInNativeApp } from './apiConfig';
+import { getApiBaseUrl, resolveAudioStreamUrl, isRunningInNativeApp, resolveTelegramFilePath } from './apiConfig';
 import { DEFAULT_TRACKS } from '../data/defaultTracks';
 
 const STORAGE_KEY_CONFIG = 'nova_telegram_channel_config';
@@ -282,10 +282,14 @@ class TelegramCloudService {
           if (tgData.ok && Array.isArray(tgData.result)) {
             const newTracks: Track[] = [];
             for (const item of tgData.result) {
-              const msg = item.channel_post || item.message;
+              const msg = item.channel_post || item.message || item.edited_channel_post || item.edited_message;
               if (!msg) continue;
-              const audio = msg.audio || msg.document;
-              if (audio && (audio.mime_type?.startsWith('audio/') || audio.file_name?.match(/\.(mp3|flac|wav|m4a|aac|ogg)$/i))) {
+              const audio = msg.audio || msg.document || msg.voice;
+              if (audio && (
+                audio.mime_type?.startsWith('audio/') || 
+                audio.mime_type === 'application/ogg' ||
+                audio.file_name?.match(/\.(mp3|flac|wav|m4a|aac|ogg|opus|wma)$/i)
+              )) {
                 const fileId = audio.file_id;
                 const fileUniqueId = audio.file_unique_id || '';
                 const exists = this.cloudTracks.some(t => t.audioUrl?.includes(fileId) || (audio.title && t.title.toLowerCase() === audio.title.toLowerCase()));
@@ -294,7 +298,7 @@ class TelegramCloudService {
                   const rawArtist = audio.performer || 'Indie Artist';
                   const thumbFileId = audio.thumbnail?.file_id || audio.thumb?.file_id;
                   const coverArt = thumbFileId
-                    ? `/api/telegram/image?file_id=${thumbFileId}`
+                    ? `https://api.telegram.org/file/bot${token}/${thumbFileId}`
                     : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
 
                   const track: Track = {
@@ -305,7 +309,7 @@ class TelegramCloudService {
                     duration: audio.duration || 240,
                     format: (audio.file_name?.endsWith('.m4a') || audio.mime_type === 'audio/mp4') ? 'm4a' : 'mp3',
                     coverArt,
-                    audioUrl: `/api/telegram/audio?file_id=${fileId}`,
+                    audioUrl: `https://api.telegram.org/file/bot${token}/music/${fileId}`,
                     synthPreset: 'acoustic',
                     genre: 'Telegram Cloud Music',
                     folder: `NOVA Private Library / ${rawArtist}`,
@@ -318,6 +322,14 @@ class TelegramCloudService {
                       { time: 0, text: `♪ ${rawTitle} - ${rawArtist} ♪` }
                     ]
                   };
+
+                  // Asynchronously resolve direct path in background
+                  resolveTelegramFilePath(fileId).then(filePath => {
+                    if (filePath) {
+                      track.audioUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+                    }
+                  }).catch(() => {});
+
                   newTracks.push(track);
                 }
               }

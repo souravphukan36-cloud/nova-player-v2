@@ -1010,57 +1010,58 @@ async function fetchTelegramUpdates(customToken?: string, force = false) {
           // Check if already in dynamicTracks
           const exists = dynamicTracks.some(t => t.fileId === fileId || (audio.title && t.title.toLowerCase() === audio.title.toLowerCase()));
           if (!exists) {
-            // Retrieve file path from Telegram
-            const filePath = await resolveTelegramFilePath(fileId);
-            if (filePath) {
-              fileMimeCache[filePath] = mime;
-              const rawCaption = msg.caption || '';
-              const rawPerformer = audio.performer || (rawCaption.includes('-') ? rawCaption.split('-')[0].trim() : 'Indie Artist');
-              const rawTitle = audio.title || (rawCaption.includes('-') ? rawCaption.split('-')[1].trim() : (rawCaption || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio'));
-              const { title, artist } = cleanAudioMetadata(rawTitle, rawPerformer);
-              const ext = (mime === 'audio/mp4' || audio.file_name?.endsWith('.m4a')) ? 'm4a' : 'mp3';
-
-              // Unique Track ID
-              const uniqueTrackId = `tg-${fileUniqueId || 'song-' + (msg.message_id || Date.now()) || fileId.slice(-12)}`;
-
-              // Cover art: use Telegram audio thumbnail if available, or fallback
-              const thumbFileId = audio.thumbnail?.file_id || audio.thumb?.file_id;
-              let coverArt = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
-              if (thumbFileId) {
-                coverArt = `/api/telegram/image?file_id=${thumbFileId}`;
-              } else if (artist === 'Anuv Jain') {
-                coverArt = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
-              }
-
-              const newTrack = {
-                id: uniqueTrackId,
-                fileId,
-                filePath,
-                title,
-                artist,
-                album: 'NOVA Private Library',
-                duration: audio.duration || 240,
-                format: ext as any,
-                coverArt,
-                audioUrl: `/api/telegram/audio?file_id=${fileId}&path=${encodeURIComponent(filePath)}`,
-                synthPreset: 'acoustic',
-                genre: 'Telegram Cloud Music',
-                folder: `NOVA Private Library / ${artist}`,
-                year: new Date().getFullYear(),
-                bitRate: '320 kbps (Telegram Cloud Master)',
-                playCount: 0,
-                isFavorite: false,
-                dateAdded: (msg.date || Math.floor(Date.now() / 1000)) * 1000,
-                lyrics: [
-                  { time: 0, text: `♪ Now Playing ${title} by ${artist} ♪` }
-                ]
-              };
-
-              dynamicTracks.push(newTrack);
-              hasUpdates = true;
-              console.log(`[Telegram Sync] Discovered new track: "${title}" by "${artist}" (fileId: ${fileId})`);
-              prewarmTrackCache(fileId, filePath);
+            // Retrieve file path from Telegram or fallback
+            let filePath = await resolveTelegramFilePath(fileId);
+            if (!filePath) {
+              filePath = `music/${fileId}`;
             }
+            fileMimeCache[filePath] = mime;
+            const rawCaption = msg.caption || '';
+            const rawPerformer = audio.performer || (rawCaption.includes('-') ? rawCaption.split('-')[0].trim() : 'Indie Artist');
+            const rawTitle = audio.title || (rawCaption.includes('-') ? rawCaption.split('-')[1].trim() : (rawCaption || audio.file_name?.replace(/\.[^/.]+$/, '') || 'Telegram Audio'));
+            const { title, artist } = cleanAudioMetadata(rawTitle, rawPerformer);
+            const ext = (mime === 'audio/mp4' || audio.file_name?.endsWith('.m4a')) ? 'm4a' : 'mp3';
+
+            // Unique Track ID
+            const uniqueTrackId = `tg-${fileUniqueId || 'song-' + (msg.message_id || Date.now()) || fileId.slice(-12)}`;
+
+            // Cover art: use Telegram audio thumbnail if available, or fallback
+            const thumbFileId = audio.thumbnail?.file_id || audio.thumb?.file_id;
+            let coverArt = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+            if (thumbFileId) {
+              coverArt = `/api/telegram/image?file_id=${thumbFileId}`;
+            } else if (artist === 'Anuv Jain') {
+              coverArt = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
+            }
+
+            const newTrack = {
+              id: uniqueTrackId,
+              fileId,
+              filePath,
+              title,
+              artist,
+              album: 'NOVA Private Library',
+              duration: audio.duration || 240,
+              format: ext as any,
+              coverArt,
+              audioUrl: `https://api.telegram.org/file/bot${tokenToUse}/${filePath}`,
+              synthPreset: 'acoustic',
+              genre: 'Telegram Cloud Music',
+              folder: `NOVA Private Library / ${artist}`,
+              year: new Date().getFullYear(),
+              bitRate: '320 kbps (Telegram Cloud Master)',
+              playCount: 0,
+              isFavorite: false,
+              dateAdded: (msg.date || Math.floor(Date.now() / 1000)) * 1000,
+              lyrics: [
+                { time: 0, text: `♪ Now Playing ${title} by ${artist} ♪` }
+              ]
+            };
+
+            dynamicTracks.unshift(newTrack);
+            hasUpdates = true;
+            console.log(`[Telegram Sync] Discovered new track: "${title}" by "${artist}" (fileId: ${fileId})`);
+            prewarmTrackCache(fileId, filePath);
           }
         }
       }
