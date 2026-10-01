@@ -91,7 +91,7 @@ export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> 
 
 class TelegramCloudService {
   private config: TelegramChannelConfig = {
-    botToken: '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg',
+    botToken: '8717270921:AAFxvHPnWWawsJOf8ZONGJXdu-qatjD4X6g',
     channelId: '-1003542494794',
     channelTitle: 'NOVA Private Library',
     isConfigured: true,
@@ -265,7 +265,7 @@ class TelegramCloudService {
     // Direct Telegram fallback ONLY when running in APK/native or custom token configured
     if (isRunningInNativeApp() || Boolean(this.config.botToken)) {
       try {
-        const token = this.config.botToken || '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg';
+        const token = this.config.botToken || '8717270921:AAFxvHPnWWawsJOf8ZONGJXdu-qatjD4X6g';
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 4000);
         let tgRes: Response;

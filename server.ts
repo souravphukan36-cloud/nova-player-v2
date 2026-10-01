@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 
 const PORT = 3000;
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8717270921:AAFxvHPnWWawsJOf8ZONGJXdu-qatjD4X6g';
 const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || '-1003542494794';
 
 // High-speed disk cache directories (Spotify-grade edge caching)

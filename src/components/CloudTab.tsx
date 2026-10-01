@@ -601,7 +601,7 @@ export const CloudTab: React.FC = () => {
                   type="password"
                   value={tempBotToken}
                   onChange={(e) => setTempBotToken(e.target.value)}
-                  placeholder="8846538187:..."
+                  placeholder="8717270921:..."
                   className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-white/30 font-mono"
                 />
               </div>

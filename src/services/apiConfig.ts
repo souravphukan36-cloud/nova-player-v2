@@ -6,7 +6,7 @@
  * - Localhost development / offline clones
  */
 
-export const DEFAULT_TELEGRAM_BOT_TOKEN = '8846538187:AAFEp639xOsFH6zXHoocOJeAzxzDET3cLZg';
+export const DEFAULT_TELEGRAM_BOT_TOKEN = '8717270921:AAFxvHPnWWawsJOf8ZONGJXdu-qatjD4X6g';
 export const DEFAULT_TELEGRAM_CHANNEL_ID = '-1003542494794';
 
 // Pre-verified fast-path mappings for instant startup without network roundtrip
