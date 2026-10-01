@@ -896,6 +896,9 @@ class AudioEngine {
     if (!this.ctx) {
       this.init();
     }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
     if (!this.ctx || !this.iemSubBass || !this.iemTargetFilter1 || !this.iemTargetFilter2 || !this.iemTrebleAir || !this.iemGain || !this.crossfeedFilter) return;
     const now = this.ctx.currentTime;
 

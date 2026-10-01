@@ -393,6 +393,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         localStorage.setItem('nova_iem_soundstage', JSON.stringify(next));
       } catch {}
+      audioEngine.applyIEMSoundStage(next);
       return next;
     });
   };

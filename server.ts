@@ -936,7 +936,7 @@ async function fetchTelegramUpdates(customToken?: string, force = false) {
     return;
   }
 
-  const tokenToUse = customToken || TELEGRAM_BOT_TOKEN;
+  const tokenToUse = (customToken && !customToken.includes('8846538187')) ? customToken : TELEGRAM_BOT_TOKEN;
   isFetchingUpdates = true;
   lastFetchTime = now;
 
@@ -1094,6 +1094,23 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  // Serve bundled acoustic master tracks with byte-range and audio/wav headers
+  app.use('/audio', express.static(path.join(process.cwd(), 'public', 'audio'), {
+    maxAge: '30d',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Accept-Ranges', 'bytes');
+      if (filePath.endsWith('.wav')) {
+        res.setHeader('Content-Type', 'audio/wav');
+      } else if (filePath.endsWith('.mp3')) {
+        res.setHeader('Content-Type', 'audio/mpeg');
+      } else if (filePath.endsWith('.m4a')) {
+        res.setHeader('Content-Type', 'audio/mp4');
+      }
+    }
+  }));
 
   // Serve custom user-uploaded files (album covers & audio tracks)
   app.use('/api/uploads', express.static(UPLOADS_DIR, {

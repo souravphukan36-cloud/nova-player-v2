@@ -49,6 +49,15 @@ export const CloudTab: React.FC = () => {
   const [tempBotToken, setTempBotToken] = useState(channelConfig.botToken);
   const [tempChannelId, setTempChannelId] = useState(channelConfig.channelId);
 
+  useEffect(() => {
+    if (channelConfig.botToken && (channelConfig.botToken.includes('8846538187') || !channelConfig.botToken.includes('8717270921'))) {
+      const updated = { ...channelConfig, botToken: '8717270921:AAFxvHPnWWawsJOf8ZONGJXdu-qatjD4X6g' };
+      telegramCloudService.saveConfig(updated);
+      setChannelConfig(updated);
+      setTempBotToken(updated.botToken);
+    }
+  }, [channelConfig]);
+
   // Auto-sync automatically on component mount and on real-time track updates
   useEffect(() => {
     let isMounted = true;

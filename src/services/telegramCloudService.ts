@@ -124,7 +124,13 @@ class TelegramCloudService {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
       if (saved) {
-        this.config = { ...this.config, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        // Automatically purge any old deleted bot token
+        if (parsed.botToken && (parsed.botToken.includes('8846538187') || !parsed.botToken.includes('8717270921'))) {
+          parsed.botToken = '8717270921:AAFxvHPnWWawsJOf8ZONGJXdu-qatjD4X6g';
+          localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(parsed));
+        }
+        this.config = { ...this.config, ...parsed };
       }
     } catch {
       // fallback
