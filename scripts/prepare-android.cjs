@@ -46,8 +46,12 @@ if (fs.existsSync(gradlePath)) {
   let gradle = fs.readFileSync(gradlePath, 'utf8');
 
   // Ensure Java 21 compile options
-  gradle = gradle.replace(/sourceCompatibility\s+JavaVersion\.\w+/g, 'sourceCompatibility JavaVersion.VERSION_21');
-  gradle = gradle.replace(/targetCompatibility\s+JavaVersion\.\w+/g, 'targetCompatibility JavaVersion.VERSION_21');
+  if (!gradle.includes('compileOptions')) {
+    gradle = gradle.replace('buildTypes {', `compileOptions {\n        sourceCompatibility JavaVersion.VERSION_21\n        targetCompatibility JavaVersion.VERSION_21\n    }\n\n    buildTypes {`);
+  } else {
+    gradle = gradle.replace(/sourceCompatibility\s+JavaVersion\.\w+/g, 'sourceCompatibility JavaVersion.VERSION_21');
+    gradle = gradle.replace(/targetCompatibility\s+JavaVersion\.\w+/g, 'targetCompatibility JavaVersion.VERSION_21');
+  }
 
   if (!gradle.includes('resolutionStrategy')) {
     gradle += `

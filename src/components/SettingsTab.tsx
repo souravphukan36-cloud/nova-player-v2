@@ -347,11 +347,11 @@ export const SettingsTab: React.FC = () => {
             </div>
           )}
 
-          {/* Dedicated IEM Audiophile Stage (Emerald Circle) */}
+          {/* Dedicated IEM Audiophile Stage (Emerald Circle) - Compact Setting Option */}
           {matchesSearch(['iem', 'headphone', 'earphone', 'harman', 'audiophile', 'crossfeed']) && (
             <div>
               <div 
-                onClick={() => setIEMModalOpen(true)}
+                onClick={() => toggleSection('iem')}
                 className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
                   isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
                 }`}
@@ -375,15 +375,149 @@ export const SettingsTab: React.FC = () => {
                     </div>
                     <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
                       {iemSoundStage.enabled 
-                        ? `${iemSoundStage.targetCurve.replace('-', ' ').toUpperCase()} • Crossfeed ${iemSoundStage.crossfeed}`
+                        ? `${iemSoundStage.targetCurve.replace('-', ' ').toUpperCase()} • Sub-Bass ${iemSoundStage.subBassRumble}%`
                         : 'Harman In-Ear curve, sub-bass rumble & crossfeed stage'}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                <div className="flex items-center gap-2.5 shrink-0">
+                  {/* 1-Tap Quick Switch in Settings */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateIEMSoundStage({ enabled: !iemSoundStage.enabled });
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all shadow-sm ${
+                      iemSoundStage.enabled 
+                        ? 'bg-emerald-500 text-black active:scale-95' 
+                        : isLight ? 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300' : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                    title="Toggle IEM DSP ON/OFF"
+                  >
+                    {iemSoundStage.enabled ? 'ON' : 'OFF'}
+                  </button>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                    expandedSection === 'iem' ? 'rotate-180' : ''
+                  } ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
                 </div>
               </div>
+
+              {/* Chota sa option in settings: Compact quick-tuning panel */}
+              {expandedSection === 'iem' && (
+                <div className={`px-4 pb-4 pt-2 border-t ${isLight ? 'bg-neutral-50/60 border-neutral-100' : 'bg-white/[0.02] border-white/5'} space-y-3`}>
+                  {/* Acoustic Curve Chips */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`text-[11px] font-bold ${isLight ? 'text-neutral-600' : 'text-white/70'}`}>
+                        Sound Target Profile
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                        {iemSoundStage.targetCurve.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: 'harman-in-ear', label: 'Harman 2019' },
+                        { id: 'dynamic-slam', label: 'Dynamic Slam' },
+                        { id: 'balanced-armature', label: 'BA Vocal' },
+                        { id: 'planar-speed', label: 'Planar Speed' },
+                        { id: 'fun-v-shaped', label: 'V-Shaped' }
+                      ].map((curve) => (
+                        <button
+                          key={curve.id}
+                          onClick={() => updateIEMSoundStage({ targetCurve: curve.id as any, enabled: true })}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                            iemSoundStage.targetCurve === curve.id && iemSoundStage.enabled
+                              ? 'bg-emerald-500 text-black font-bold shadow-sm'
+                              : isLight ? 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300' : 'bg-white/10 text-white/70 hover:bg-white/20'
+                          }`}
+                        >
+                          {curve.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Micro Sub-Bass & Treble Sliders */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className={`p-2.5 rounded-xl ${isLight ? 'bg-white border border-neutral-200' : 'bg-white/5 border border-white/5'}`}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className={`font-semibold ${isLight ? 'text-neutral-700' : 'text-white/80'}`}>Sub-Bass</span>
+                        <span className="text-amber-400 font-mono font-bold text-[11px]">{iemSoundStage.subBassRumble}%</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => updateIEMSoundStage({ subBassRumble: Math.max(0, iemSoundStage.subBassRumble - 10), enabled: true })}
+                          className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center justify-center active:scale-90"
+                          title="Decrease -10%"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={iemSoundStage.subBassRumble}
+                          onChange={(e) => updateIEMSoundStage({ subBassRumble: Number(e.target.value), enabled: true })}
+                          className="flex-1 accent-amber-400 h-1.5 rounded-lg cursor-pointer"
+                        />
+                        <button
+                          onClick={() => updateIEMSoundStage({ subBassRumble: Math.min(100, iemSoundStage.subBassRumble + 10), enabled: true })}
+                          className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center justify-center active:scale-90"
+                          title="Increase +10%"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={`p-2.5 rounded-xl ${isLight ? 'bg-white border border-neutral-200' : 'bg-white/5 border border-white/5'}`}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className={`font-semibold ${isLight ? 'text-neutral-700' : 'text-white/80'}`}>Treble Air</span>
+                        <span className="text-cyan-400 font-mono font-bold text-[11px]">{iemSoundStage.trebleAir}%</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => updateIEMSoundStage({ trebleAir: Math.max(0, iemSoundStage.trebleAir - 10), enabled: true })}
+                          className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center justify-center active:scale-90"
+                          title="Decrease -10%"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={iemSoundStage.trebleAir}
+                          onChange={(e) => updateIEMSoundStage({ trebleAir: Number(e.target.value), enabled: true })}
+                          className="flex-1 accent-cyan-400 h-1.5 rounded-lg cursor-pointer"
+                        />
+                        <button
+                          onClick={() => updateIEMSoundStage({ trebleAir: Math.min(100, iemSoundStage.trebleAir + 10), enabled: true })}
+                          className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center justify-center active:scale-90"
+                          title="Increase +10%"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Button to open full studio stage */}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className={`text-[11px] ${isLight ? 'text-neutral-500' : 'text-white/40'}`}>
+                      Crossfeed: <span className="font-semibold capitalize text-emerald-400">{iemSoundStage.crossfeed}</span>
+                    </span>
+                    <button
+                      onClick={() => setIEMModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 active:scale-95 text-xs font-bold flex items-center gap-1.5 transition-all"
+                    >
+                      <span>Open Full Studio Stage</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Inset Divider */}
               <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />

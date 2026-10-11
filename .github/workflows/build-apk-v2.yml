@@ -36,7 +36,7 @@ jobs:
 
       - name: Install Project Dependencies
         run: |
-          npm install --legacy-peer-deps --no-audit
+          npm install --include=dev --legacy-peer-deps --no-audit
 
       - name: Compile Production Web Assets
         run: |

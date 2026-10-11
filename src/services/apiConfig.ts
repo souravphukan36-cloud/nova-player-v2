@@ -156,23 +156,14 @@ export function resolveAudioStreamUrl(url: string | undefined): string {
   if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  if (url.startsWith('/audio/')) {
-    return url;
-  }
 
-  const fileId = extractFileId(url);
-
-  // 1. Pristine Bundled Master Audio (Plays in 0.001s, 100% offline & online, never 404s!)
-  if (fileId && LOCAL_AUDIO_MAP[fileId]) {
-    return `/audio/${LOCAL_AUDIO_MAP[fileId]}`;
-  }
-
-  // 2. Absolute HTTP/HTTPS URLs (e.g. freshly uploaded Telegram CDN files with new bot)
+  // 1. Absolute URLs (Direct Telegram Worldwide Edge CDN)
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
 
-  // 3. Newly uploaded Telegram tracks via API proxy
+  // 2. Telegram Cloud Audio Stream proxy
+  const fileId = extractFileId(url);
   if (fileId) {
     return `/api/telegram/audio?file_id=${encodeURIComponent(fileId)}`;
   }

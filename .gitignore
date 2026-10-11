@@ -14,3 +14,7 @@ public/audio/*.wav
 public/audio/*.mp3
 *.wav
 *.mp3
+.gradle/
+android/app/build/
+android/.gradle/
+android/build/

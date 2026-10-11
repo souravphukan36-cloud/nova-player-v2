@@ -686,15 +686,22 @@ class AudioEngine {
   }
 
   public applyEqualizer(eq: EqualizerState) {
+    this.lastEqState = eq;
+    if (!this.ctx && eq.enabled) {
+      this.init();
+    }
+    if (this.ctx && this.ctx.state === 'suspended' && eq.enabled) {
+      this.ctx.resume().catch(() => {});
+    }
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
-    // Apply bands: 12-band master, 10-band, or 5-band
+    // Apply bands: 12-band master, 10-band, or 5-band with instant 15ms response
     if (eq.bands.length === 12) {
       eq.bands.forEach((val, idx) => {
         if (this.eqFilters[idx]) {
           const gain = eq.enabled ? val : 0;
-          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.015);
         }
       });
     } else if (eq.bands.length === 10) {
@@ -716,7 +723,7 @@ class AudioEngine {
       mapped.forEach((gainVal, idx) => {
         if (this.eqFilters[idx]) {
           const gain = eq.enabled ? gainVal : 0;
-          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.015);
         }
       });
     } else {
@@ -730,7 +737,7 @@ class AudioEngine {
       mappedGains.forEach((gainVal, idx) => {
         if (this.eqFilters[idx]) {
           const gain = eq.enabled ? gainVal : 0;
-          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.05);
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.015);
         }
       });
     }
@@ -741,29 +748,29 @@ class AudioEngine {
       if (eq.enabled && clarity && clarity.enabled) {
         // Ultra-Air restoration (16,000Hz – 20,000Hz shimmer)
         const airGain = (clarity.ultraAirHz / 100) * 8.0;
-        this.clarityAirFilter.gain.setTargetAtTime(airGain, now, 0.05);
+        this.clarityAirFilter.gain.setTargetAtTime(airGain, now, 0.015);
 
         // Anti-mud vocal transparency (removes 320Hz boxiness, lifts 3.8kHz vocal presence)
         const mudDip = -((clarity.vocalTransparency / 100) * 3.8);
         const presGain = (clarity.vocalTransparency / 100) * 3.8;
-        this.clarityMudFilter.gain.setTargetAtTime(mudDip, now, 0.05);
-        this.clarityPresenceFilter.gain.setTargetAtTime(presGain, now, 0.05);
+        this.clarityMudFilter.gain.setTargetAtTime(mudDip, now, 0.015);
+        this.clarityPresenceFilter.gain.setTargetAtTime(presGain, now, 0.015);
 
         // Transient attack snap (6.2kHz pluck definition)
         const snapGain = (clarity.transientSnap / 100) * 4.5;
-        this.clarityTransientFilter.gain.setTargetAtTime(snapGain, now, 0.05);
+        this.clarityTransientFilter.gain.setTargetAtTime(snapGain, now, 0.015);
       } else {
-        this.clarityAirFilter.gain.setTargetAtTime(0, now, 0.05);
-        this.clarityMudFilter.gain.setTargetAtTime(0, now, 0.05);
-        this.clarityPresenceFilter.gain.setTargetAtTime(0, now, 0.05);
-        this.clarityTransientFilter.gain.setTargetAtTime(0, now, 0.05);
+        this.clarityAirFilter.gain.setTargetAtTime(0, now, 0.015);
+        this.clarityMudFilter.gain.setTargetAtTime(0, now, 0.015);
+        this.clarityPresenceFilter.gain.setTargetAtTime(0, now, 0.015);
+        this.clarityTransientFilter.gain.setTargetAtTime(0, now, 0.015);
       }
     }
 
     // Bass boost (deep sub-bass enhancement)
     if (this.bassBoostFilter) {
       const bassGain = eq.enabled ? (eq.bassBoost / 100) * 14 : 0;
-      this.bassBoostFilter.gain.setTargetAtTime(bassGain, now, 0.05);
+      this.bassBoostFilter.gain.setTargetAtTime(bassGain, now, 0.015);
     }
 
     // Reverb / Acoustic Space
@@ -875,6 +882,7 @@ class AudioEngine {
   }
 
   private lastIEMState: IEMSoundStageState | null = null;
+  private lastEqState: EqualizerState | null = null;
 
   public setIEMEnabled(enabled: boolean) {
     if (this.lastIEMState) {
@@ -893,104 +901,104 @@ class AudioEngine {
 
   public applyIEMSoundStage(iem: IEMSoundStageState) {
     this.lastIEMState = iem;
-    if (!this.ctx) {
+    if (!this.ctx && iem.enabled) {
       this.init();
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
+    if (this.ctx && this.ctx.state === 'suspended' && iem.enabled) {
       this.ctx.resume().catch(() => {});
     }
     if (!this.ctx || !this.iemSubBass || !this.iemTargetFilter1 || !this.iemTargetFilter2 || !this.iemTrebleAir || !this.iemGain || !this.crossfeedFilter) return;
     const now = this.ctx.currentTime;
 
     if (!iem.enabled) {
-      this.iemSubBass.gain.setValueAtTime(0, now);
-      this.iemTargetFilter1.gain.setValueAtTime(0, now);
-      this.iemTargetFilter2.gain.setValueAtTime(0, now);
-      this.iemTrebleAir.gain.setValueAtTime(0, now);
-      this.iemGain.gain.setValueAtTime(1.0, now);
-      this.crossfeedFilter.frequency.setValueAtTime(20000, now);
+      this.iemSubBass.gain.setTargetAtTime(0, now, 0.015);
+      this.iemTargetFilter1.gain.setTargetAtTime(0, now, 0.015);
+      this.iemTargetFilter2.gain.setTargetAtTime(0, now, 0.015);
+      this.iemTrebleAir.gain.setTargetAtTime(0, now, 0.015);
+      this.iemGain.gain.setTargetAtTime(1.0, now, 0.015);
+      this.crossfeedFilter.frequency.setTargetAtTime(20000, now, 0.015);
       return;
     }
 
     // 1. In-Ear Seal Sub-bass rumble (35-50Hz acoustic resonance)
     const rumbleGain = (iem.subBassRumble / 100) * 11.5; // up to +11.5dB clean sub-bass
-    this.iemSubBass.gain.setTargetAtTime(rumbleGain, now, 0.04);
+    this.iemSubBass.gain.setTargetAtTime(rumbleGain, now, 0.015);
 
     // 2. Micro-Detail Treble Air (15kHz shimmer)
     const airGain = (iem.trebleAir / 100) * 8.5; // up to +8.5dB air
-    this.iemTrebleAir.gain.setTargetAtTime(airGain, now, 0.04);
+    this.iemTrebleAir.gain.setTargetAtTime(airGain, now, 0.015);
 
     // 3. IEM Target Curve tuning
     switch (iem.targetCurve) {
       case 'harman-in-ear':
         // Harman In-Ear Target 2019: Clean lower mids (-2.0dB at 320Hz), +4.8dB pinna ear-gain
-        this.iemTargetFilter1.frequency.setTargetAtTime(320, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(-2.0, now, 0.04);
-        this.iemTargetFilter2.frequency.setTargetAtTime(2850, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(4.8, now, 0.04);
+        this.iemTargetFilter1.frequency.setTargetAtTime(320, now, 0.015);
+        this.iemTargetFilter1.gain.setTargetAtTime(-2.0, now, 0.015);
+        this.iemTargetFilter2.frequency.setTargetAtTime(2850, now, 0.015);
+        this.iemTargetFilter2.gain.setTargetAtTime(4.8, now, 0.015);
         break;
 
       case 'dynamic-slam':
         // Dynamic Driver Punch: Warmth at 200Hz (+4.2dB), smooth relaxed highs
-        this.iemTargetFilter1.frequency.setTargetAtTime(200, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(4.2, now, 0.04);
-        this.iemTargetFilter2.frequency.setTargetAtTime(3500, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(1.8, now, 0.04);
+        this.iemTargetFilter1.frequency.setTargetAtTime(200, now, 0.015);
+        this.iemTargetFilter1.gain.setTargetAtTime(4.2, now, 0.015);
+        this.iemTargetFilter2.frequency.setTargetAtTime(3500, now, 0.015);
+        this.iemTargetFilter2.gain.setTargetAtTime(1.8, now, 0.015);
         break;
 
       case 'balanced-armature':
         // Multi-BA Knowles clarity: Razor vocal presence (+5.5dB at 3200Hz) and instrument attack
-        this.iemTargetFilter1.frequency.setTargetAtTime(450, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(-1.5, now, 0.04);
-        this.iemTargetFilter2.frequency.setTargetAtTime(3200, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(5.5, now, 0.04);
+        this.iemTargetFilter1.frequency.setTargetAtTime(450, now, 0.015);
+        this.iemTargetFilter1.gain.setTargetAtTime(-1.5, now, 0.015);
+        this.iemTargetFilter2.frequency.setTargetAtTime(3200, now, 0.015);
+        this.iemTargetFilter2.gain.setTargetAtTime(5.5, now, 0.015);
         break;
 
       case 'planar-speed':
         // Planar Magnetic: Holographic linear clarity with high transient response
-        this.iemTargetFilter1.frequency.setTargetAtTime(600, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(1.0, now, 0.04);
-        this.iemTargetFilter2.frequency.setTargetAtTime(4200, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(4.2, now, 0.04);
+        this.iemTargetFilter1.frequency.setTargetAtTime(600, now, 0.015);
+        this.iemTargetFilter1.gain.setTargetAtTime(1.0, now, 0.015);
+        this.iemTargetFilter2.frequency.setTargetAtTime(4200, now, 0.015);
+        this.iemTargetFilter2.gain.setTargetAtTime(4.2, now, 0.015);
         break;
 
       case 'crinacle-neutral':
         // Crinacle IEF Neutral Target: Studio reference flat monitoring
-        this.iemTargetFilter1.frequency.setTargetAtTime(300, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(0, now, 0.04);
-        this.iemTargetFilter2.frequency.setTargetAtTime(2700, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(2.2, now, 0.04);
+        this.iemTargetFilter1.frequency.setTargetAtTime(300, now, 0.015);
+        this.iemTargetFilter1.gain.setTargetAtTime(0, now, 0.015);
+        this.iemTargetFilter2.frequency.setTargetAtTime(2700, now, 0.015);
+        this.iemTargetFilter2.gain.setTargetAtTime(2.2, now, 0.015);
         break;
 
       case 'fun-v-shaped':
         // V-Shaped Euphoria: Deep punch and sparkling presence
-        this.iemTargetFilter1.frequency.setTargetAtTime(500, now, 0.04);
-        this.iemTargetFilter1.gain.setTargetAtTime(-3.5, now, 0.04);
-        this.iemTargetFilter2.frequency.setTargetAtTime(3600, now, 0.04);
-        this.iemTargetFilter2.gain.setTargetAtTime(5.2, now, 0.04);
+        this.iemTargetFilter1.frequency.setTargetAtTime(500, now, 0.015);
+        this.iemTargetFilter1.gain.setTargetAtTime(-3.5, now, 0.015);
+        this.iemTargetFilter2.frequency.setTargetAtTime(3600, now, 0.015);
+        this.iemTargetFilter2.gain.setTargetAtTime(5.2, now, 0.015);
         break;
     }
 
     // 4. Driver Impedance Matcher
     if (iem.driverImpedance === 'high-sensitivity') {
-      this.iemGain.gain.setTargetAtTime(0.82, now, 0.04); // -1.7dB noise floor reduction
+      this.iemGain.gain.setTargetAtTime(0.82, now, 0.015); // -1.7dB noise floor reduction
     } else if (iem.driverImpedance === 'high-drive') {
-      this.iemGain.gain.setTargetAtTime(1.30, now, 0.04); // +2.3dB clean dynamic headroom
+      this.iemGain.gain.setTargetAtTime(1.30, now, 0.015); // +2.3dB clean dynamic headroom
     } else {
-      this.iemGain.gain.setTargetAtTime(1.0, now, 0.04);
+      this.iemGain.gain.setTargetAtTime(1.0, now, 0.015);
     }
 
     // 5. Crossfeed acoustic filter (removes in-head claustrophobia and creates natural speaker stage)
     if (this.crossfeedFilter) {
       const crossMode = iem.crossfeed || 'off';
       if (crossMode === 'subtle') {
-        this.crossfeedFilter.frequency.setTargetAtTime(14000, now, 0.04);
+        this.crossfeedFilter.frequency.setTargetAtTime(14000, now, 0.015);
       } else if (crossMode === 'studio') {
-        this.crossfeedFilter.frequency.setTargetAtTime(9500, now, 0.04);
+        this.crossfeedFilter.frequency.setTargetAtTime(9500, now, 0.015);
       } else if (crossMode === 'holographic') {
-        this.crossfeedFilter.frequency.setTargetAtTime(7000, now, 0.04);
+        this.crossfeedFilter.frequency.setTargetAtTime(7000, now, 0.015);
       } else {
-        this.crossfeedFilter.frequency.setTargetAtTime(20000, now, 0.04);
+        this.crossfeedFilter.frequency.setTargetAtTime(20000, now, 0.015);
       }
     }
   }

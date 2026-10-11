@@ -15,26 +15,25 @@ Aapka project ab **GitHub Actions Automated APK Pipeline** ke sath 100% configur
 
 ## ⚡ Step 2: GitHub Par APK Kaise Banegi? (Automated)
 
-1. Apne phone ya computer mein apni nayi GitHub Repository open kijiye.
-2. Repository ke upar wale navigation bar mein **"Actions"** tab par click kijiye.
-3. Wahan aapko **"Build Android APK"** workflow automatically start hota hua dikhega (ya right side mein "Run workflow" button dabakar manual bhi start kar sakte hain).
+1. Apne phone ya computer mein apni GitHub Repository open kijiye.
+2. Repository ke upar navigation bar mein **"Actions"** tab par click kijiye.
+3. Wahan **"Build Android APK v2"** workflow par click kijiye:
+   - Agar automatically run ho raha ho toh 2 se 3 minute wait kijiye.
+   - Ya fir right side mein **"Run workflow"** button dabakar manual start kar sakte hain.
 4. GitHub ka cloud server 2 se 3 minute mein:
-   - Node.js & Java 21 install karega.
    - Vite production bundle banayega.
    - Capacitor Android engine wrap karega.
-   - Gradle se **`NOVA-Player-APK`** generate kar dega!
+   - Gradle se **`NOVA-Player-APK-v2`** generate kar dega!
 
 ---
 
 ## 📥 Step 3: APK Phone Mein Download Aur Install Kaise Karein?
 
 1. Jab workflow par **Green Checkmark (✔)** aa jaye, toh us run par click kijiye.
-2. Page ko thoda scroll karke neeche **"Artifacts"** section mein jaiye.
-3. Wahan **`NOVA-Player-APK`** likha hoga — uspar tap karke zip file download kijiye.
-4. Download hone ke baad use extract (unzip) kijiye, aapko mil jayegi **`app-debug.apk`**!
-5. Us par tap kijiye:
-   - Agar phone pooche *"Install unknown apps"*, toh Chrome/Files ko allow kar dijiye.
-   - **"Install"** dabaiye.
+2. Page ke neeche scroll karke **"Artifacts"** section mein jaiye.
+3. Wahan **`NOVA-Player-APK-v2`** likha hoga — uspar click karke zip download kijiye.
+4. Zip extract (unzip) kijiye, usme aapko **`app-debug.apk`** mil jayegi.
+5. Us APK par tap karke **"Install"** dabaiye!
 6. **NOVA Player** aapke phone mein Spotify ki tarah install ho jayega!
 
 ---

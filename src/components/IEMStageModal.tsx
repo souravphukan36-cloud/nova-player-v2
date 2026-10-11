@@ -95,24 +95,39 @@ export const IEMStageModal: React.FC = () => {
     settings
   } = usePlayer();
 
-  const [abBypass, setAbBypass] = React.useState(false);
-  const [localEnabled, setLocalEnabled] = React.useState(iemSoundStage.enabled);
+  const isEnabled = iemSoundStage.enabled;
+
+  const [localRumble, setLocalRumble] = React.useState(iemSoundStage.subBassRumble);
+  const [localAir, setLocalAir] = React.useState(iemSoundStage.trebleAir);
 
   React.useEffect(() => {
-    setLocalEnabled(iemSoundStage.enabled);
-  }, [iemSoundStage.enabled]);
+    setLocalRumble(iemSoundStage.subBassRumble);
+  }, [iemSoundStage.subBassRumble]);
+
+  React.useEffect(() => {
+    setLocalAir(iemSoundStage.trebleAir);
+  }, [iemSoundStage.trebleAir]);
+
+  const handleRumbleChange = (val: number) => {
+    setLocalRumble(val);
+    audioEngine.applyIEMSoundStage({ ...iemSoundStage, subBassRumble: val, enabled: true });
+    updateIEMSoundStage({ subBassRumble: val, enabled: true });
+  };
+
+  const handleAirChange = (val: number) => {
+    setLocalAir(val);
+    audioEngine.applyIEMSoundStage({ ...iemSoundStage, trebleAir: val, enabled: true });
+    updateIEMSoundStage({ trebleAir: val, enabled: true });
+  };
 
   const handleMasterToggle = () => {
-    const next = !localEnabled;
-    setLocalEnabled(next);
-    audioEngine.setIEMEnabled(next);
-    updateIEMSoundStage({ enabled: next });
+    updateIEMSoundStage({ enabled: !isEnabled });
   };
 
   if (!iemModalOpen) return null;
 
   const currentCurve = TARGET_CURVES.find(c => c.id === iemSoundStage.targetCurve) || TARGET_CURVES[0];
-  const accent = localEnabled ? currentCurve.color : '#64748B';
+  const accent = isEnabled ? currentCurve.color : '#64748B';
 
   return (
     <div 
@@ -131,16 +146,16 @@ export const IEMStageModal: React.FC = () => {
             <div 
               className="w-10 h-10 rounded-2xl flex items-center justify-center transition-colors shadow-lg"
               style={{ 
-                backgroundColor: localEnabled ? `${currentCurve.color}25` : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${localEnabled ? currentCurve.color : 'rgba(255,255,255,0.1)'}`
+                backgroundColor: isEnabled ? `${currentCurve.color}25` : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${isEnabled ? currentCurve.color : 'rgba(255,255,255,0.1)'}`
               }}
             >
-              <Headphones className="w-5 h-5" style={{ color: localEnabled ? currentCurve.color : '#94A3B8' }} />
+              <Headphones className="w-5 h-5" style={{ color: isEnabled ? currentCurve.color : '#94A3B8' }} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-white tracking-tight">IEM Audiophile Stage</h3>
-                {localEnabled ? (
+                {isEnabled ? (
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     DSP ACTIVE
                   </span>
@@ -172,33 +187,33 @@ export const IEMStageModal: React.FC = () => {
           <button
             onClick={handleMasterToggle}
             className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between active:scale-[0.98] ${
-              localEnabled
+              isEnabled
                 ? 'bg-emerald-500/15 border-emerald-500/40 shadow-lg'
                 : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-3 text-left">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                localEnabled ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 text-white/40'
+                isEnabled ? 'bg-emerald-500 text-white shadow-md' : 'bg-white/10 text-white/40'
               }`}>
                 <Headphones className="w-4 h-4" />
               </div>
               <div>
                 <div className="text-xs font-black text-white">
-                  {localEnabled ? 'IEM DSP IS ACTIVE' : 'IEM DSP IS TURNED OFF'}
+                  {isEnabled ? 'IEM DSP IS ACTIVE' : 'IEM DSP IS TURNED OFF'}
                 </div>
                 <div className="text-[10px] text-white/50">
-                  {localEnabled ? 'Acoustic seal, pinna gain & crossfeed enabled' : 'Tap here to instantly activate In-Ear Stage'}
+                  {isEnabled ? 'Acoustic seal, pinna gain & crossfeed enabled' : 'Tap here to instantly activate In-Ear Stage'}
                 </div>
               </div>
             </div>
 
             <div className={`relative inline-flex h-7 w-13 items-center rounded-full transition-colors ${
-              localEnabled ? 'bg-emerald-500' : 'bg-white/20'
+              isEnabled ? 'bg-emerald-500' : 'bg-white/20'
             }`}>
               <span
                 className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
-                  localEnabled ? 'translate-x-7' : 'translate-x-1'
+                  isEnabled ? 'translate-x-7' : 'translate-x-1'
                 }`}
               />
             </div>
@@ -315,20 +330,36 @@ export const IEMStageModal: React.FC = () => {
                 <span>In-Ear Seal Sub-Bass Rumble (35Hz–55Hz)</span>
               </label>
               <span className="text-xs font-mono font-bold text-amber-400">
-                {iemSoundStage.subBassRumble}%
+                {localRumble}%
               </span>
             </div>
             <p className="text-[11px] text-white/50 leading-normal">
               Emulates the deep acoustic visceral resonance transferred directly into the ear canal by silicone or memory foam ear tips.
             </p>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={iemSoundStage.subBassRumble}
-              onChange={(e) => updateIEMSoundStage({ subBassRumble: Number(e.target.value), enabled: true })}
-              className="w-full accent-amber-400 h-1.5 bg-white/10 rounded-lg cursor-pointer"
-            />
+            <div className="flex items-center gap-2.5 pt-1">
+              <button
+                onClick={() => handleRumbleChange(Math.max(0, localRumble - 5))}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-xs font-bold text-white/70 hover:text-white flex items-center justify-center transition-all"
+                title="Decrease -5%"
+              >
+                -
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={localRumble}
+                onChange={(e) => handleRumbleChange(Number(e.target.value))}
+                className="flex-1 accent-amber-400 h-2 bg-white/10 rounded-lg cursor-pointer"
+              />
+              <button
+                onClick={() => handleRumbleChange(Math.min(100, localRumble + 5))}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-xs font-bold text-white/70 hover:text-white flex items-center justify-center transition-all"
+                title="Increase +5%"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           {/* 3. Micro-Detail Treble Air Shimmer Slider */}
@@ -339,20 +370,36 @@ export const IEMStageModal: React.FC = () => {
                 <span>Micro-Detail Air Shimmer (14kHz–18kHz)</span>
               </label>
               <span className="text-xs font-mono font-bold text-cyan-400">
-                {iemSoundStage.trebleAir}%
+                {localAir}%
               </span>
             </div>
             <p className="text-[11px] text-white/50 leading-normal">
               Reveals microscopic vocal breath, acoustic guitar finger slides, and delicate cymbal decay often damped by in-ear nozzle filters.
             </p>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={iemSoundStage.trebleAir}
-              onChange={(e) => updateIEMSoundStage({ trebleAir: Number(e.target.value), enabled: true })}
-              className="w-full accent-cyan-400 h-1.5 bg-white/10 rounded-lg cursor-pointer"
-            />
+            <div className="flex items-center gap-2.5 pt-1">
+              <button
+                onClick={() => handleAirChange(Math.max(0, localAir - 5))}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-xs font-bold text-white/70 hover:text-white flex items-center justify-center transition-all"
+                title="Decrease -5%"
+              >
+                -
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={localAir}
+                onChange={(e) => handleAirChange(Number(e.target.value))}
+                className="flex-1 accent-cyan-400 h-2 bg-white/10 rounded-lg cursor-pointer"
+              />
+              <button
+                onClick={() => handleAirChange(Math.min(100, localAir + 5))}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 text-xs font-bold text-white/70 hover:text-white flex items-center justify-center transition-all"
+                title="Increase +5%"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           {/* 4. Binaural Out-Of-Head Crossfeed Soundstage Expander */}

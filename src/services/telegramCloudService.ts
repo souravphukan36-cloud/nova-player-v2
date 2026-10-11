@@ -19,6 +19,14 @@ export interface CloudArtistShelf {
 export const INITIAL_CLOUD_TRACKS: Track[] = DEFAULT_TRACKS;
 
 export const ARTIST_PROFILES: Record<string, { photoUrl: string; bio: string }> = {
+  'A.R. Rahman': {
+    photoUrl: '/covers/arz-kiya-hai.jpg',
+    bio: 'Academy Award-winning musical maestro celebrated for iconic compositions, spiritual melodies, and timeless masterpieces.'
+  },
+  'AFTAB': {
+    photoUrl: '/covers/aaoge-tum-kabhi.jpg',
+    bio: 'Contemporary indie artist known for heartfelt acoustic melodies and emotive storytelling.'
+  },
   'Mohit Chauhan, A.R. Rahman': {
     photoUrl: '/api/telegram/image?file_id=AAMCBQADIQUABNMmLkoAAxdqp0R5rJybi7fY-8PO0Ojxyt3ILgAC_yAAAlIVKVVf06I-4vwsSgEAB20AAz0E',
     bio: 'Renowned Indian singer celebrated for soulful ballads, timeless Bollywood classics, and Silk Route classics.'
@@ -112,7 +120,7 @@ class TelegramCloudService {
 
       setInterval(() => {
         this.autoFetchTracks().catch(() => {});
-      }, 30000);
+      }, 120000);
 
       window.addEventListener('focus', () => {
         this.autoFetchTracks().catch(() => {});
@@ -142,9 +150,48 @@ class TelegramCloudService {
       localStorage.removeItem('nova_cloud_channel_tracks');
       const saved = localStorage.getItem(STORAGE_KEY_CLOUD_TRACKS);
       if (saved) {
-        const parsed = JSON.parse(saved);
+        let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Always refresh with authoritative INITIAL_CLOUD_TRACKS so stale/broken cached audio URLs or cover arts get repaired immediately
+          // Purge unplayable tracks that belonged to the deleted bot
+          parsed = parsed.filter((t: Track) => {
+            const id = t.id || '';
+            const url = t.audioUrl || '';
+            return !id.startsWith('tg-anuv-arz-kiya-hai') &&
+                   !id.startsWith('tg-local-train-') &&
+                   !id.startsWith('tg-garvit-') &&
+                   !id.startsWith('tg-pritam-') &&
+                   !id.startsWith('tg-keane-') &&
+                   !id.startsWith('tg-anuv-jo-tum-mere-ho') &&
+                   !id.startsWith('tg-arijit-') &&
+                   !id.startsWith('tg-nadaan-') &&
+                   !id.startsWith('tg-AgADFSE') &&
+                   !id.startsWith('tg-sajid-') &&
+                   !id.startsWith('tg-banjaare-') &&
+                   !id.startsWith('tg-kaavish-') &&
+                   !id.startsWith('tg-redbone-') &&
+                   !id.startsWith('tg-maan-') &&
+                   !id.startsWith('tg-radiohead-') &&
+                   !id.startsWith('tg-AgADXiE') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAME') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMF') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMH') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAML') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMM') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMN') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMO') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMP') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMR') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMS') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMU') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMV') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMW') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMX') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMo') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMp') &&
+                   !url.includes('CQACAgUAAyEFAATTJi5KAAMr');
+          });
+
+          // Always refresh with authoritative INITIAL_CLOUD_TRACKS
           const initialMap = new Map(INITIAL_CLOUD_TRACKS.map(t => [t.id, t]));
           const updated = parsed.map((t: Track) => {
             const fresh = initialMap.get(t.id);

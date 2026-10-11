@@ -56,7 +56,10 @@ const EQBandColumn: React.FC<{
     // 0 at bottom (-12), height at top (+12)
     const ratio = 1 - (offsetY / height);
     const db = Math.round((ratio * 24) - 12);
-    onChange(Math.max(-12, Math.min(12, db)));
+    const clamped = Math.max(-12, Math.min(12, db));
+    if (clamped !== gain) {
+      onChange(clamped);
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -84,9 +87,12 @@ const EQBandColumn: React.FC<{
     <div className="flex flex-col items-center justify-between h-full w-full select-none">
       {/* dB readout & tap to reset */}
       <button
-        onClick={() => onChange(0)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange(0);
+        }}
         title="Tap to reset to 0dB"
-        className="text-[10px] font-mono font-bold hover:scale-110 active:scale-95 transition-transform"
+        className="w-full py-1 text-center text-[10px] font-mono font-bold hover:scale-105 active:scale-95 transition-transform"
         style={{ color: gain !== 0 ? accentColor : '#9ca3af' }}
       >
         {gain > 0 ? `+${gain}` : gain}
@@ -94,8 +100,11 @@ const EQBandColumn: React.FC<{
 
       {/* Quick increment + */}
       <button
-        onClick={() => onChange(Math.min(12, gain + 1))}
-        className="w-5 h-4 flex items-center justify-center text-[11px] font-bold text-white/50 hover:text-white active:scale-90"
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange(Math.min(12, gain + 1));
+        }}
+        className="w-full h-6 flex items-center justify-center text-xs font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 active:bg-white/20 active:scale-90 rounded transition-all"
         title="Increase +1dB"
       >
         +
@@ -158,8 +167,11 @@ const EQBandColumn: React.FC<{
 
       {/* Quick decrement - */}
       <button
-        onClick={() => onChange(Math.max(-12, gain - 1))}
-        className="w-5 h-4 flex items-center justify-center text-[11px] font-bold text-white/50 hover:text-white active:scale-90"
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange(Math.max(-12, gain - 1));
+        }}
+        className="w-full h-6 flex items-center justify-center text-xs font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 active:bg-white/20 active:scale-90 rounded transition-all"
         title="Decrease -1dB"
       >
         -
@@ -263,6 +275,8 @@ export const EqualizerModal: React.FC = () => {
     setEightDDistance,
     setEightDMode,
     toggleEQEnabled,
+    resetEQBands,
+    resetAllEQ,
     settings,
   } = usePlayer();
 
@@ -307,13 +321,29 @@ export const EqualizerModal: React.FC = () => {
             className="sr-only peer"
           />
           <div 
-            className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+            className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all cursor-pointer"
             style={{ backgroundColor: equalizer.enabled ? settings.accentColor : undefined }}
           />
         </label>
       </div>
 
-      <div className={`p-5 sm:p-6 max-w-lg mx-auto w-full space-y-5 ${!equalizer.enabled ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className="p-5 sm:p-6 max-w-lg mx-auto w-full space-y-5">
+        
+        {/* Bypass notification banner if EQ is off */}
+        {!equalizer.enabled && (
+          <div 
+            onClick={toggleEQEnabled}
+            className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-xs text-white/80">EQ is in Bypass mode. Tap any button or preset to activate.</span>
+            </div>
+            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-500 text-black shrink-0 shadow-sm">
+              ENABLE
+            </span>
+          </div>
+        )}
         
         {/* Band Mode Switcher: 10-Band vs 5-Band */}
         <div className="flex items-center justify-between bg-neutral-900/90 p-1 rounded-2xl border border-white/10">
@@ -374,13 +404,12 @@ export const EqualizerModal: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  frequencies.forEach((_, idx) => setEQBand(idx, 0));
-                }}
-                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white/70 hover:text-white transition-colors"
+                onClick={resetEQBands}
+                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 text-[10px] font-bold text-white/70 hover:text-white transition-all flex items-center gap-1"
                 title="Reset all bands to 0dB"
               >
-                Reset Flat
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset Flat</span>
               </button>
               <span className="text-[10px] font-mono text-white/40">±12dB</span>
             </div>
@@ -694,16 +723,11 @@ export const EqualizerModal: React.FC = () => {
             <span>All adjustments apply instantly in real time</span>
           </div>
           <button
-            onClick={() => {
-              setEQPreset('Normal');
-              frequencies.forEach((_, idx) => setEQBand(idx, 0));
-              setBassBoost(0);
-              setReverb(0);
-              setStereoWidening(0);
-            }}
-            className="flex items-center gap-1 py-1 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+            onClick={resetAllEQ}
+            className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold text-white/80 hover:text-white transition-all shadow-sm"
+            title="Reset EQ, Dolby, 8D audio and acoustic enhancements"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset All</span>
           </button>
         </div>

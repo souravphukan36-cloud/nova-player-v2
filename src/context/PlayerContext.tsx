@@ -100,6 +100,8 @@ interface PlayerContextType {
   setEightDDistance: (dist: 'near' | 'medium' | 'far') => void;
   setEightDMode: (mode: 'orbit' | 'pendulum') => void;
   toggleEQEnabled: () => void;
+  resetEQBands: () => void;
+  resetAllEQ: () => void;
 
   // Sleep Timer
   startSleepTimer: (minutes: number, endOfTrack?: boolean) => void;
@@ -243,7 +245,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (saved) {
         let parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // 1. Purge legacy demo tracks that the user didn't upload to their Telegram bot
+          // 1. Purge legacy demo & unplayable dead tracks that belong to the deleted bot
           const isLegacyDemo = (id: string) =>
             id.startsWith('bitchord-') ||
             id.startsWith('cloud-anuv-') ||
@@ -255,7 +257,47 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             id === 'local-train-choo-lo' ||
             id === 'local-train-aaoge-tum-kabhi';
 
-          parsed = parsed.filter((t: Track) => !isBannedTrack(t) && !isLegacyDemo(t.id));
+          const isUnplayableDeadTrack = (t: Track) => {
+            const id = t.id || '';
+            const url = t.audioUrl || '';
+            return (
+              id.startsWith('tg-anuv-arz-kiya-hai') ||
+              id.startsWith('tg-local-train-') ||
+              id.startsWith('tg-garvit-') ||
+              id.startsWith('tg-pritam-') ||
+              id.startsWith('tg-keane-') ||
+              id.startsWith('tg-anuv-jo-tum-mere-ho') ||
+              id.startsWith('tg-arijit-') ||
+              id.startsWith('tg-nadaan-') ||
+              id.startsWith('tg-AgADFSE') ||
+              id.startsWith('tg-sajid-') ||
+              id.startsWith('tg-banjaare-') ||
+              id.startsWith('tg-kaavish-') ||
+              id.startsWith('tg-redbone-') ||
+              id.startsWith('tg-maan-') ||
+              id.startsWith('tg-radiohead-') ||
+              id.startsWith('tg-AgADXiE') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAME') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMF') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMH') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAML') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMM') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMN') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMO') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMP') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMR') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMS') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMU') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMV') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMW') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMX') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMo') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMp') ||
+              url.includes('CQACAgUAAyEFAATTJi5KAAMr')
+            );
+          };
+
+          parsed = parsed.filter((t: Track) => !isBannedTrack(t) && !isLegacyDemo(t.id) && !isUnplayableDeadTrack(t));
 
           // 2. Ensure all verified real Telegram tracks have up-to-date coverArt, audioUrl, and metadata
           const defaultMap = new Map(DEFAULT_TRACKS.map(dt => [dt.id, dt]));
@@ -387,13 +429,16 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   });
 
+  const iemSaveTimerRef = useRef<any>(null);
   const updateIEMSoundStage = (updates: Partial<IEMSoundStageState>) => {
     setIEMSoundStage(prev => {
       const next = { ...prev, ...updates };
-      try {
-        localStorage.setItem('nova_iem_soundstage', JSON.stringify(next));
-      } catch {}
-      audioEngine.applyIEMSoundStage(next);
+      if (iemSaveTimerRef.current) clearTimeout(iemSaveTimerRef.current);
+      iemSaveTimerRef.current = setTimeout(() => {
+        try {
+          localStorage.setItem('nova_iem_soundstage', JSON.stringify(next));
+        } catch {}
+      }, 300);
       return next;
     });
   };
@@ -401,6 +446,17 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     audioEngine.applyIEMSoundStage(iemSoundStage);
   }, [iemSoundStage]);
+
+  // Keep currentTrack and queue metadata in sync with latest fresh covers/metadata
+  useEffect(() => {
+    if (currentTrack) {
+      const fresh = tracks.find(t => t.id === currentTrack.id);
+      if (fresh && (fresh.coverArt !== currentTrack.coverArt || fresh.audioUrl !== currentTrack.audioUrl || fresh.title !== currentTrack.title)) {
+        setCurrentTrack(prev => (prev ? { ...prev, ...fresh } : fresh));
+      }
+    }
+  }, [tracks]);
+
   const [downloadedTrackIds, setDownloadedTrackIds] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
@@ -772,14 +828,16 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [currentTrack, isPlaying, settings.systemNotificationsEnabled]);
 
-  // Persist & apply EQ
+  // Persist & apply EQ (instant Web Audio response + debounced localStorage write)
+  const eqSaveTimerRef = useRef<any>(null);
   useEffect(() => {
-    try {
-      localStorage.setItem('nova_equalizer', JSON.stringify(equalizer));
-    } catch {
-      // ignore
-    }
     audioEngine.applyEqualizer(equalizer);
+    if (eqSaveTimerRef.current) clearTimeout(eqSaveTimerRef.current);
+    eqSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem('nova_equalizer', JSON.stringify(equalizer));
+      } catch {}
+    }, 300);
   }, [equalizer]);
 
   // Handle sleep timer countdown
@@ -1220,6 +1278,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         : (EQ_PRESETS_5[preset] || [0, 0, 0, 0, 0]);
       return {
         ...prev,
+        enabled: true,
         preset,
         bands: [...presetBands],
       };
@@ -1232,6 +1291,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       newBands[bandIndex] = gain;
       return {
         ...prev,
+        enabled: true,
         preset: 'Custom',
         bands: newBands,
       };
@@ -1252,15 +1312,15 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const setBassBoost = (bassBoost: number) => {
-    setEqualizer(prev => ({ ...prev, bassBoost }));
+    setEqualizer(prev => ({ ...prev, enabled: true, bassBoost }));
   };
 
   const setReverb = (reverb: number) => {
-    setEqualizer(prev => ({ ...prev, reverb }));
+    setEqualizer(prev => ({ ...prev, enabled: true, reverb }));
   };
 
   const setStereoWidening = (stereoWidening: number) => {
-    setEqualizer(prev => ({ ...prev, stereoWidening }));
+    setEqualizer(prev => ({ ...prev, enabled: true, stereoWidening }));
   };
 
   const toggleDolbyAtmos = () => {
@@ -1293,6 +1353,35 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const toggleEQEnabled = () => {
     setEqualizer(prev => ({ ...prev, enabled: !prev.enabled }));
+  };
+
+  const resetEQBands = () => {
+    setEqualizer(prev => {
+      const mode = prev.bandMode || '10-band';
+      const count = mode === '5-band' ? 5 : 10;
+      return {
+        ...prev,
+        preset: 'Normal',
+        bands: new Array(count).fill(0),
+      };
+    });
+  };
+
+  const resetAllEQ = () => {
+    setEqualizer(prev => {
+      const mode = prev.bandMode || '10-band';
+      const count = mode === '5-band' ? 5 : 10;
+      return {
+        ...prev,
+        preset: 'Normal',
+        bands: new Array(count).fill(0),
+        bassBoost: 0,
+        reverb: 0,
+        stereoWidening: 0,
+        dolbyAtmos: false,
+        eightDAudio: false,
+      };
+    });
   };
 
   // Sleep Timer
@@ -1535,6 +1624,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setEightDDistance,
     setEightDMode,
     toggleEQEnabled,
+    resetEQBands,
+    resetAllEQ,
 
     startSleepTimer,
     cancelSleepTimer,
