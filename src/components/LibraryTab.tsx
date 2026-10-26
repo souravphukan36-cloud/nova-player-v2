@@ -18,12 +18,17 @@ import {
   ChevronRight,
   Download,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Edit3,
+  Save,
+  HardDrive,
+  Database
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track, Playlist, LibrarySubTab, SortOption, SortDirection } from '../types';
 import { sanitizeText } from '../utils/security';
 import { isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt } from '../utils/dynamicColor';
+import { getOfflineStorageStats, clearOfflineAudioStorage } from '../services/storageDb';
 
 interface LibraryTabProps {
   initialSubTab?: LibrarySubTab;
@@ -47,9 +52,30 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
     settings,
     downloadTrack,
     downloadedTrackIds,
+    updateTrack
   } = usePlayer();
 
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [storageStats, setStorageStats] = useState<{ totalTracks: number; totalBytes: number } | null>(null);
+  const [clearingStorage, setClearingStorage] = useState(false);
+
+  const handleClearOfflineStorage = async () => {
+    if (!window.confirm('Are you sure you want to clear all offline downloaded songs? This will free up storage space.')) {
+      return;
+    }
+    setClearingStorage(true);
+    await clearOfflineAudioStorage();
+    const stats = await getOfflineStorageStats();
+    setStorageStats(stats);
+    setClearingStorage(false);
+  };
+
+  // Edit track modal state
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editArtist, setEditArtist] = useState('');
+  const [editAlbum, setEditAlbum] = useState('');
+  const [editCoverArt, setEditCoverArt] = useState('');
 
   const [activeSubTab, setActiveSubTab] = useState<LibrarySubTab>(
     initialSubTab || settings.libraryDefaultSubTab || 'songs'
@@ -190,6 +216,12 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
     : sortedTracks;
 
   const downloadedTracks = sortedTracks.filter(t => downloadedTrackIds.has(t.id) || t.isDownloaded);
+
+  React.useEffect(() => {
+    if (activeSubTab === 'downloaded') {
+      getOfflineStorageStats().then(setStorageStats).catch(() => {});
+    }
+  }, [activeSubTab, downloadedTracks.length]);
 
   // Groupings
   const albums = (Array.from(new Set(tracks.map(t => t.album))) as string[]).map(albumName => {
@@ -529,6 +561,20 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                         >
                           Add to Playlist...
                         </button>
+                        <button
+                          onClick={() => {
+                            setEditingTrack(track);
+                            setEditTitle(track.title);
+                            setEditArtist(track.artist);
+                            setEditAlbum(track.album);
+                            setEditCoverArt(track.coverArt);
+                            setTrackMenuId(null);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 text-white flex items-center gap-1.5"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Edit Song Details</span>
+                        </button>
 
                         {/* Offline Download Option */}
                         <button
@@ -577,22 +623,72 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
 
       {/* 2. DOWNLOADED SUBTAB (Offline Tracks) */}
       {activeSubTab === 'downloaded' && (
-        <div className="space-y-3">
-          {downloadedTracks.length > 0 && (
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span className="text-emerald-300 font-semibold">{downloadedTracks.length} tracks available offline</span>
+        <div className="space-y-4">
+          {/* Spotify-grade Storage & Offline Status Card */}
+          <div className="p-4 rounded-3xl bg-white/[0.04] border border-white/10 shadow-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md shrink-0"
+                  style={{ backgroundColor: `${settings.accentColor}20`, color: settings.accentColor }}
+                >
+                  <HardDrive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Offline Storage Manager</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Offline Mode Ready
+                    </span>
+                  </h3>
+                  <p className="text-xs text-white/50">
+                    {downloadedTracks.length} tracks cached • {storageStats ? (storageStats.totalBytes / (1024 * 1024)).toFixed(1) : (downloadedTracks.length * 4.2).toFixed(1)} MB used
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={() => playTrack(downloadedTracks[0], downloadedTracks)}
-                className="px-3.5 py-1.5 rounded-full bg-emerald-500 text-black font-extrabold text-[11px] active:scale-95 shadow flex items-center gap-1.5"
-              >
-                <Play className="w-3 h-3 fill-current" />
-                <span>Play All</span>
-              </button>
+
+              {downloadedTracks.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleClearOfflineStorage}
+                    disabled={clearingStorage}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-white/60 transition-colors text-xs font-semibold flex items-center gap-1"
+                    title="Clear offline storage"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-400" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </button>
+                  <button
+                    onClick={() => playTrack(downloadedTracks[0], downloadedTracks)}
+                    className="px-3.5 py-2 rounded-xl text-black font-extrabold text-xs active:scale-95 shadow flex items-center gap-1.5 transition-transform"
+                    style={{ backgroundColor: settings.accentColor }}
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Play Offline</span>
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Storage Meter Visualizer Bar */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[11px] font-mono text-white/50">
+                <span>Cached Audio Storage</span>
+                <span className="text-white/70">
+                  {storageStats ? (storageStats.totalBytes / (1024 * 1024)).toFixed(1) : (downloadedTracks.length * 4.2).toFixed(1)} MB / Local Cache
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden flex">
+                <div 
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ 
+                    width: `${Math.min(100, Math.max(8, downloadedTracks.length * 10))}%`,
+                    backgroundColor: settings.accentColor 
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           {downloadedTracks.length === 0 ? (
             <div className="text-center py-16 px-4 rounded-3xl bg-white/5 border border-white/10 space-y-3">
@@ -998,6 +1094,107 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ initialSubTab }) => {
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Edit Track Modal */}
+      {editingTrack && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-neutral-900 border border-white/15 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-base font-bold text-white">Edit Song Details</h3>
+              </div>
+              <button 
+                onClick={() => setEditingTrack(null)}
+                className="text-white/50 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await updateTrack(editingTrack.id, {
+                  title: editTitle.trim(),
+                  artist: editArtist.trim(),
+                  album: editAlbum.trim(),
+                  coverArt: editCoverArt.trim()
+                });
+                setEditingTrack(null);
+              }}
+              className="space-y-3.5"
+            >
+              <div>
+                <label className="block text-[11px] font-bold text-white/70 mb-1">Song Title</label>
+                <input 
+                  type="text" 
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm bg-black/50 border border-white/15 text-white focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-white/70 mb-1">Artist / Singer</label>
+                  <input 
+                    type="text" 
+                    value={editArtist}
+                    onChange={(e) => setEditArtist(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-sm bg-black/50 border border-white/15 text-white focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-white/70 mb-1">Album</label>
+                  <input 
+                    type="text" 
+                    value={editAlbum}
+                    onChange={(e) => setEditAlbum(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-sm bg-black/50 border border-white/15 text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-white/70 mb-1">Cover Art URL</label>
+                <div className="flex items-center gap-2.5">
+                  <img 
+                    src={editCoverArt} 
+                    alt="Cover preview" 
+                    className="w-10 h-10 rounded-xl object-cover border border-white/15 shrink-0"
+                  />
+                  <input 
+                    type="text" 
+                    value={editCoverArt}
+                    onChange={(e) => setEditCoverArt(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl text-xs bg-black/50 border border-white/15 text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTrack(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white/60 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-lg transition-all active:scale-95"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,11 +1,12 @@
 import React from 'react';
-import { Home, Library, Search, Settings } from 'lucide-react';
+import { Home, Library, Search } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { MainTab } from '../types';
 
 interface BottomNavProps {
   currentTab: MainTab;
   onSelectTab: (tab: MainTab) => void;
+  onOpenMenu?: () => void;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
@@ -15,16 +16,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     { id: 'home', label: 'Home', icon: Home },
     { id: 'search', label: 'Search', icon: Search },
     { id: 'library', label: 'Library', icon: Library },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';
 
   return (
-    <nav className={`fixed bottom-0 left-0 right-0 z-40 backdrop-blur-2xl px-4 pt-1.5 pb-3 flex items-center justify-around select-none transition-colors duration-300 ${
+    <nav className={`w-full backdrop-blur-2xl px-4 pt-1 pb-2 flex items-center justify-around select-none transition-colors duration-300 border-t ${
       isLight 
-        ? 'bg-white/95 border-t border-neutral-200/90 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]' 
-        : 'bg-black/95 border-t border-white/10'
+        ? 'bg-white/95 border-neutral-200/90 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]' 
+        : 'bg-black/95 border-white/10'
     }`}>
       {tabs.map(({ id, label, icon: Icon }) => {
         const isActive = currentTab === id;

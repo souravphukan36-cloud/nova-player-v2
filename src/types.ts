@@ -103,19 +103,22 @@ export type SortOption = 'title' | 'dateAdded' | 'duration' | 'artist';
 export type SortDirection = 'asc' | 'desc';
 
 export type LibrarySubTab = 'songs' | 'albums' | 'artists' | 'genres' | 'folders' | 'playlists' | 'downloaded';
-export type MainTab = 'home' | 'library' | 'cloud' | 'search' | 'settings';
+export type MainTab = 'home' | 'library' | 'cloud' | 'search' | 'manager' | 'settings';
 
-export interface TelegramChannelConfig {
+export type TelegramChannelConfig = {
   botToken: string;
   channelId: string;
   channelTitle: string;
   isConfigured: boolean;
   lastSyncTime?: number;
-}
+};
+
+export type AudioStreamingQuality = 'data-saver' | 'standard' | 'high-res' | 'lossless';
 
 export interface SettingsState {
-  theme: 'amoled' | 'dark' | 'midnight' | 'slate' | 'light' | 'light-silver' | 'warm-light';
+  theme: 'amoled' | 'dark' | 'midnight' | 'slate' | 'light' | 'light-silver' | 'warm-light' | 'color-emerald' | 'color-violet' | 'color-sunset' | 'color-cyan';
   accentColor: string;
+  streamingQuality: AudioStreamingQuality; // Audio Quality: Data Saver (128k), Standard (192k), High-Res (320k), Lossless FLAC
   crossfadeSecs: number;
   gapless: boolean;
   highQuality: boolean;
@@ -123,6 +126,7 @@ export interface SettingsState {
   scanFolders: string[];
   autoScanOnStartup: boolean;
   // User Customizations
+  showLiveEvent: boolean; // Toggle Live Event Poster and visualizer on/off
   soundAliveSpectrum: boolean; // Sound live spectrum toggle (default: false)
   showTopStatusBar: boolean; // Show top status bar toggle
   topBarRedAccent: boolean; // Show Lock, Time, EQ, Panel in sleek red word style

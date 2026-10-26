@@ -21,16 +21,16 @@ import {
   Sparkles,
   SlidersHorizontal,
   Car,
-  Headphones,
-  Upload,
   Download,
   CheckCircle2,
   Loader2
 } from 'lucide-react';
 import { usePlayer, usePlaybackTime } from '../context/PlayerContext';
 import { getTrackDynamicPalette, isCoverArtImage, DEFAULT_FALLBACK_ART, getResolvedCoverArt, getTrackCoverArt } from '../utils/dynamicColor';
+import { AudioQualityModal } from './AudioQualityModal';
 
 export const NowPlayingModal: React.FC = () => {
+  const [qualityModalOpen, setQualityModalOpen] = useState(false);
   const {
     currentTrack,
     isPlaying,
@@ -48,9 +48,6 @@ export const NowPlayingModal: React.FC = () => {
     setQueueOpen,
     carModeOpen,
     setCarModeOpen,
-    iemModalOpen,
-    setIEMModalOpen,
-    iemSoundStage,
     togglePlayPause,
     nextTrack,
     prevTrack,
@@ -217,7 +214,26 @@ export const NowPlayingModal: React.FC = () => {
           <ChevronDown className="w-6 h-6" />
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          {/* Spotify-grade Streaming Quality Toggle Button */}
+          <button
+            id="np-btn-quality"
+            onClick={() => setQualityModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold tracking-tight bg-white/10 hover:bg-white/15 transition-all text-white border border-white/15 active:scale-95 shadow-sm"
+            title="Streaming Audio Quality (Data Saver, Standard, 320k HD, Lossless)"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>
+              {settings.streamingQuality === 'data-saver' 
+                ? '128K' 
+                : settings.streamingQuality === 'standard' 
+                ? '192K' 
+                : settings.streamingQuality === 'lossless' 
+                ? 'LOSSLESS' 
+                : '320K HD'}
+            </span>
+          </button>
+
           <button
             id="np-btn-carmode"
             onClick={() => {
@@ -248,20 +264,6 @@ export const NowPlayingModal: React.FC = () => {
             title="Sleep Timer"
           >
             <Moon className="w-5 h-5" />
-          </button>
-
-          <button
-            id="np-btn-iem"
-            onClick={() => setIEMModalOpen(true)}
-            className={`p-2.5 rounded-full hover:bg-white/10 transition-colors relative ${
-              iemSoundStage.enabled ? 'text-emerald-400' : 'text-white/80 hover:text-white'
-            }`}
-            title="IEM Audiophile Stage (Headphone Monitor DSP)"
-          >
-            <Headphones className="w-5 h-5" />
-            {iemSoundStage.enabled && (
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400" />
-            )}
           </button>
 
           <button
@@ -483,15 +485,6 @@ export const NowPlayingModal: React.FC = () => {
                 <p className="text-sm font-medium text-white/65 truncate">
                   {currentTrack.artist}
                 </p>
-                {iemSoundStage.enabled && (
-                  <button 
-                    onClick={() => setIEMModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex-shrink-0 active:scale-95"
-                  >
-                    <Headphones className="w-2.5 h-2.5" />
-                    <span>IEM: {iemSoundStage.targetCurve.split('-')[0].toUpperCase()}</span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -641,6 +634,12 @@ export const NowPlayingModal: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Audio Quality Selection Modal */}
+      <AudioQualityModal 
+        isOpen={qualityModalOpen} 
+        onClose={() => setQualityModalOpen(false)} 
+      />
     </div>
   );
 };

@@ -116,8 +116,14 @@ class AudioEngine {
   public init() {
     if (this.ctx) return;
     try {
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.ctx = new AudioContextClass();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      if (win.__nova_ctx && win.__nova_ctx.state !== 'closed') {
+        this.ctx = win.__nova_ctx;
+      } else {
+        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        this.ctx = new AudioContextClass();
+        win.__nova_ctx = this.ctx;
+      }
 
       // Master Gain
       this.mainGain = this.ctx.createGain();
@@ -156,10 +162,10 @@ class AudioEngine {
       this.dolbyCompressor.attack.value = 0.012;
       this.dolbyCompressor.release.value = 0.22;
 
-      // 12-band Master Audiophile EQ frequencies extending up to 20,000 Hz:
-      // 20Hz (Sub-low), 40Hz (Sub-bass), 80Hz (Bass), 160Hz (Warmth), 320Hz (Body), 640Hz (Mid), 
-      // 1.25kHz (Center), 2.5kHz (Upper-mid), 5kHz (Presence), 10kHz (Brilliance), 16kHz (Air), 20kHz (Ultra-Air Shimmer)
-      const frequencies = [20, 40, 80, 160, 320, 640, 1250, 2500, 5000, 10000, 16000, 20000];
+      // 10-Band Studio Audiophile EQ frequencies (20Hz to 16,000Hz) matching EqualizerModal
+      // 20Hz (Ultra-sub), 60Hz (Sub-bass), 125Hz (Bass), 250Hz (Low-mid), 500Hz (Vocal Mid),
+      // 1kHz (Center), 2kHz (Upper-mid), 4kHz (Presence), 8kHz (Brilliance), 16kHz (Ultra-Air)
+      const frequencies = [20, 60, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
       this.eqFilters = frequencies.map((freq, idx) => {
         const filter = this.ctx!.createBiquadFilter();
         if (idx === 0) {
@@ -168,7 +174,7 @@ class AudioEngine {
           filter.type = 'highshelf';
         } else {
           filter.type = 'peaking';
-          filter.Q.value = 1.4;
+          filter.Q.value = 1.3;
         }
         filter.frequency.value = freq;
         filter.gain.value = 0;
@@ -327,7 +333,7 @@ class AudioEngine {
           existing.setAttribute('webkit-playsinline', 'true');
           existing.setAttribute('x-webkit-airplay', 'allow');
           existing.setAttribute('controlsList', 'nodownload noplaybackrate');
-          // Style as invisible but layout-rendered so Android MediaSession controller activates lock screen controls
+          // Style as invisible but layout-rendered so system MediaSession controller activates lock screen controls
           existing.style.position = 'fixed';
           existing.style.bottom = '0px';
           existing.style.left = '0px';
@@ -338,14 +344,31 @@ class AudioEngine {
           existing.style.zIndex = '-9999';
           document.body.appendChild(existing);
         }
-        // Ensure no CORS restrictions block audio playback from external CDNs, proxies, or blobs
-        existing.removeAttribute('crossorigin');
+        existing.crossOrigin = 'anonymous';
         this.audioElement = existing;
       } else {
         this.audioElement = new Audio();
+        this.audioElement.crossOrigin = 'anonymous';
       }
-      this.audioElement.removeAttribute('crossorigin');
+      this.audioElement.crossOrigin = 'anonymous';
       this.audioElement.preload = 'auto';
+
+      // Connect HTML5 Audio Element into Web Audio API DSP pipeline so EQ, IEM, Bass Boost & Dolby work on real audio!
+      if (!this.mediaSourceNode && this.audioElement && this.dspInput) {
+        try {
+          const win = typeof window !== 'undefined' ? (window as any) : {};
+          if (win.__nova_source_node) {
+            this.mediaSourceNode = win.__nova_source_node;
+          } else {
+            this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
+            win.__nova_source_node = this.mediaSourceNode;
+          }
+          this.mediaSourceNode.connect(this.dspInput);
+          console.log('[AudioEngine] Connected HTML5 Audio to Web Audio DSP pipeline successfully');
+        } catch (e) {
+          console.warn('[AudioEngine] MediaElementAudioSourceNode connection note:', e);
+        }
+      }
 
       this.audioElement.addEventListener('timeupdate', () => {
         if (this.audioElement && this.onTimeUpdateCallback && !this.isSynthPlaying) {
@@ -524,7 +547,19 @@ class AudioEngine {
         ? `${window.location.origin}${streamUrl}`
         : streamUrl;
 
-      this.audioElement.removeAttribute('crossorigin');
+      this.audioElement.crossOrigin = 'anonymous';
+      if (!this.mediaSourceNode && this.dspInput && this.ctx) {
+        try {
+          this.mediaSourceNode = this.ctx.createMediaElementSource(this.audioElement);
+          this.mediaSourceNode.connect(this.dspInput);
+        } catch {}
+      }
+      if (this.lastEqState) {
+        this.applyEqualizer(this.lastEqState);
+      }
+      if (this.lastIEMState) {
+        this.applyIEMSoundStage(this.lastIEMState);
+      }
       if (this.audioElement.src !== targetUrl) {
         this.audioElement.src = targetUrl;
         this.audioElement.load();
@@ -696,48 +731,35 @@ class AudioEngine {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
-    // Apply bands: 12-band master, 10-band, or 5-band with instant 15ms response
-    if (eq.bands.length === 12) {
+    // Apply bands: 10-band Studio, 5-band Standard, or 12-band
+    if (eq.bands.length === 10) {
       eq.bands.forEach((val, idx) => {
         if (this.eqFilters[idx]) {
           const gain = eq.enabled ? val : 0;
-          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.015);
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.01);
         }
       });
-    } else if (eq.bands.length === 10) {
-      const b = eq.bands;
-      const mapped = [
-        b[0] || 0, // 20Hz
-        b[0] || 0, // 40Hz
-        b[1] || 0, // 80Hz
-        b[2] || 0, // 160Hz
-        b[3] || 0, // 320Hz
-        b[4] || 0, // 640Hz
-        b[5] || 0, // 1.25kHz
-        b[6] || 0, // 2.5kHz
-        b[7] || 0, // 5kHz
-        b[8] || 0, // 10kHz
-        b[9] || 0, // 16kHz
-        b[9] || 0  // 20kHz Ultra-Air
-      ];
-      mapped.forEach((gainVal, idx) => {
-        if (this.eqFilters[idx]) {
-          const gain = eq.enabled ? gainVal : 0;
-          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.015);
-        }
-      });
-    } else {
-      // 5-band interpolation across 12 filters
+    } else if (eq.bands.length === 5) {
+      // 5-band interpolation across 10 filters (each band covers two neighboring frequencies)
       const band5 = eq.bands;
       const mappedGains = [
-        band5[0] || 0, band5[0] || 0, band5[1] || 0, band5[1] || 0,
-        band5[2] || 0, band5[2] || 0, band5[3] || 0, band5[3] || 0,
-        band5[4] || 0, band5[4] || 0, band5[4] || 0, band5[4] || 0
+        band5[0] || 0, band5[0] || 0,
+        band5[1] || 0, band5[1] || 0,
+        band5[2] || 0, band5[2] || 0,
+        band5[3] || 0, band5[3] || 0,
+        band5[4] || 0, band5[4] || 0,
       ];
       mappedGains.forEach((gainVal, idx) => {
         if (this.eqFilters[idx]) {
           const gain = eq.enabled ? gainVal : 0;
-          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.015);
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.01);
+        }
+      });
+    } else if (eq.bands.length === 12) {
+      eq.bands.slice(0, 10).forEach((val, idx) => {
+        if (this.eqFilters[idx]) {
+          const gain = eq.enabled ? val : 0;
+          this.eqFilters[idx].gain.setTargetAtTime(gain, now, 0.01);
         }
       });
     }
@@ -878,6 +900,26 @@ class AudioEngine {
       if (this.headShadowFilter) {
         this.headShadowFilter.frequency.setTargetAtTime(20000, now, 0.05);
       }
+    }
+  }
+
+  // Real-time zero-latency hardware EQ band adjustment
+  public setEQBandDirect(bandIndex: number, gainVal: number) {
+    if (!this.ctx) {
+      this.init();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    if (this.lastEqState) {
+      const nextBands = [...this.lastEqState.bands];
+      nextBands[bandIndex] = gainVal;
+      this.lastEqState = { ...this.lastEqState, enabled: true, bands: nextBands };
+    }
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    if (this.eqFilters[bandIndex]) {
+      this.eqFilters[bandIndex].gain.setTargetAtTime(gainVal, now, 0.008);
     }
   }
 

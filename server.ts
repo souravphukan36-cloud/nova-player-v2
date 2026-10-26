@@ -1166,7 +1166,23 @@ async function startServer() {
     if (album !== undefined) updated.album = String(album).trim();
     if (genre !== undefined) updated.genre = String(genre).trim();
     if (year !== undefined) updated.year = Number(year) || undefined;
-    if (coverArt !== undefined) updated.coverArt = String(coverArt).trim();
+    if (coverArt !== undefined) {
+      let resolvedCover = String(coverArt).trim();
+      if (resolvedCover.startsWith('data:image/')) {
+        try {
+          const matchImg = resolvedCover.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+          if (matchImg) {
+            const ext = matchImg[1] === 'jpeg' ? 'jpg' : matchImg[1].replace(/[^a-z0-9]/g, '');
+            const buf = Buffer.from(matchImg[2], 'base64');
+            const hash = crypto.createHash('md5').update(buf).digest('hex');
+            const fname = `cover_${hash.slice(0, 12)}.${ext || 'jpg'}`;
+            fs.writeFileSync(path.join(UPLOADS_DIR, fname), buf);
+            resolvedCover = `/api/uploads/${fname}`;
+          }
+        } catch {}
+      }
+      updated.coverArt = resolvedCover;
+    }
     if (synthPreset !== undefined) updated.synthPreset = String(synthPreset).trim();
     if (isFavorite !== undefined) updated.isFavorite = Boolean(isFavorite);
     if (isHidden !== undefined) updated.isHidden = Boolean(isHidden);
@@ -1485,6 +1501,24 @@ async function startServer() {
       const trackArtist = (artist && String(artist).trim()) || 'Studio Master';
       const newTrackId = `upload_${uniqueHash.slice(0, 10)}`;
 
+      let resolvedCoverArt = coverArt || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+      if (typeof coverArt === 'string' && coverArt.startsWith('data:image/')) {
+        try {
+          const matchImg = coverArt.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+          if (matchImg) {
+            const ext = matchImg[1] === 'jpeg' ? 'jpg' : matchImg[1].replace(/[^a-z0-9]/g, '');
+            const buf = Buffer.from(matchImg[2], 'base64');
+            const hash = crypto.createHash('md5').update(buf).digest('hex');
+            const fname = `cover_${hash.slice(0, 12)}.${ext || 'jpg'}`;
+            fs.writeFileSync(path.join(UPLOADS_DIR, fname), buf);
+            resolvedCoverArt = `/api/uploads/${fname}`;
+            console.log(`[Upload Engine] Saved original cover image: ${fname} (${buf.length} bytes)`);
+          }
+        } catch (err) {
+          console.warn('Cover art base64 save note:', err);
+        }
+      }
+
       const newTrack = {
         id: newTrackId,
         title: trackTitle,
@@ -1492,7 +1526,7 @@ async function startServer() {
         album: (album && String(album).trim()) || 'Uploaded Singles',
         duration: Number(duration) || 210,
         format: ext as any,
-        coverArt: coverArt || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+        coverArt: resolvedCoverArt,
         audioUrl: `/api/uploads/${savedFileName}`,
         genre: 'Uploaded Master',
         folder: `NOVA Studio / ${trackArtist}`,

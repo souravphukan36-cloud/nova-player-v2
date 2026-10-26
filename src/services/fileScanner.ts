@@ -76,9 +76,9 @@ export async function parseAudioFile(file: File, folderPath: string = '/Storage/
   // Determine duration via temporary audio element
   const duration = await getAudioDuration(file);
 
-  // If no embedded picture, generate an artistic album cover or music poster
-  const rawCoverArt = extractedCover || generateGradientFromName(title + artist);
-  const coverArt = sanitizeMediaUrl(rawCoverArt) || rawCoverArt;
+  // If no embedded picture, provide high-definition studio vinyl cover art
+  const DEFAULT_COVER = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80';
+  const coverArt = sanitizeMediaUrl(extractedCover) || extractedCover || DEFAULT_COVER;
 
   const newTrack: Track = {
     id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,

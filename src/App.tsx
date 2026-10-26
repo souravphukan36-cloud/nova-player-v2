@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { App as CapacitorApp } from '@capacitor/app';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
-import { StatusBar } from './components/StatusBar';
 import { OneUIHeader } from './components/OneUIHeader';
 import { HomeTab } from './components/HomeTab';
 import { LibraryTab } from './components/LibraryTab';
@@ -12,14 +10,12 @@ import { MiniPlayer } from './components/MiniPlayer';
 import { BottomNav } from './components/BottomNav';
 import { NowPlayingModal } from './components/NowPlayingModal';
 import { EqualizerModal } from './components/EqualizerModal';
-import { LockScreenModal } from './components/LockScreenModal';
-import { NotificationShadeModal } from './components/NotificationShadeModal';
 import { SleepTimerModal } from './components/SleepTimerModal';
 import { FileScannerModal } from './components/FileScannerModal';
 import { CustomizerModal } from './components/CustomizerModal';
 import { CarModeModal } from './components/CarModeModal';
-import { IEMStageModal } from './components/IEMStageModal';
 import { AdminWebPortal } from './components/AdminWebPortal';
+import { SidebarNav } from './components/SidebarNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainTab, LibrarySubTab } from './types';
 
@@ -47,35 +43,30 @@ const MainLayout: React.FC = () => {
 
   const [currentTab, setCurrentTab] = useState<MainTab>('home');
   const [librarySubTab, setLibrarySubTab] = useState<LibrarySubTab>('songs');
-  const [exitToastVisible, setExitToastVisible] = useState(false);
-  const lastBackPressRef = useRef(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { 
     settings, 
     currentTrack,
     nowPlayingOpen, setNowPlayingOpen,
     equalizerOpen, setEqualizerOpen,
-    iemModalOpen, setIEMModalOpen,
     queueOpen, setQueueOpen,
     lyricsOpen, setLyricsOpen,
-    lockScreenOpen, setLockScreenOpen,
-    notificationShadeOpen, setNotificationShadeOpen,
     sleepTimerOpen, setSleepTimerOpen,
     scannerOpen, setScannerOpen,
     customizerOpen, setCustomizerOpen,
     carModeOpen, setCarModeOpen,
   } = usePlayer();
 
-  // One UI Native Android Hardware Back Button & Gesture Navigation Handler
+  // Web Browser Back Navigation Handler (closes top-level modals on browser back)
   const handleBackNavigation = useCallback(() => {
-    // 1. First priority: Close any open modal or drawer in order
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+      return true;
+    }
     if (isAdminRoute) {
       window.history.pushState({}, '', '/');
       setIsAdminRoute(false);
-      return true;
-    }
-    if (iemModalOpen) {
-      setIEMModalOpen(false);
       return true;
     }
     if (equalizerOpen) {
@@ -110,37 +101,15 @@ const MainLayout: React.FC = () => {
       setNowPlayingOpen(false);
       return true;
     }
-    if (notificationShadeOpen) {
-      setNotificationShadeOpen(false);
-      return true;
-    }
-    if (lockScreenOpen) {
-      setLockScreenOpen(false);
-      return true;
-    }
 
-    // 2. Second priority: If on a sub-tab (library, cloud, search, settings), return to Home tab
     if (currentTab !== 'home') {
       setCurrentTab('home');
       return true;
     }
-
-    // 3. User is on Home screen with no modals open: double-press back to exit
-    const now = Date.now();
-    if (now - lastBackPressRef.current < 2000) {
-      try {
-        CapacitorApp.exitApp();
-      } catch {}
-      return false;
-    } else {
-      lastBackPressRef.current = now;
-      setExitToastVisible(true);
-      setTimeout(() => setExitToastVisible(false), 2000);
-      return true;
-    }
+    return false;
   }, [
+    isMobileMenuOpen,
     isAdminRoute,
-    iemModalOpen,
     equalizerOpen,
     queueOpen,
     lyricsOpen,
@@ -149,10 +118,7 @@ const MainLayout: React.FC = () => {
     sleepTimerOpen,
     carModeOpen,
     nowPlayingOpen,
-    notificationShadeOpen,
-    lockScreenOpen,
     currentTab,
-    setIEMModalOpen,
     setEqualizerOpen,
     setQueueOpen,
     setLyricsOpen,
@@ -161,36 +127,17 @@ const MainLayout: React.FC = () => {
     setSleepTimerOpen,
     setCarModeOpen,
     setNowPlayingOpen,
-    setNotificationShadeOpen,
-    setLockScreenOpen
   ]);
 
   useEffect(() => {
-    let listener: any = null;
-
-    try {
-      CapacitorApp.addListener('backButton', () => {
-        handleBackNavigation();
-      }).then(l => {
-        listener = l;
-      }).catch(() => {});
-    } catch {}
-
     const handlePop = (e: PopStateEvent) => {
-      e.preventDefault();
       const consumed = handleBackNavigation();
       if (consumed) {
-        window.history.pushState({ page: 'nova' }, '', window.location.href);
+        e.preventDefault();
       }
     };
-
-    window.history.pushState({ page: 'nova' }, '', window.location.href);
     window.addEventListener('popstate', handlePop);
-
-    return () => {
-      if (listener?.remove) listener.remove();
-      window.removeEventListener('popstate', handlePop);
-    };
+    return () => window.removeEventListener('popstate', handlePop);
   }, [handleBackNavigation]);
 
   // If user navigates to /admin, show full-page Admin Web Portal
@@ -238,22 +185,26 @@ const MainLayout: React.FC = () => {
       case 'search':
         return 'Find tracks across your device';
       case 'settings':
-        return 'Audio Customization & About';
+        return 'Audio Customization, Themes & About';
     }
   };
 
   // Determine theme background
   const themeBgMap: Record<string, string> = {
     amoled: '#000000',
-    dark: '#101116',
+    dark: '#0A0C10',
     midnight: '#0C0A17',
     slate: '#0B0F19',
-    light: '#F2F4F8',
+    light: '#F8FAFC',
     'light-silver': '#FFFFFF',
     'warm-light': '#FAF7F2',
+    'color-emerald': '#041d14',
+    'color-violet': '#0f0c20',
+    'color-sunset': '#1c0b14',
+    'color-cyan': '#041525',
   };
   const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';
-  const bgColor = themeBgMap[settings.theme] || (isLight ? '#F2F4F8' : '#000000');
+  const bgColor = themeBgMap[settings.theme] || (isLight ? '#F8FAFC' : '#0A0C10');
 
   React.useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -267,80 +218,73 @@ const MainLayout: React.FC = () => {
       className={`fixed inset-0 w-full h-full flex flex-col overflow-hidden transition-colors duration-300 select-none ${
         isLight ? 'theme-light text-neutral-900' : 'text-neutral-100'
       }`}
-      style={{ 
-        backgroundColor: bgColor,
-        paddingTop: 'max(env(safe-area-inset-top, 0px), 26px)'
-      }}
+      style={{ backgroundColor: bgColor }}
     >
-      {/* 1. Android / One UI Status Bar */}
-      <StatusBar />
-
-      <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col min-h-0 h-full relative overflow-hidden">
-        {/* 2. Top Samsung One UI Header */}
-        <OneUIHeader 
-          title={getHeaderTitle()} 
-          subtitle={getHeaderSubtitle()}
+      {/* Main Responsive Body: Left Sidebar + Center Content Area */}
+      <div className="w-full flex-1 flex min-h-0 h-full relative overflow-hidden">
+        {/* 1. Left Sidebar Navigation (Line-by-line options on left) */}
+        <SidebarNav 
+          currentTab={currentTab} 
+          onSelectTab={setCurrentTab}
+          isOpenMobile={isMobileMenuOpen}
+          onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
 
-        {/* 3. Tab Content View Area */}
-        <main 
-          id="main-scroll-view"
-          className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden pb-44"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          {currentTab === 'home' && (
-            <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
-          )}
-          {currentTab === 'cloud' && (
-            <CloudTab />
-          )}
-          {currentTab === 'library' && (
-            <LibraryTab initialSubTab={librarySubTab} />
-          )}
-          {currentTab === 'search' && (
-            <SearchTab />
-          )}
-          {currentTab === 'settings' && (
-            <SettingsTab />
-          )}
-        </main>
-      </div>
+        {/* 2. Main Center Content View Area */}
+        <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden">
+          {/* Top Header */}
+          <OneUIHeader 
+            title={getHeaderTitle()} 
+            subtitle={getHeaderSubtitle()}
+            onOpenMenu={() => setIsMobileMenuOpen(true)}
+          />
 
-      {/* 4. Docked Mini Player bar directly above Bottom Navigation */}
-      <div className="fixed bottom-14 left-0 right-0 z-30 pointer-events-none px-2 sm:px-4 max-w-4xl mx-auto">
-        <MiniPlayer />
-      </div>
-
-      {/* 5. Bottom Navigation Bar */}
-      <div className="w-full">
-        <div className="max-w-4xl mx-auto">
-          <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
+          {/* Scrollable Tab View Area with proper bottom padding for Web Player Bar */}
+          <main 
+            id="main-scroll-view"
+            className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden pb-36 md:pb-28"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            <div className="max-w-6xl mx-auto w-full px-4 sm:px-6">
+              {currentTab === 'home' && (
+                <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
+              )}
+              {currentTab === 'cloud' && (
+                <CloudTab />
+              )}
+              {currentTab === 'library' && (
+                <LibraryTab initialSubTab={librarySubTab} />
+              )}
+              {currentTab === 'search' && (
+                <SearchTab />
+              )}
+              {currentTab === 'settings' && (
+                <SettingsTab />
+              )}
+            </div>
+          </main>
         </div>
       </div>
 
-      {/* 6. Modals & Drawers */}
+      {/* 3. Persistent Solid Web Player Bar & Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-auto flex flex-col">
+        <MiniPlayer />
+        <div className="w-full md:hidden">
+          <BottomNav 
+            currentTab={currentTab} 
+            onSelectTab={setCurrentTab} 
+            onOpenMenu={() => setIsMobileMenuOpen(true)}
+          />
+        </div>
+      </div>
+
+      {/* 4. Desktop/Web Modals & Drawers */}
       <NowPlayingModal />
       <EqualizerModal />
-      <LockScreenModal />
-      <NotificationShadeModal />
       <SleepTimerModal />
       <FileScannerModal />
       <CustomizerModal />
       <CarModeModal />
-      <IEMStageModal />
-
-      {/* 7. Samsung One UI Double-Back Exit Toast */}
-      {exitToastVisible && (
-        <div 
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[250] px-5 py-2.5 rounded-full shadow-2xl border border-white/15 text-xs font-bold tracking-wide pointer-events-none animate-in fade-in zoom-in-95 duration-150"
-          style={{
-            backgroundColor: isLight ? 'rgba(0,0,0,0.85)' : 'rgba(28,30,38,0.95)',
-            color: '#FFFFFF'
-          }}
-        >
-          Press back again to exit
-        </div>
-      )}
     </div>
   );
 };

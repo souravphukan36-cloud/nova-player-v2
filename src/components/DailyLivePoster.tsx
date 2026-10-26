@@ -144,7 +144,8 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
     isPlaying,
     playTrack,
     togglePlayPause,
-    settings
+    settings,
+    updateSettings
   } = usePlayer();
 
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
@@ -183,6 +184,10 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
     ))
   );
   const displayVideo = isVideoPoster ? (announcement?.videoUrl || announcement?.imageUrl || '') : '';
+
+  if (settings.showLiveEvent === false || isDismissed) {
+    return null;
+  }
 
   const hasCustomAdminPoster = Boolean(
     announcement && 
@@ -353,11 +358,16 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
               <ChevronRight className="w-3.5 h-3.5 text-white/50" />
             </button>
             <button
-              onClick={() => setIsDismissed(true)}
-              className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-              title="Dismiss for today"
+              onClick={() => {
+                updateSettings({ showLiveEvent: false });
+                setIsDismissed(true);
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-white/80 hover:text-white bg-black/40 hover:bg-black/70 border border-white/15 transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+              title="Turn off live event poster"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Turn Off Live Event</span>
+              <span className="sm:hidden">Off</span>
             </button>
           </div>
         </div>

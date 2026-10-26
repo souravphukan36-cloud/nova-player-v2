@@ -109,6 +109,7 @@ interface PlayerContextType {
 
   // Playlists & Tracks
   addTracks: (newTracks: Track[]) => void;
+  updateTrack: (trackId: string, updates: Partial<Track>) => Promise<boolean>;
   deleteTrack: (trackId: string) => void;
   downloadTrack: (track: Track) => Promise<boolean>;
   deleteDownloadedTrack: (trackId: string) => Promise<void>;
@@ -163,12 +164,14 @@ const EQ_PRESETS_10: Record<EQPreset, number[]> = {
 const DEFAULT_SETTINGS: SettingsState = {
   theme: 'amoled',
   accentColor: '#10B981', // Emerald Nature Accent
+  streamingQuality: 'high-res', // Spotify-grade: Data Saver (128k) vs High-Res (320k)
   crossfadeSecs: 2,
   gapless: true,
   highQuality: true,
   supportedFormats: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'],
   scanFolders: ['/Storage/emulated/0/Music', '/Storage/emulated/0/Download'],
   autoScanOnStartup: true,
+  showLiveEvent: true,
   soundAliveSpectrum: false,
   showTopStatusBar: true,
   topBarRedAccent: true,
@@ -1421,14 +1424,78 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
+  const updateTrack = async (trackId: string, updates: Partial<Track>): Promise<boolean> => {
+    // 1. Update in local tracks state immediately
+    setTracks(prev => prev.map(t => (t.id === trackId || (t as any).fileId === trackId) ? { ...t, ...updates, hasCustomMetadata: true } : t));
+    // 2. Update in currentTrack if matching
+    if (currentTrack && (currentTrack.id === trackId || (currentTrack as any).fileId === trackId)) {
+      setCurrentTrack(prev => prev ? { ...prev, ...updates, hasCustomMetadata: true } : null);
+    }
+    // 3. Update in queue
+    setQueue(prev => prev.map(t => (t.id === trackId || (t as any).fileId === trackId) ? { ...t, ...updates, hasCustomMetadata: true } : t));
+    // 4. Update in localStorage cache if exists
+    try {
+      const saved = localStorage.getItem('nova_cloud_channel_tracks_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const updated = parsed.map((t: Track) => (t.id === trackId || (t as any).fileId === trackId) ? { ...t, ...updates, hasCustomMetadata: true } : t);
+          localStorage.setItem('nova_cloud_channel_tracks_v2', JSON.stringify(updated));
+        }
+      }
+    } catch {}
+    // 5. Send to server backend to persist across sessions
+    try {
+      const res = await fetch('/api/tracks/metadata/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackId,
+          title: updates.title,
+          artist: updates.artist,
+          album: updates.album,
+          genre: updates.genre,
+          year: updates.year,
+          coverArt: updates.coverArt,
+          lyrics: updates.lyrics,
+          synthPreset: updates.synthPreset,
+          isFavorite: updates.isFavorite,
+        })
+      });
+      return res.ok;
+    } catch {
+      return true; // Still updated in client
+    }
+  };
+
   const deleteTrack = (trackId: string) => {
     deleteStoredTrack(trackId);
-    setTracks(prev => prev.filter(t => t.id !== trackId));
-    setQueue(prev => prev.filter(t => t.id !== trackId));
+    setTracks(prev => prev.filter(t => t.id !== trackId && (t as any).fileId !== trackId));
+    setQueue(prev => prev.filter(t => t.id !== trackId && (t as any).fileId !== trackId));
+    if (currentTrack && (currentTrack.id === trackId || (currentTrack as any).fileId === trackId)) {
+      nextTrack();
+    }
     setPlaylists(prev => prev.map(p => ({
       ...p,
       trackIds: p.trackIds.filter(id => id !== trackId)
     })));
+    try {
+      const saved = localStorage.getItem('nova_cloud_channel_tracks_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const updated = parsed.filter((t: Track) => t.id !== trackId && (t as any).fileId !== trackId);
+          localStorage.setItem('nova_cloud_channel_tracks_v2', JSON.stringify(updated));
+        }
+      }
+    } catch {}
+    try {
+      fetch('/api/tracks/metadata/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackId, isHidden: true })
+      }).catch(() => {});
+    } catch {}
   };
 
   const createPlaylist = (name: string, description: string = '') => {
@@ -1631,6 +1698,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     cancelSleepTimer,
 
     addTracks,
+    updateTrack,
     deleteTrack,
     downloadTrack,
     deleteDownloadedTrack,

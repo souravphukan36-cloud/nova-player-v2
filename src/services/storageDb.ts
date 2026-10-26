@@ -268,3 +268,39 @@ export async function downloadAndSaveTrackOffline(
     return false;
   }
 }
+
+// Retrieve offline downloaded storage statistics (number of tracks and total bytes/MB)
+export async function getOfflineStorageStats(): Promise<{ totalTracks: number; totalBytes: number }> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_AUDIO, 'readonly');
+      const store = tx.objectStore(STORE_AUDIO);
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const records = (request.result as StoredAudioRecord[]) || [];
+        const totalBytes = records.reduce((sum, r) => sum + (r.blob ? r.blob.size : 0), 0);
+        resolve({ totalTracks: records.length, totalBytes });
+      };
+      request.onerror = () => resolve({ totalTracks: 0, totalBytes: 0 });
+    });
+  } catch {
+    return { totalTracks: 0, totalBytes: 0 };
+  }
+}
+
+// Clear all offline downloaded audio blobs while preserving track metadata
+export async function clearOfflineAudioStorage(): Promise<boolean> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_AUDIO, 'readwrite');
+      const store = tx.objectStore(STORE_AUDIO);
+      const req = store.clear();
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}

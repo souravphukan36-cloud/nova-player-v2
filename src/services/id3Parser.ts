@@ -132,12 +132,12 @@ function parseId3v23or4(view: DataView, maxBytes: number, majorVersion: number, 
 
     const frameBodyOffset = offset + 10;
 
-    // TIT2 = Title
-    if (frameId === 'TIT2' && !result.title) {
+    // TIT2 / TIT1 = Title
+    if ((frameId === 'TIT2' || frameId === 'TIT1') && !result.title) {
       result.title = decodeTextFrame(view, frameBodyOffset, frameSize);
     }
-    // TPE1 = Singer / Artist
-    else if (frameId === 'TPE1' && !result.artist) {
+    // TPE1 / TPE2 = Singer / Artist
+    else if ((frameId === 'TPE1' || frameId === 'TPE2') && !result.artist) {
       result.artist = decodeTextFrame(view, frameBodyOffset, frameSize);
     }
     // TALB = Album
@@ -207,68 +207,74 @@ function parseId3v22(view: DataView, maxBytes: number, result: ExtractedMetadata
   }
 }
 
-// Parse APIC frame (ID3v2.3/v2.4)
+// Parse APIC frame (ID3v2.3/v2.4) with robust image header search
 function parseApicFrame(view: DataView, offset: number, length: number): string | null {
   try {
     const max = offset + length;
     const encoding = view.getUint8(offset);
-    let cursor = offset + 1;
+    let mimeType = 'image/jpeg';
 
-    // MIME Type (null-terminated string)
-    let mimeType = '';
-    while (cursor < max && view.getUint8(cursor) !== 0) {
-      mimeType += String.fromCharCode(view.getUint8(cursor));
-      cursor++;
-    }
-    cursor++; // skip null terminator
-
-    if (!mimeType || mimeType === 'image/') {
-      mimeType = 'image/jpeg';
-    }
-
-    // Skip Picture Type (1 byte)
-    cursor++;
-
-    // Skip Description string based on encoding
-    if (encoding === 1 || encoding === 2) {
-      while (cursor + 1 < max) {
-        if (view.getUint8(cursor) === 0 && view.getUint8(cursor + 1) === 0) {
-          cursor += 2;
-          break;
-        }
-        cursor += 2;
+    // Fast & foolproof: Directly search for JPEG/PNG/WebP image start signature within the frame
+    let imgStart = -1;
+    for (let i = offset + 1; i < max - 4; i++) {
+      // JPEG SOI: 0xFF, 0xD8, 0xFF
+      if (view.getUint8(i) === 0xff && view.getUint8(i + 1) === 0xd8 && view.getUint8(i + 2) === 0xff) {
+        imgStart = i;
+        mimeType = 'image/jpeg';
+        break;
       }
-    } else {
-      while (cursor < max && view.getUint8(cursor) !== 0) {
+      // PNG: 0x89, 0x50, 0x4E, 0x47
+      if (view.getUint8(i) === 0x89 && view.getUint8(i + 1) === 0x50 && view.getUint8(i + 2) === 0x4e && view.getUint8(i + 3) === 0x47) {
+        imgStart = i;
+        mimeType = 'image/png';
+        break;
+      }
+      // WebP: 0x52, 0x49, 0x46, 0x46 (RIFF)
+      if (view.getUint8(i) === 0x52 && view.getUint8(i + 1) === 0x49 && view.getUint8(i + 2) === 0x46 && view.getUint8(i + 3) === 0x46) {
+        imgStart = i;
+        mimeType = 'image/webp';
+        break;
+      }
+    }
+
+    if (imgStart === -1) {
+      // Fallback: standard description skipping
+      let cursor = offset + 1;
+      while (cursor < max && view.getUint8(cursor) !== 0) cursor++;
+      cursor++; // skip null
+      cursor++; // skip picture type
+      if (encoding === 1 || encoding === 2) {
+        while (cursor + 1 < max) {
+          if (view.getUint8(cursor) === 0 && view.getUint8(cursor + 1) === 0) {
+            cursor += 2;
+            break;
+          }
+          cursor += 2;
+        }
+      } else {
+        while (cursor < max && view.getUint8(cursor) !== 0) cursor++;
         cursor++;
       }
-      cursor++;
+      imgStart = cursor;
     }
 
-    if (cursor >= max) return null;
+    if (imgStart < 0 || imgStart >= max) return null;
 
-    const imgBytes = new Uint8Array(view.buffer.slice(cursor, max));
-    if (imgBytes.length < 16) return null;
-
-    // Verify format magic
-    if (imgBytes[0] === 0xff && imgBytes[1] === 0xd8) {
-      mimeType = 'image/jpeg';
-    } else if (
-      imgBytes[0] === 0x89 &&
-      imgBytes[1] === 0x50 &&
-      imgBytes[2] === 0x4e &&
-      imgBytes[3] === 0x47
-    ) {
-      mimeType = 'image/png';
-    } else if (
-      imgBytes[0] === 0x52 &&
-      imgBytes[1] === 0x49 &&
-      imgBytes[2] === 0x46 &&
-      imgBytes[3] === 0x46
-    ) {
-      mimeType = 'image/webp';
+    let imgEnd = max;
+    // If JPEG, find EOI marker (0xFF, 0xD9) to ensure clean boundary
+    if (mimeType === 'image/jpeg') {
+      for (let j = max - 2; j >= imgStart + 16; j--) {
+        if (view.getUint8(j) === 0xff && view.getUint8(j + 1) === 0xd9) {
+          imgEnd = j + 2;
+          break;
+        }
+      }
     }
 
+    const imgLen = imgEnd - imgStart;
+    if (imgLen < 32) return null;
+
+    const imgBytes = new Uint8Array(view.buffer, view.byteOffset + imgStart, imgLen);
     return uint8ArrayToDataUrl(imgBytes, mimeType);
   } catch (err) {
     console.warn('APIC image extraction error:', err);
@@ -280,37 +286,24 @@ function parseApicFrame(view: DataView, offset: number, length: number): string 
 function parsePicFrameV22(view: DataView, offset: number, length: number): string | null {
   try {
     const max = offset + length;
-    const encoding = view.getUint8(offset);
-    let cursor = offset + 1;
+    let mimeType = 'image/jpeg';
+    let imgStart = -1;
 
-    const format = String.fromCharCode(
-      view.getUint8(cursor),
-      view.getUint8(cursor + 1),
-      view.getUint8(cursor + 2)
-    ).toLowerCase();
-    cursor += 3;
-
-    const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-    cursor++; // picture type
-
-    if (encoding === 1) {
-      while (cursor + 1 < max) {
-        if (view.getUint8(cursor) === 0 && view.getUint8(cursor + 1) === 0) {
-          cursor += 2;
-          break;
-        }
-        cursor += 2;
+    for (let i = offset + 1; i < max - 4; i++) {
+      if (view.getUint8(i) === 0xff && view.getUint8(i + 1) === 0xd8) {
+        imgStart = i;
+        mimeType = 'image/jpeg';
+        break;
       }
-    } else {
-      while (cursor < max && view.getUint8(cursor) !== 0) {
-        cursor++;
+      if (view.getUint8(i) === 0x89 && view.getUint8(i + 1) === 0x50 && view.getUint8(i + 2) === 0x4e) {
+        imgStart = i;
+        mimeType = 'image/png';
+        break;
       }
-      cursor++;
     }
 
-    if (cursor >= max) return null;
-
-    const imgBytes = new Uint8Array(view.buffer.slice(cursor, max));
+    if (imgStart === -1) return null;
+    const imgBytes = new Uint8Array(view.buffer, view.byteOffset + imgStart, max - imgStart);
     return uint8ArrayToDataUrl(imgBytes, mimeType);
   } catch {
     return null;
@@ -404,31 +397,117 @@ async function parseFlacMetadata(file: File, result: ExtractedMetadata): Promise
   }
 }
 
-// Parse basic M4A metadata
+// Parse complete M4A / AAC / MP4 metadata (title, artist, album, year, genre & embedded cover art)
 async function parseM4aMetadata(file: File, result: ExtractedMetadata): Promise<void> {
   try {
-    const sliceBuffer = await file.slice(0, Math.min(file.size, 2 * 1024 * 1024)).arrayBuffer();
+    const sliceBuffer = await file.slice(0, Math.min(file.size, 4 * 1024 * 1024)).arrayBuffer();
     const bytes = new Uint8Array(sliceBuffer);
-    const text = new TextDecoder('iso-8859-1').decode(bytes);
+    const view = new DataView(sliceBuffer);
+    const max = sliceBuffer.byteLength;
 
-    // Look for covr (cover art atom)
-    const covrIdx = text.indexOf('covr');
-    if (covrIdx !== -1 && !result.coverArtUrl) {
-      // Find JPEG or PNG header within 64 bytes of covr
-      for (let i = covrIdx; i < Math.min(covrIdx + 64, bytes.length - 4); i++) {
-        if (bytes[i] === 0xff && bytes[i + 1] === 0xd8) {
-          const imgSlice = bytes.subarray(i);
-          result.coverArtUrl = uint8ArrayToDataUrl(imgSlice, 'image/jpeg');
-          break;
-        } else if (bytes[i] === 0x89 && bytes[i + 1] === 0x50 && bytes[i + 2] === 0x4e) {
-          const imgSlice = bytes.subarray(i);
-          result.coverArtUrl = uint8ArrayToDataUrl(imgSlice, 'image/png');
-          break;
+    // Helper: extract UTF-8 string inside a data sub-box
+    const extractM4aText = (atomStart: number, atomLen: number): string | null => {
+      try {
+        const subBox = atomStart + 8;
+        if (subBox + 16 < atomStart + atomLen && subBox + 16 < max) {
+          const type = String.fromCharCode(bytes[subBox + 4], bytes[subBox + 5], bytes[subBox + 6], bytes[subBox + 7]);
+          if (type === 'data') {
+            const dataLen = view.getUint32(subBox);
+            const strStart = subBox + 16;
+            const strLen = dataLen - 16;
+            if (strStart + strLen <= max && strLen > 0) {
+              const strBytes = bytes.subarray(strStart, strStart + strLen);
+              return new TextDecoder('utf-8').decode(strBytes).trim();
+            }
+          }
+        }
+      } catch {}
+      return null;
+    };
+
+    // Scan for iTunes metadata atoms
+    for (let i = 0; i < max - 8; i++) {
+      const a0 = bytes[i];
+      const a1 = bytes[i + 1];
+      const a2 = bytes[i + 2];
+      const a3 = bytes[i + 3];
+
+      // 1. ©nam (0xA9, 'n', 'a', 'm') = Title
+      if (a0 === 0xa9 && a1 === 0x6e && a2 === 0x61 && a3 === 0x6d && !result.title && i >= 4) {
+        const atomLen = view.getUint32(i - 4);
+        const title = extractM4aText(i - 4, atomLen);
+        if (title) result.title = title;
+      }
+      // 2. ©ART (0xA9, 'A', 'R', 'T') = Artist
+      else if (a0 === 0xa9 && a1 === 0x41 && a2 === 0x52 && a3 === 0x54 && !result.artist && i >= 4) {
+        const atomLen = view.getUint32(i - 4);
+        const artist = extractM4aText(i - 4, atomLen);
+        if (artist) result.artist = artist;
+      }
+      // 3. ©alb (0xA9, 'a', 'l', 'b') = Album
+      else if (a0 === 0xa9 && a1 === 0x61 && a2 === 0x6c && a3 === 0x62 && !result.album && i >= 4) {
+        const atomLen = view.getUint32(i - 4);
+        const album = extractM4aText(i - 4, atomLen);
+        if (album) result.album = album;
+      }
+      // 4. ©day (0xA9, 'd', 'a', 'y') = Year
+      else if (a0 === 0xa9 && a1 === 0x64 && a2 === 0x61 && a3 === 0x79 && !result.year && i >= 4) {
+        const atomLen = view.getUint32(i - 4);
+        const yearStr = extractM4aText(i - 4, atomLen);
+        if (yearStr) {
+          const y = parseInt(yearStr.slice(0, 4), 10);
+          if (!isNaN(y)) result.year = y;
         }
       }
+      // 5. ©gen (0xA9, 'g', 'e', 'n') = Genre
+      else if (a0 === 0xa9 && a1 === 0x67 && a2 === 0x65 && a3 === 0x6e && !result.genre && i >= 4) {
+        const atomLen = view.getUint32(i - 4);
+        const genre = extractM4aText(i - 4, atomLen);
+        if (genre) result.genre = genre;
+      }
+      // 6. 'covr' = Cover art
+      else if (a0 === 0x63 && a1 === 0x6f && a2 === 0x76 && a3 === 0x72 && !result.coverArtUrl && i >= 4) {
+        try {
+          const covrAtomLen = view.getUint32(i - 4);
+          const covrEnd = Math.min(max, i - 4 + covrAtomLen);
+          let mime = 'image/jpeg';
+          let imgStart = -1;
+
+          for (let j = i + 4; j < covrEnd - 4; j++) {
+            // Check for JPEG SOI
+            if (bytes[j] === 0xff && bytes[j + 1] === 0xd8 && bytes[j + 2] === 0xff) {
+              imgStart = j;
+              mime = 'image/jpeg';
+              break;
+            }
+            // Check for PNG
+            if (bytes[j] === 0x89 && bytes[j + 1] === 0x50 && bytes[j + 2] === 0x4e) {
+              imgStart = j;
+              mime = 'image/png';
+              break;
+            }
+          }
+
+          if (imgStart !== -1) {
+            let imgEnd = covrEnd;
+            if (mime === 'image/jpeg') {
+              for (let k = covrEnd - 2; k >= imgStart + 16; k--) {
+                if (bytes[k] === 0xff && bytes[k + 1] === 0xd9) {
+                  imgEnd = k + 2;
+                  break;
+                }
+              }
+            }
+            const imgBytes = bytes.subarray(imgStart, imgEnd);
+            if (imgBytes.length >= 32) {
+              result.coverArtUrl = uint8ArrayToDataUrl(imgBytes, mime);
+            }
+          }
+        } catch {}
+      }
     }
-  } catch {
-    // ignore
+  } catch (err) {
+    console.warn('M4A metadata parsing notice:', err);
   }
 }
 
@@ -447,27 +526,29 @@ function uint8ArrayToDataUrl(bytes: Uint8Array, mimeType: string): string {
   return `data:${mimeType};base64,${base64}`;
 }
 
-// Decode text frames
+// Decode text frames with accurate byte offset and BOM/null handling
 function decodeTextFrame(view: DataView, offset: number, length: number): string {
   if (length <= 1) return '';
   const encoding = view.getUint8(offset);
-  const bytes = new Uint8Array(view.buffer, offset + 1, length - 1);
+  const bytes = new Uint8Array(view.buffer, view.byteOffset + offset + 1, length - 1);
+
+  const cleanString = (str: string) => str.replace(/^\uFEFF/, '').replace(/\0.*$/, '').replace(/\0/g, '').trim();
 
   try {
     if (encoding === 0) {
-      return new TextDecoder('iso-8859-1').decode(bytes).replace(/\0/g, '').trim();
+      return cleanString(new TextDecoder('iso-8859-1').decode(bytes));
     } else if (encoding === 1) {
-      return new TextDecoder('utf-16').decode(bytes).replace(/\0/g, '').trim();
+      return cleanString(new TextDecoder('utf-16').decode(bytes));
     } else if (encoding === 2) {
-      return new TextDecoder('utf-16be').decode(bytes).replace(/\0/g, '').trim();
+      return cleanString(new TextDecoder('utf-16be').decode(bytes));
     } else if (encoding === 3) {
-      return new TextDecoder('utf-8').decode(bytes).replace(/\0/g, '').trim();
+      return cleanString(new TextDecoder('utf-8').decode(bytes));
     }
   } catch {
     // fallback
   }
 
-  return String.fromCharCode(...bytes).replace(/\0/g, '').trim();
+  return cleanString(String.fromCharCode(...bytes));
 }
 
 function decodeIsoString(buffer: ArrayBuffer, offset: number, length: number): string {

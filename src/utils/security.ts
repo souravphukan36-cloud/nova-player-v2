@@ -40,12 +40,17 @@ export function sanitizeMediaUrl(url: unknown): string {
     return trimmed;
   }
 
-  // 2. Allow base64 image data URIs (APIC cover art)
+  // 2. Allow root-relative media paths (covers, audio proxy, uploads)
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return trimmed;
+  }
+
+  // 3. Allow base64 image data URIs (APIC cover art)
   if (trimmed.startsWith('data:image/')) {
     return trimmed;
   }
 
-  // 3. Allow valid HTTP / HTTPS web URLs
+  // 4. Allow valid HTTP / HTTPS web URLs
   if (/^https?:\/\//i.test(trimmed)) {
     try {
       const parsed = new URL(trimmed);

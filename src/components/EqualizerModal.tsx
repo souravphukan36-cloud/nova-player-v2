@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDown, Sliders, Volume2, Sparkles, Check, Headphones, Radio, RotateCcw, Compass, Zap, Disc, Mic } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
+import { audioEngine } from '../services/audioEngine';
 import { EQPreset } from '../types';
 
 const PRESETS: EQPreset[] = [
@@ -58,6 +59,7 @@ const EQBandColumn: React.FC<{
     const db = Math.round((ratio * 24) - 12);
     const clamped = Math.max(-12, Math.min(12, db));
     if (clamped !== gain) {
+      audioEngine.setEQBandDirect(idx, clamped);
       onChange(clamped);
     }
   };
@@ -89,6 +91,7 @@ const EQBandColumn: React.FC<{
       <button
         onClick={(e) => {
           e.stopPropagation();
+          audioEngine.setEQBandDirect(idx, 0);
           onChange(0);
         }}
         title="Tap to reset to 0dB"
@@ -102,7 +105,9 @@ const EQBandColumn: React.FC<{
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onChange(Math.min(12, gain + 1));
+          const next = Math.min(12, gain + 1);
+          audioEngine.setEQBandDirect(idx, next);
+          onChange(next);
         }}
         className="w-full h-6 flex items-center justify-center text-xs font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 active:bg-white/20 active:scale-90 rounded transition-all"
         title="Increase +1dB"
@@ -169,7 +174,9 @@ const EQBandColumn: React.FC<{
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onChange(Math.max(-12, gain - 1));
+          const next = Math.max(-12, gain - 1);
+          audioEngine.setEQBandDirect(idx, next);
+          onChange(next);
         }}
         className="w-full h-6 flex items-center justify-center text-xs font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 active:bg-white/20 active:scale-90 rounded transition-all"
         title="Decrease -1dB"
