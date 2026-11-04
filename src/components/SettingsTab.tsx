@@ -27,7 +27,13 @@ import {
   Music2,
   FolderPlus,
   Play,
-  Layers
+  Layers,
+  Info,
+  Download,
+  Upload,
+  Database,
+  RefreshCw,
+  Headphones
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { notificationService } from '../services/notificationService';
@@ -69,7 +75,11 @@ export const SettingsTab: React.FC = () => {
     setCarModeOpen,
     setLockScreenOpen,
     setSleepTimerOpen,
+    setIEMModalOpen,
+    iemSoundStage,
+    updateIEMSoundStage,
     tracks,
+    playlists,
     isInstallable,
     promptInstall,
     requestNotificationPermission,
@@ -88,6 +98,81 @@ export const SettingsTab: React.FC = () => {
   const [customHex, setCustomHex] = useState(settings.accentColor);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [notifBlockedNotice, setNotifBlockedNotice] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<string | null>(null);
+
+  const handleExportBackup = () => {
+    try {
+      const backupData = {
+        app: 'Nature Music Player',
+        version: '3.5.0',
+        exportedAt: new Date().toISOString(),
+        playlists: playlists,
+        favorites: tracks.filter(t => t.isFavorite).map(t => ({ id: t.id, title: t.title, artist: t.artist })),
+        settings: settings,
+        timestamp: Date.now()
+      };
+
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `nature_music_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      setBackupStatus('Backup exported successfully! File downloaded.');
+      setTimeout(() => setBackupStatus(null), 4000);
+    } catch {
+      setBackupStatus('Failed to generate backup file.');
+    }
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        if (!parsed || (!parsed.playlists && !parsed.favorites)) {
+          setBackupStatus('Invalid backup file format.');
+          return;
+        }
+
+        // Restore playlists
+        if (Array.isArray(parsed.playlists) && parsed.playlists.length > 0) {
+          localStorage.setItem('nova_playlists', JSON.stringify(parsed.playlists));
+        }
+
+        // Restore settings
+        if (parsed.settings) {
+          updateSettings(parsed.settings);
+        }
+
+        // Restore favorites in tracks
+        if (Array.isArray(parsed.favorites)) {
+          const favIds = new Set(parsed.favorites.map((f: any) => typeof f === 'string' ? f : f.id));
+          const updatedTracks = tracks.map(t => ({
+            ...t,
+            isFavorite: favIds.has(t.id) || t.isFavorite
+          }));
+          localStorage.setItem('nova_tracks', JSON.stringify(updatedTracks));
+        }
+
+        setBackupStatus(`Restored! ${parsed.playlists?.length || 0} playlists & favorites recovered.`);
+        setTimeout(() => {
+          setBackupStatus(null);
+          window.location.reload();
+        }, 1500);
+      } catch {
+        setBackupStatus('Failed to parse backup file. Please ensure it is a valid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
   const [installSuccessNotice, setInstallSuccessNotice] = useState(false);
 
   useEffect(() => {
@@ -373,6 +458,46 @@ export const SettingsTab: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Inset Divider */}
+              <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+            </div>
+          )}
+
+          {/* Row: IEM Audiophile Stage (Emerald Circle) matching Screenshot 2 */}
+          {matchesSearch(['iem', 'audiophile', 'stage', 'earphone', 'tuning', 'harman']) && (
+            <div>
+              <div 
+                onClick={() => setIEMModalOpen(true)}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-[#10B981] flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Headphones className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                        IEM Audiophile Stage
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        ACTIVE
+                      </span>
+                    </div>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      DYNAMIC SLAM • Sub-Bass {iemSoundStage.subBassRumble || 100}%
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-400 text-black">
+                    ON
+                  </span>
+                  <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                </div>
+              </div>
 
               {/* Inset Divider */}
               <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
@@ -1267,93 +1392,198 @@ export const SettingsTab: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* Inset Divider */}
+          <div className={`h-[1px] ml-16 mr-3 ${isLight ? 'bg-neutral-100' : 'bg-white/[0.06]'}`} />
+
+          {/* Data Safety & Anti-Loss Backup (Playlists, Favorites & Settings) */}
+          {matchesSearch(['backup', 'restore', 'data', 'safety', 'export', 'import', 'loss', 'playlist', 'save']) && (
+            <div>
+              <div 
+                onClick={() => toggleSection('backup')}
+                className={`flex items-center justify-between p-3.5 sm:p-4 cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Database className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-[15px] font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Data Safety & Backup (Anti-Loss)
+                    </h3>
+                    <p className={`text-xs truncate ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
+                      Export & Restore Playlists, Favorites & Studio Settings
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400">
+                    {playlists.length} Playlists • {tracks.filter(t => t.isFavorite).length} Liked
+                  </span>
+                  {expandedSection === 'backup' ? (
+                    <ChevronDown className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  ) : (
+                    <ChevronRight className={`w-4 h-4 ${isLight ? 'text-neutral-400' : 'text-white/30'}`} />
+                  )}
+                </div>
+              </div>
+
+              {expandedSection === 'backup' && (
+                <div className={`px-4 pb-5 pt-3 space-y-4 ${isLight ? 'bg-neutral-50/70' : 'bg-black/20'}`}>
+                  {backupStatus && (
+                    <div className="p-3 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>{backupStatus}</span>
+                    </div>
+                  )}
+
+                  {/* Anti-Loss Storage Guarantee */}
+                  <div className={`p-4 rounded-2xl border text-left space-y-2 ${
+                    isLight ? 'bg-white border-neutral-200' : 'bg-white/5 border-white/5'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className={`text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                        Anti-Loss Data Protection
+                      </span>
+                    </div>
+                    <p className={`text-[11px] leading-relaxed ${isLight ? 'text-neutral-600' : 'text-white/60'}`}>
+                      Your music library, playlists, and favorites are stored securely on your device. To ensure you never lose your data when clearing browser cache or switching phones, download a backup file below.
+                    </p>
+                  </div>
+
+                  {/* Actions Grid: Export and Import */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Export Backup Button */}
+                    <button
+                      onClick={handleExportBackup}
+                      className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2.5 shadow-md shadow-cyan-600/20 active:scale-[0.98] transition-all"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download Backup (.json)</span>
+                    </button>
+
+                    {/* Restore Backup Button with File Input */}
+                    <label className="p-3.5 rounded-2xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold text-xs flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98] transition-all">
+                      <Upload className="w-4 h-4 text-cyan-400" />
+                      <span>Restore from Backup File</span>
+                      <input 
+                        type="file" 
+                        accept=".json" 
+                        onChange={handleImportBackup} 
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+
+                  {/* Active Protection Indicators */}
+                  <div className={`p-3 rounded-xl border flex flex-wrap items-center justify-between gap-2 text-[11px] ${
+                    isLight ? 'bg-white border-neutral-200 text-neutral-600' : 'bg-white/5 border-white/5 text-white/50'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>IndexedDB + LocalStorage Active</span>
+                    </div>
+                    <span className="font-mono text-[10px]">Zero Cloud Data Leak</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* GROUP 5: ABOUT NOVA PLAYER (RESTORED CARD BY SOURAV PHUKAN)   */}
+      {/* GROUP 5: STANDALONE ABOUT NOVA PLAYER CARD (Screenshot 4)     */}
       {/* ============================================================== */}
-      {matchesSearch(['about', 'sourav phukan', 'version', 'nova player', 'developer']) && (
-        <div className={`p-6 rounded-3xl border shadow-xl text-center space-y-5 transition-all ${
-          isLight ? 'bg-white border-black/[0.06]' : 'bg-[#18191E] border-white/5'
-        }`}>
-          {/* App Icon */}
-          <div 
-            className="w-20 h-20 rounded-3xl mx-auto flex items-center justify-center shadow-2xl transition-transform"
-            style={{ backgroundColor: settings.accentColor }}
-          >
-            <Smartphone className="w-10 h-10 text-black stroke-[2.2]" />
-          </div>
+      <div className={`rounded-3xl border p-6 sm:p-8 text-center space-y-5 transition-all shadow-md ${
+        isLight ? 'bg-white border-black/[0.06]' : 'bg-[#12151f] border-white/5'
+      }`}>
+        {/* Coral/Rose Squircle Phone Icon */}
+        <div className="w-16 h-16 rounded-2xl bg-[#f43f5e] mx-auto flex items-center justify-center shadow-lg shadow-rose-950/40">
+          <Smartphone className="w-8 h-8 text-black stroke-[2.2]" />
+        </div>
 
-          {/* Title & Subtitle */}
-          <div className="space-y-1">
-            <h2 className={`text-2xl font-black tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
-              NOVA Player
-            </h2>
-            <p className={`text-xs sm:text-sm font-medium ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
-              Proxy UI High-Fidelity Audio Player
-            </p>
-          </div>
-
-          {/* Creator & Lead Engineer Banner */}
-          <div 
-            className="p-4 rounded-2xl border text-center space-y-1"
-            style={{ 
-              backgroundColor: `${settings.accentColor}12`, 
-              borderColor: `${settings.accentColor}30` 
-            }}
-          >
-            <div className={`text-[10px] font-bold tracking-widest uppercase ${isLight ? 'text-neutral-500' : 'text-white/40'}`}>
-              CREATOR & LEAD ENGINEER
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <span className={`text-sm sm:text-base font-extrabold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
-                Developed by Sourav Phukan
-              </span>
-              <span 
-                className="w-2.5 h-2.5 rounded-full inline-block animate-pulse" 
-                style={{ backgroundColor: settings.accentColor }} 
-              />
-            </div>
-          </div>
-
-          {/* App Specs Card (Clean version without DEVELOPER / DESIGN LANGUAGE box) */}
-          <div className={`p-4 rounded-2xl border grid grid-cols-2 gap-4 text-left ${
-            isLight ? 'bg-neutral-50 border-neutral-200/80' : 'bg-white/5 border-white/5'
-          }`}>
-            <div>
-              <div className={`text-[10px] font-bold tracking-wider uppercase ${isLight ? 'text-neutral-400' : 'text-white/40'}`}>
-                APP VERSION
-              </div>
-              <div className={`text-sm font-bold mt-0.5 ${isLight ? 'text-neutral-900' : 'text-white'}`}>
-                v3.5.0 Release
-              </div>
-            </div>
-            <div>
-              <div className={`text-[10px] font-bold tracking-wider uppercase ${isLight ? 'text-neutral-400' : 'text-white/40'}`}>
-                DSP ENGINE
-              </div>
-              <div className="text-sm font-bold text-emerald-500 mt-0.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                <span>10–Band Studio DSP</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Dedication Quote */}
-          <p className={`text-xs italic px-2 leading-relaxed ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>
-            "Crafted with dedication by Sourav Phukan for music lovers who appreciate pristine audio quality."
+        <div>
+          <h2 className={`text-2xl font-bold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+            NOVA Player
+          </h2>
+          <p className={`text-xs sm:text-sm mt-0.5 ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+            Proxy UI High-Fidelity Audio Player
           </p>
+        </div>
 
-          {/* Cloud & Audio Guarantee */}
-          <div className={`pt-3 border-t flex items-center justify-center gap-2 text-[11px] font-medium ${
-            isLight ? 'border-neutral-100 text-neutral-500' : 'border-white/10 text-white/45'
+        {/* Creator Banner */}
+        <div className={`rounded-2xl p-3.5 sm:p-4 text-center border ${
+          isLight ? 'bg-rose-50 border-rose-200' : 'bg-[#221018] border-rose-500/20'
+        }`}>
+          <div className={`text-[10px] font-bold tracking-widest uppercase ${
+            isLight ? 'text-rose-600' : 'text-neutral-400'
           }`}>
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>Cloud Streaming & Local Playback • Zero Tracking • Studio Audio</span>
+            CREATOR & LEAD ENGINEER
+          </div>
+          <div className="text-base font-bold text-white mt-1 flex items-center justify-center gap-2">
+            <span className={isLight ? 'text-neutral-900' : 'text-white'}>Developed by Sourav Phukan</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
           </div>
         </div>
-      )}
+
+        {/* 2-Column Specs Grid */}
+        <div className={`rounded-2xl p-4 grid grid-cols-2 text-left gap-4 border ${
+          isLight ? 'bg-neutral-50 border-neutral-200' : 'bg-[#1a1e29] border-white/5'
+        }`}>
+          <div>
+            <div className={`text-[10px] font-bold tracking-wider uppercase ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              APP VERSION
+            </div>
+            <div className={`text-sm font-semibold mt-0.5 ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+              v3.5.0 Release
+            </div>
+          </div>
+          <div>
+            <div className={`text-[10px] font-bold tracking-wider uppercase ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              DSP ENGINE
+            </div>
+            <div className="text-sm font-semibold text-emerald-400 mt-0.5 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+              <span>10–Band Studio DSP</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quote */}
+        <p className={`text-xs italic px-3 sm:px-6 leading-relaxed ${
+          isLight ? 'text-neutral-600' : 'text-neutral-400'
+        }`}>
+          "Crafted with dedication by Sourav Phukan for music lovers who appreciate pristine audio quality."
+        </p>
+
+        {/* Guarantee */}
+        <div className={`flex items-center justify-center gap-2 text-xs pt-1 ${
+          isLight ? 'text-neutral-600' : 'text-neutral-400'
+        }`}>
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Cloud Streaming & Local Playback • Zero Tracking • Studio Audio</span>
+        </div>
+
+        {/* Source Code Download for GitHub */}
+        <div className="pt-2">
+          <a
+            href="/download/source"
+            download="nova-player-source.zip"
+            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/25 active:scale-[0.98] transition-all"
+          >
+            <Download className="w-4 h-4" />
+            <span>Download Full Source Code (.zip for GitHub)</span>
+          </a>
+          <p className={`text-[10px] mt-1.5 ${isLight ? 'text-neutral-400' : 'text-white/40'}`}>
+            Includes Android Studio Capacitor project, GitHub Actions APK pipeline & Admin portal
+          </p>
+        </div>
+      </div>
 
     </div>
   );

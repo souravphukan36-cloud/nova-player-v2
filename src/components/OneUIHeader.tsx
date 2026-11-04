@@ -1,159 +1,129 @@
 import React from 'react';
-import { NatureMusicLogo } from './NatureMusicLogo';
 import { usePlayer } from '../context/PlayerContext';
-import { Download, Bell, Check, Menu, Moon, Sun, Palette } from 'lucide-react';
+import { Bell, Sparkles } from 'lucide-react';
 
 interface OneUIHeaderProps {
-  title: string;
+  title?: string;
   subtitle?: string;
-  showScanner?: boolean;
-  onOpenMenu?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const OneUIHeader: React.FC<OneUIHeaderProps> = ({ 
   title, 
   subtitle,
-  onOpenMenu
 }) => {
   const { 
     settings, 
-    updateSettings,
-    updateTheme,
-    isInstallable, 
-    promptInstall, 
+    setEqualizerOpen,
+    setIEMModalOpen,
+    iemSoundStage,
+    equalizer,
     requestNotificationPermission, 
-    notificationPermission 
   } = usePlayer();
+
   const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';
-  const isColor = settings.theme.startsWith('color-');
-  const [installedSuccess, setInstalledSuccess] = React.useState(false);
 
-  const handleInstallClick = async () => {
-    const success = await promptInstall();
-    if (success) {
-      setInstalledSuccess(true);
-      setTimeout(() => setInstalledSuccess(false), 4000);
-    }
-  };
-
-  const cycleTheme = () => {
-    if (isLight) {
-      updateTheme('dark');
-      updateSettings({ accentColor: '#10B981' });
-    } else if (!isLight && !isColor) {
-      updateTheme('color-emerald');
-      updateSettings({ accentColor: '#10B981' });
-    } else {
-      updateTheme('light');
-      updateSettings({ accentColor: '#059669' });
+  // Format the IEM label for top pill
+  const getIEMLabel = () => {
+    switch (iemSoundStage.targetCurve) {
+      case 'dynamic-slam': return 'IEM: DYNAMIC';
+      case 'harman-in-ear': return 'IEM: HARMAN';
+      case 'crinacle-neutral': return 'IEM: STUDIO';
+      case 'fun-v-shaped': return 'IEM: V-SHAPE';
+      case 'balanced-armature': return 'IEM: VOCAL';
+      case 'planar-speed': return 'IEM: PLANAR';
+      default: return 'IEM: DYNAMIC';
     }
   };
 
   return (
-    <div className="px-4 sm:px-6 pt-3 pb-3 flex flex-col gap-1 select-none">
-      {/* Action Toolbar */}
+    <header className="w-full px-4 sm:px-6 pt-2.5 pb-2 flex flex-col gap-2 select-none shrink-0 z-20">
+      {/* 1. Top Status Bar Pills (IEM curve + 10-Band DSP) */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          {/* Mobile Menu Hamburger Button */}
-          {onOpenMenu && (
-            <button
-              onClick={onOpenMenu}
-              className="p-2 rounded-xl border md:hidden hover:bg-white/10 active:scale-95 transition-all"
-              style={{
-                borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
-                backgroundColor: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)'
-              }}
-              title="Open Navigation Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
+        {/* Left: IEM Curve Pill */}
+        <button
+          onClick={() => setIEMModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/40 bg-[#062118]/80 text-emerald-400 hover:bg-[#092f23] active:scale-95 transition-all text-xs font-semibold shadow-sm"
+          title="In-Ear Monitor Target Tuning & Soundstage"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="tracking-wide text-[11px] font-bold">{getIEMLabel()}</span>
+        </button>
 
-          <div className="flex items-center gap-2">
-            <NatureMusicLogo size={28} showText={false} />
-            <div className="flex flex-col leading-none">
-              <span className={`text-xs font-black tracking-wider uppercase ${isLight ? 'text-neutral-900' : 'text-white'}`}>
-                Nature Music
-              </span>
-              <span className="text-[9px] font-bold text-emerald-500 tracking-wider uppercase">Audiophile Stream</span>
-            </div>
+        {/* Right: 10-Band DSP Pill */}
+        <button
+          onClick={() => setEqualizerOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-[#081f18]/80 text-white hover:bg-[#0c2e24] active:scale-95 transition-all text-xs font-semibold shadow-sm"
+          title="Open 10-Band Studio DSP Equalizer"
+        >
+          <span className={`w-2 h-2 rounded-full ${equalizer.enabled ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500/40'} shrink-0`} />
+          <span className="font-mono text-[11px] font-bold text-emerald-300 tracking-wider">10-BAND DSP</span>
+        </button>
+      </div>
+
+      {/* 2. Brand Identity Row: NOVA NATURAL AUDIO + Live Alert */}
+      <div className="flex items-center justify-between pt-0.5">
+        {/* Brand Logo & Name (Tap 3x opens Admin Portal) */}
+        <div 
+          onClick={() => {
+            const current = Number(sessionStorage.getItem('logo_taps') || '0') + 1;
+            sessionStorage.setItem('logo_taps', String(current));
+            if (current >= 3) {
+              sessionStorage.removeItem('logo_taps');
+              window.location.href = '/admin';
+            } else {
+              setTimeout(() => sessionStorage.removeItem('logo_taps'), 2000);
+            }
+          }}
+          className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform"
+          title="NOVA Natural Audio (Tap 3x to open Admin Portal)"
+        >
+          {/* Official Squircle Star Logo */}
+          <div className="w-9 h-9 rounded-2xl overflow-hidden shadow-lg border border-white/10 bg-black flex items-center justify-center shrink-0">
+            <img 
+              src="/logo.png" 
+              alt="NOVA" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+
+          <div className="flex flex-col leading-none">
+            <span className={`text-base font-black tracking-wider uppercase ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+              NOVA
+            </span>
+            <span className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase mt-0.5">
+              NATURAL AUDIO
+            </span>
           </div>
         </div>
 
-        {/* Quick Header Actions: Live Event Switch, Theme Toggle & PWA Install */}
-        <div className="flex items-center gap-2">
-          {/* Quick Theme Cycle Button */}
-          <button
-            onClick={cycleTheme}
-            className="flex items-center gap-1.5 py-1 px-2.5 rounded-full border text-xs font-bold active:scale-95 transition-all shadow-sm"
-            style={{
-              backgroundColor: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-              borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
-            }}
-            title="Switch Theme (Dark / Light / Color)"
-          >
-            {isLight ? (
-              <>
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-[11px]">Light</span>
-              </>
-            ) : isColor ? (
-              <>
-                <Palette className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px]">Color</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-3.5 h-3.5 text-neutral-300" />
-                <span className="text-[11px]">Dark</span>
-              </>
-            )}
-          </button>
-          {/* Live Notification Permission Button */}
-          {notificationPermission !== 'granted' && (
-            <button
-              onClick={() => requestNotificationPermission()}
-              title="Enable Android Live Notification & Lock Screen"
-              className="flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 active:scale-95 transition-all text-[11px] font-bold"
-            >
-              <Bell className="w-3 h-3 animate-bounce" />
-              <span>Live Alert</span>
-            </button>
-          )}
-
-          {/* Install App to Home Screen Button */}
-          {isInstallable && (
-            <button
-              onClick={handleInstallClick}
-              title="Add NOVA App Icon to Phone Home Screen"
-              className="flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/30 active:scale-95 transition-all text-[11px] font-bold"
-            >
-              {installedSuccess ? (
-                <>
-                  <Check className="w-3 h-3 text-emerald-300" />
-                  <span>Installed!</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-3 h-3" />
-                  <span>Install App</span>
-                </>
-              )}
-            </button>
-          )}
-        </div>
+        {/* Live Alert Green Pill Button */}
+        <button
+          onClick={() => requestNotificationPermission()}
+          title="Enable Live Notification & Lock Screen Controls"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-500/40 bg-[#051c14] hover:bg-[#092a1f] text-emerald-400 active:scale-95 transition-all text-xs font-bold shadow-sm"
+        >
+          <Bell className="w-3.5 h-3.5" />
+          <span>Live Alert</span>
+        </button>
       </div>
 
-      {/* Prominent One UI Title */}
+      {/* 3. Section Title & Subtitle (Shown on Settings, Library, etc.) */}
       {title ? (
-        <div className="mt-2">
-          <h1 className={`text-2xl font-bold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>{title}</h1>
+        <div className="mt-1">
+          <h1 className={`text-2xl font-bold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+            {title}
+          </h1>
           {subtitle && (
-            <p className={`text-xs font-medium mt-0.5 ${isLight ? 'text-neutral-500' : 'text-white/50'}`}>{subtitle}</p>
+            <p className={`text-xs font-medium mt-0.5 ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              {subtitle}
+            </p>
           )}
         </div>
       ) : null}
-    </div>
+    </header>
   );
 };
-

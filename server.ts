@@ -811,6 +811,18 @@ async function startServer() {
     res.json({ status: 'ok', channelId: TELEGRAM_CHANNEL_ID, trackCount: dynamicTracks.length });
   });
 
+  // Direct Download Source Code Zip Endpoint for GitHub & local export
+  app.get(['/download/source', '/nova-player-source.zip', '/download/nova-player-source.zip'], (req: Request, res: Response) => {
+    const zipPath = path.join(process.cwd(), 'public', 'nova-player-source.zip');
+    if (fs.existsSync(zipPath)) {
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="nova-player-source.zip"');
+      res.sendFile(zipPath);
+    } else {
+      res.status(404).send('Source code ZIP archive not found');
+    }
+  });
+
   // Announcements persistence (Supports special day banner with Image, Title, Text, and Link)
   const ANNOUNCEMENT_FILE = path.join(CACHE_DIR, 'announcement.json');
   interface AnnouncementData {
@@ -901,8 +913,84 @@ async function startServer() {
     }
   } catch {}
 
+  // ========================================================
+  // ZERO-TRUST ADMIN AUTHENTICATION & SECURITY TOKEN ENGINE
+  // ========================================================
+  const ADMIN_MASTER_PASSWORD = process.env.ADMIN_STUDIO_PASSWORD || '2620260095';
+  const ADMIN_PIN = process.env.ADMIN_STUDIO_PIN || process.env.NOVA_ADMIN_PIN || '7788';
+  const ADMIN_TOKEN_SECRET = process.env.ADMIN_TOKEN_SECRET || 'nova_vault_secret_9988_sourav_audiophile';
+
+  function generateAdminToken(role = 'owner'): string {
+    const timestamp = Date.now();
+    const signature = crypto.createHmac('sha256', ADMIN_TOKEN_SECRET).update(`${role}_${timestamp}`).digest('hex');
+    return `novatkn_${role}_${timestamp}_${signature}`;
+  }
+
+  function verifyAdminToken(token: string): boolean {
+    if (!token) return false;
+    // Allow master password or PIN directly for verified sessions & admin tools
+    if (token === ADMIN_MASTER_PASSWORD || token === ADMIN_PIN) return true;
+
+    const parts = token.split('_');
+    if (parts.length !== 4 || parts[0] !== 'novatkn') return false;
+    const [_, role, timestampStr, signature] = parts;
+    const timestamp = parseInt(timestampStr, 10);
+    if (isNaN(timestamp)) return false;
+
+    // Tokens valid for 30 days
+    if (Date.now() - timestamp > 30 * 24 * 60 * 60 * 1000) return false;
+
+    const expectedSignature = crypto.createHmac('sha256', ADMIN_TOKEN_SECRET).update(`${role}_${timestamp}`).digest('hex');
+    try {
+      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+    } catch {
+      return false;
+    }
+  }
+
+  function requireAdminAuth(req: Request, res: Response, next: () => void) {
+    const authHeader = req.headers.authorization;
+    let token = '';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    } else if (req.headers['x-admin-token']) {
+      token = String(req.headers['x-admin-token']).trim();
+    } else if (req.headers['x-admin-key']) {
+      token = String(req.headers['x-admin-key']).trim();
+    } else if (req.query.admin_token) {
+      token = String(req.query.admin_token).trim();
+    }
+
+    if (verifyAdminToken(token)) {
+      next();
+    } else {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized: Valid Admin Token or Master Key is required.'
+      });
+    }
+  }
+
+  // Admin Authentication Login Endpoint with Token Generation
+  app.post('/api/admin/login', (req: Request, res: Response) => {
+    const { pin, password } = req.body || {};
+    const input = String(password || pin || '').trim();
+    if (input === ADMIN_MASTER_PASSWORD || input === ADMIN_PIN) {
+      const token = generateAdminToken('owner');
+      res.json({
+        success: true,
+        authorized: true,
+        role: 'owner',
+        token,
+        master: input === ADMIN_MASTER_PASSWORD
+      });
+    } else {
+      res.status(401).json({ success: false, authorized: false, error: 'Incorrect Password or PIN' });
+    }
+  });
+
   // 1. Get all tracks from Telegram bot channel (with custom overrides applied)
-  app.get('/api/telegram/tracks', async (req: Request, res: Response) => {
+  app.get(['/api/telegram/tracks', '/api/tracks'], async (req: Request, res: Response) => {
     const isAdmin = req.query.admin === 'true' || req.query.all === 'true';
 
     // Check for any new updates in background (non-blocking)
@@ -970,7 +1058,7 @@ async function startServer() {
   });
 
   // Admin Announcement Update
-  app.post('/api/admin/announcement', (req: Request, res: Response) => {
+  app.post('/api/admin/announcement', requireAdminAuth, (req: Request, res: Response) => {
     const { title, text, imageUrl, videoUrl, mediaType, linkUrl, enabled, type, wishText, eventDate, themeColor, resetToDefault } = req.body || {};
     
     if (resetToDefault) {
@@ -1018,7 +1106,7 @@ async function startServer() {
     });
   });
 
-  app.post('/api/admin/members', (req: Request, res: Response) => {
+  app.post('/api/admin/members', requireAdminAuth, (req: Request, res: Response) => {
     const { name, email, role, status } = req.body || {};
     if (!name || !email) {
       res.status(400).json({ success: false, error: 'Name and email are required' });
@@ -1042,7 +1130,7 @@ async function startServer() {
     });
   });
 
-  app.put('/api/admin/members/:id', (req: Request, res: Response) => {
+  app.put('/api/admin/members/:id', requireAdminAuth, (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, email, role, status } = req.body || {};
     const member = currentMembers.find(m => m.id === id);
@@ -1060,7 +1148,7 @@ async function startServer() {
     res.json({ success: true, members: currentMembers, member });
   });
 
-  app.delete('/api/admin/members/:id', (req: Request, res: Response) => {
+  app.delete('/api/admin/members/:id', requireAdminAuth, (req: Request, res: Response) => {
     const { id } = req.params;
     currentMembers = currentMembers.filter(m => m.id !== id);
     try {
@@ -1203,12 +1291,12 @@ async function startServer() {
     });
   };
 
-  // Support both /api/tracks/metadata/update and /api/tracks/metadata
-  app.post('/api/tracks/metadata/update', handleMetadataUpdate);
-  app.post('/api/tracks/metadata', handleMetadataUpdate);
+  // Support both /api/tracks/metadata/update and /api/tracks/metadata (Guarded with requireAdminAuth)
+  app.post('/api/tracks/metadata/update', requireAdminAuth, handleMetadataUpdate);
+  app.post('/api/tracks/metadata', requireAdminAuth, handleMetadataUpdate);
 
   // Bulk Category Update (Update singer/artist or album across multiple tracks)
-  app.post('/api/tracks/category/update', (req: Request, res: Response) => {
+  app.post('/api/tracks/category/update', requireAdminAuth, (req: Request, res: Response) => {
     const { mode, oldName, newName, coverArt, genre } = req.body || {};
     if (!mode || !oldName || !newName) {
       res.status(400).json({ success: false, error: 'mode (artist|album), oldName, and newName are required' });
@@ -1254,7 +1342,7 @@ async function startServer() {
   });
 
   // Reset a track's metadata back to its Telegram default
-  app.post('/api/tracks/metadata/reset', (req: Request, res: Response) => {
+  app.post('/api/tracks/metadata/reset', requireAdminAuth, (req: Request, res: Response) => {
     const { trackId } = req.body || {};
     if (!trackId || !trackOverrides[trackId]) {
       res.status(400).json({ success: false, error: 'No custom metadata override exists for this track' });
@@ -1270,19 +1358,6 @@ async function startServer() {
       message: 'Track reverted back to Telegram original',
       track
     });
-  });
-
-  // Admin Authentication endpoint (Primary Password: 2620260095, Backup PIN: 7788 or custom env)
-  const ADMIN_MASTER_PASSWORD = process.env.ADMIN_STUDIO_PASSWORD || '2620260095';
-  const ADMIN_PIN = process.env.ADMIN_STUDIO_PIN || process.env.NOVA_ADMIN_PIN || '7788';
-  app.post('/api/admin/login', (req: Request, res: Response) => {
-    const { pin, password } = req.body || {};
-    const input = String(password || pin || '').trim();
-    if (input === ADMIN_MASTER_PASSWORD || input === ADMIN_PIN) {
-      res.json({ success: true, authorized: true, role: 'owner', master: input === ADMIN_MASTER_PASSWORD });
-    } else {
-      res.status(401).json({ success: false, authorized: false, error: 'Incorrect Password or PIN' });
-    }
   });
 
   // Dedicated Listener / User Accounts & Authentication System
@@ -1384,8 +1459,99 @@ async function startServer() {
     res.json({ success: true, user: safeSourav });
   });
 
+  // Admin Customer / User Management Endpoints
+  app.get('/api/admin/users', requireAdminAuth, (req: Request, res: Response) => {
+    const list = Object.values(registeredUsers).map(({ passwordHash, ...u }) => u);
+    res.json({ success: true, users: list });
+  });
+
+  app.post('/api/admin/users', requireAdminAuth, (req: Request, res: Response) => {
+    const { name, email, role, password } = req.body || {};
+    if (!email) {
+      res.status(400).json({ success: false, error: 'Email is required' });
+      return;
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    const newId = `user_${Date.now()}`;
+    const newUser: UserProfile = {
+      id: newId,
+      name: String(name || cleanEmail.split('@')[0]),
+      email: cleanEmail,
+      passwordHash: crypto.createHash('sha256').update(String(password || '123456')).digest('hex'),
+      avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanEmail}`,
+      favorites: [],
+      playlistsCount: 0,
+      joinedAt: Date.now(),
+      lastActive: Date.now()
+    };
+    registeredUsers[newId] = newUser;
+    saveUsers();
+    const { passwordHash, ...safe } = newUser;
+    res.json({ success: true, user: safe, message: 'Customer registered successfully' });
+  });
+
+  app.put('/api/admin/users/:id', requireAdminAuth, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { name, email, avatarUrl } = req.body || {};
+    const user = Object.values(registeredUsers).find(u => u.id === id);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+    if (name) user.name = String(name).trim();
+    if (email) user.email = String(email).trim().toLowerCase();
+    if (avatarUrl) user.avatarUrl = String(avatarUrl).trim();
+    user.lastActive = Date.now();
+    saveUsers();
+    const { passwordHash, ...safe } = user;
+    res.json({ success: true, user: safe, message: 'Customer updated successfully' });
+  });
+
+  app.delete('/api/admin/users/:id', requireAdminAuth, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const key = Object.keys(registeredUsers).find(k => registeredUsers[k].id === id || k === id);
+    if (!key) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+    if (key === 'sourav') {
+      res.status(400).json({ success: false, error: 'Owner account cannot be deleted' });
+      return;
+    }
+    delete registeredUsers[key];
+    saveUsers();
+    res.json({ success: true, message: 'User deleted successfully' });
+  });
+
+  // Track Deletion API (Removes track from active discography)
+  app.delete('/api/tracks/:id', requireAdminAuth, (req: Request, res: Response) => {
+    const trackId = req.params.id;
+    if (!trackId) {
+      res.status(400).json({ success: false, error: 'trackId is required' });
+      return;
+    }
+
+    const initialLength = dynamicTracks.length;
+    dynamicTracks = dynamicTracks.filter(t => t.id !== trackId && t.fileId !== trackId);
+    
+    // Also mark in overrides as deleted/hidden
+    if (trackOverrides[trackId]) {
+      delete trackOverrides[trackId];
+      saveTrackOverrides();
+    }
+    saveTracksDb();
+
+    console.log(`[Track Engine] Deleted track "${trackId}" (Remaining tracks: ${dynamicTracks.length})`);
+    res.json({
+      success: true,
+      message: `Track ${trackId} removed from catalog`,
+      deletedCount: initialLength - dynamicTracks.length,
+      remainingCount: dynamicTracks.length
+    });
+  });
+
   // Cache prewarm trigger for high-speed edge playback
-  app.post('/api/admin/prewarm', async (req: Request, res: Response) => {
+  app.post('/api/admin/prewarm', requireAdminAuth, async (req: Request, res: Response) => {
     const { fileId } = req.body || {};
     if (fileId) {
       prewarmTrackCache(fileId);
@@ -1460,11 +1626,11 @@ async function startServer() {
     }
   };
 
-  app.post('/api/admin/upload-image', handleMediaUpload);
-  app.post('/api/admin/upload-media', handleMediaUpload);
+  app.post('/api/admin/upload-image', requireAdminAuth, handleMediaUpload);
+  app.post('/api/admin/upload-media', requireAdminAuth, handleMediaUpload);
 
   // Direct Audio Track Upload from Device / PC
-  app.post('/api/admin/upload-audio', (req: Request, res: Response) => {
+  app.post('/api/admin/upload-audio', requireAdminAuth, (req: Request, res: Response) => {
     try {
       const { dataUrl, title, artist, album, duration, coverArt } = req.body || {};
       if (!dataUrl || typeof dataUrl !== 'string') {
@@ -2000,8 +2166,14 @@ async function startServer() {
   // This serves the independent admin.html portal directly to avoid any browser 404/SPA route conflicts
   app.get(['/admin', '/admin/'], (req: Request, res: Response) => {
     const adminPath = path.join(process.cwd(), 'admin.html');
+    const distAdminPath = path.join(process.cwd(), 'dist', 'admin.html');
+    const publicAdminPath = path.join(process.cwd(), 'public', 'admin.html');
     if (fs.existsSync(adminPath)) {
       res.sendFile(adminPath);
+    } else if (fs.existsSync(distAdminPath)) {
+      res.sendFile(distAdminPath);
+    } else if (fs.existsSync(publicAdminPath)) {
+      res.sendFile(publicAdminPath);
     } else {
       res.redirect('/?page=admin');
     }

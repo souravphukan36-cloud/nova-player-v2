@@ -171,7 +171,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   supportedFormats: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'],
   scanFolders: ['/Storage/emulated/0/Music', '/Storage/emulated/0/Download'],
   autoScanOnStartup: true,
-  showLiveEvent: true,
+  showLiveEvent: false,
   soundAliveSpectrum: false,
   showTopStatusBar: true,
   topBarRedAccent: true,
@@ -344,6 +344,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          showLiveEvent: false, // Turned off as requested
           homeShelves: {
             ...DEFAULT_SETTINGS.homeShelves,
             ...(parsed.homeShelves || {})

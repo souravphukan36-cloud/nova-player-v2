@@ -16,7 +16,8 @@ import {
   Check,
   Bell,
   X,
-  Star
+  Star,
+  Headphones
 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { Track } from '../types';
@@ -38,6 +39,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
     toggleFavorite,
     setNowPlayingOpen,
     setCustomizerOpen,
+    setIEMModalOpen,
     settings,
     updateSettings,
   } = usePlayer();
@@ -128,145 +130,56 @@ export const HomeTab: React.FC<HomeTabProps> = ({ onNavigateToLibrary }) => {
   }, [tracks]);
 
   return (
-    <div className="space-y-7 pb-52 px-4 sm:px-6 select-none animate-in fade-in duration-300">
+    <div className="space-y-6 pb-52 px-1 sm:px-2 select-none animate-in fade-in duration-300">
 
-      {/* Live Daily Event & Special Day Master Poster */}
-      <DailyLivePoster 
-        announcement={announcement} 
-        onTrackPlay={(track) => playTrack(track)} 
-      />
+      {/* Top Quick Navigation Pills Row matching Screenshot 1 */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+        {/* Liked (N) */}
+        <button
+          onClick={() => onNavigateToLibrary('favorites')}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1a1e28] hover:bg-[#222838] text-white border border-white/5 transition-all active:scale-95 shrink-0"
+        >
+          <Heart className="w-3.5 h-3.5 text-rose-500 fill-current" />
+          <span>Liked ({tracks.filter(t => t.isFavorite).length})</span>
+        </button>
 
-      {/* When Live Event is turned off by user, show clean slim banner with turn on button */}
-      {!settings.showLiveEvent && (
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs shadow-sm">
-          <div className="flex items-center gap-2.5 text-white/70">
-            <span className="w-2.5 h-2.5 rounded-full bg-neutral-500" />
-            <span>Live Event & Poster is <strong>Turned Off</strong></span>
-          </div>
-          <button
-            onClick={() => updateSettings({ showLiveEvent: true })}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-bold transition-all active:scale-95 border border-emerald-500/30"
-          >
-            Turn ON Live Event
-          </button>
-        </div>
-      )}
+        {/* Artists */}
+        <button
+          onClick={() => onNavigateToLibrary('artists')}
+          className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1a1e28] hover:bg-[#222838] text-white/80 hover:text-white border border-white/5 transition-all active:scale-95 shrink-0"
+        >
+          Artists
+        </button>
 
-      {/* Top Quick Navigation Bar & Feed Customizer */}
-      <div className="flex items-center justify-between gap-2.5 pt-1">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {/* Quick 1-Click Live Event Toggle Button */}
-          <button
-            onClick={() => updateSettings({ showLiveEvent: !settings.showLiveEvent })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 border shrink-0 ${
-              settings.showLiveEvent 
-                ? 'bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25' 
-                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
-            }`}
-            title="Toggle Live Event on or off"
-          >
-            <span className={`w-2 h-2 rounded-full ${settings.showLiveEvent ? 'bg-rose-500 animate-pulse' : 'bg-neutral-400'}`} />
-            <span>Live Event: {settings.showLiveEvent ? 'ON (Click to OFF)' : 'OFF (Click to ON)'}</span>
-          </button>
+        {/* Albums */}
+        <button
+          onClick={() => onNavigateToLibrary('albums')}
+          className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1a1e28] hover:bg-[#222838] text-white/80 hover:text-white border border-white/5 transition-all active:scale-95 shrink-0"
+        >
+          Albums
+        </button>
 
-          <button
-            onClick={() => onNavigateToLibrary('favorites')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 text-white transition-all active:scale-95 shrink-0"
-          >
-            <Heart className="w-3.5 h-3.5 text-rose-500 fill-current" />
-            <span>Liked ({tracks.filter(t => t.isFavorite).length})</span>
-          </button>
-          <button
-            onClick={() => onNavigateToLibrary('artists')}
-            className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all active:scale-95"
-          >
-            Artists
-          </button>
-          <button
-            onClick={() => onNavigateToLibrary('albums')}
-            className="px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all active:scale-95"
-          >
-            Albums
-          </button>
-        </div>
+        {/* IEM */}
+        <button
+          onClick={() => setIEMModalOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0c1f19] hover:bg-[#102b23] text-emerald-400 border border-emerald-500/30 transition-all active:scale-95 shrink-0"
+          title="In-Ear Monitor Target Tuning"
+        >
+          <Headphones className="w-3.5 h-3.5 text-emerald-400" />
+          <span>IEM</span>
+        </button>
 
-        {/* Prominent Customizer Button */}
+        {/* Customize Feed */}
         <button
           id="btn-customize-feed"
           onClick={() => setCustomizerOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border border-white/15 bg-white/5 hover:bg-white/10 text-white transition-all group active:scale-95 flex-shrink-0"
-          style={{ borderColor: `${settings.accentColor}50` }}
-          title="Customize Home Feed & Player Style"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1a1e28] hover:bg-[#222838] text-white/90 border border-white/5 transition-all active:scale-95 shrink-0"
+          title="Customize Home Feed"
         >
-          <Sliders className="w-3.5 h-3.5 transition-transform group-hover:rotate-45" style={{ color: settings.accentColor }} />
+          <Sliders className="w-3.5 h-3.5 text-rose-400" />
           <span>Customize Feed</span>
         </button>
       </div>
-
-      {/* SPOTIFY-GRADE: MADE FOR YOU • PERSONAL DAILY MIX */}
-      {madeForYouTracks.length > 0 && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-white/[0.07] via-white/[0.03] to-transparent border border-white/10 shadow-xl space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div 
-                className="w-9 h-9 rounded-2xl flex items-center justify-center shadow-lg"
-                style={{ backgroundColor: `${settings.accentColor}25`, color: settings.accentColor }}
-              >
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                  <span>Made For You</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Daily Mix 1
-                  </span>
-                </h2>
-                <p className="text-xs text-white/50">Personalized auto-mix tuned to your favorites & heavy rotation</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => playTrack(madeForYouTracks[0], madeForYouTracks)}
-              className="px-4 py-2 rounded-full text-black font-extrabold text-xs active:scale-95 shadow-md flex items-center gap-1.5 transition-transform hover:scale-105"
-              style={{ backgroundColor: settings.accentColor }}
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Play Mix</span>
-            </button>
-          </div>
-
-          {/* Quick horizontal track row */}
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pt-1 pb-1">
-            {madeForYouTracks.slice(0, 8).map((track, i) => (
-              <div
-                key={`mfy-${track.id}-${i}`}
-                onClick={() => playTrack(track, madeForYouTracks)}
-                className="flex items-center gap-3 p-2 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 transition-all cursor-pointer flex-shrink-0 w-60 sm:w-64 group"
-              >
-                <img
-                  src={getResolvedCoverArt(track.coverArt)}
-                  alt={track.title}
-                  className="w-11 h-11 rounded-xl object-cover shadow group-hover:scale-105 transition-transform shrink-0"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    const img = e.currentTarget as HTMLImageElement;
-                    img.onerror = null;
-                    img.src = DEFAULT_FALLBACK_ART;
-                  }}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-white truncate group-hover:text-emerald-300 transition-colors">
-                    {track.title}
-                  </p>
-                  <p className="text-[11px] text-white/50 truncate mt-0.5">
-                    {track.artist}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* 1. RECENTLY PLAYED SHELF (Tall Cards from Photo 3 or Customizable) */}
       {shelves.showRecentlyPlayed && (

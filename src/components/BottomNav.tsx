@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Library, Search } from 'lucide-react';
+import { Home, Library, Search, Settings } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { MainTab } from '../types';
 
@@ -16,6 +16,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     { id: 'home', label: 'Home', icon: Home },
     { id: 'search', label: 'Search', icon: Search },
     { id: 'library', label: 'Library', icon: Library },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   const isLight = settings.theme === 'light' || settings.theme === 'light-silver' || settings.theme === 'warm-light';

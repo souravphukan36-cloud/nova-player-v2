@@ -267,7 +267,7 @@ export const DailyLivePoster: React.FC<DailyLivePosterProps> = ({
     }
   };
 
-  if (isDismissed) {
+  if (isDismissed || !settings.showLiveEvent) {
     return null;
   }
 

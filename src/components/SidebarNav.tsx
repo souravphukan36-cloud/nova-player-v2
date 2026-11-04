@@ -3,8 +3,8 @@ import {
   Home, 
   Library, 
   Search, 
-  Cloud, 
   Sliders, 
+  Settings as SettingsIcon,
   Moon, 
   Sun, 
   Palette, 
@@ -65,12 +65,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       badge: tracks.length 
     },
     { 
-      id: 'cloud', 
-      label: 'Cloud Songs', 
-      subLabel: 'Private Cloud Stream',
-      icon: Cloud 
-    },
-    { 
       id: 'search', 
       label: 'Search', 
       subLabel: 'Find tracks & lyrics',
@@ -82,6 +76,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       subLabel: '10-Band Studio EQ',
       icon: Sliders,
       action: () => setEqualizerOpen(true)
+    },
+    { 
+      id: 'settings', 
+      label: 'Settings & About', 
+      subLabel: 'App Details & Developer',
+      icon: SettingsIcon 
     },
   ];
 

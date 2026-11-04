@@ -36,7 +36,13 @@ import {
   ChevronRight,
   TrendingUp,
   Activity,
-  Fingerprint
+  Fingerprint,
+  Trash2,
+  Users,
+  UserPlus,
+  Calendar,
+  Disc,
+  FolderOpen
 } from 'lucide-react';
 import { Track } from '../types';
 
@@ -61,12 +67,24 @@ interface Announcement {
   linkUrl?: string;
   enabled: boolean;
   type: string;
+  eventDate?: string;
   updatedAt: number;
+}
+
+interface CustomerUser {
+  id: string;
+  email: string;
+  name: string;
+  status: 'active' | 'suspended';
+  role: 'customer' | 'admin';
+  createdAt: number;
 }
 
 interface AdminWebPortalProps {
   onBackToApp?: () => void;
 }
+
+const ALPHABETS = ['ALL', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 
 export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) => {
   // Auth state
@@ -77,23 +95,35 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
-  // Data state
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<'overview' | 'songs' | 'upload' | 'poster' | 'users' | 'telegram'>('overview');
+
+  // Core Data
   const [tracks, setTracks] = useState<Track[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [announcement, setAnnouncement] = useState<Announcement>({
+    title: 'Special Celebration ✨',
     text: '',
+    imageUrl: '',
     enabled: false,
-    type: 'info',
+    type: 'special',
+    eventDate: '2026-11-04',
     updatedAt: 0,
   });
+  const [customers, setCustomers] = useState<CustomerUser[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'tracks' | 'categories' | 'announcements' | 'users' | 'system'>('tracks');
 
-  // Filter & Search
+  // Songs Filters & Sorting
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'visible' | 'hidden' | 'featured' | 'custom'>('all');
-  const [artistFilter, setArtistFilter] = useState<string>('all');
+  const [selectedLetter, setSelectedLetter] = useState<string>('ALL');
+  const [sortOption, setSortOption] = useState<'az' | 'za' | 'artist' | 'recent'>('az');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'visible' | 'hidden' | 'featured'>('all');
+
+  // Audio Preview Monitor
+  const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState<boolean>(false);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
   // Track Edit Modal
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
@@ -110,71 +140,70 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState<string>('');
 
-  // Audio Preview state
-  const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
-  const [isPlayingPreview, setIsPlayingPreview] = useState<boolean>(false);
-  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
-
-  // New Song Upload
+  // Song Upload Tab State
   const [uploadAudioFile, setUploadAudioFile] = useState<File | null>(null);
   const [uploadCoverFile, setUploadCoverFile] = useState<File | null>(null);
+  const [uploadCoverPreview, setUploadCoverPreview] = useState<string>('');
   const [newTitle, setNewTitle] = useState<string>('');
   const [newArtist, setNewArtist] = useState<string>('');
   const [newAlbum, setNewAlbum] = useState<string>('');
+  const [newGenre, setNewGenre] = useState<string>('Assamese & Bollywood');
   const [isUploadingTrack, setIsUploadingTrack] = useState<boolean>(false);
-  const [uploadStatusMsg, setUploadStatusMsg] = useState<string>('');
+  const [uploadStatusMsg, setUploadStatusMsg] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; text: string }>({ type: 'idle', text: '' });
 
-  // Announcement edit
-  const [announcementTitle, setAnnouncementTitle] = useState<string>('Special Celebration ✨');
-  const [announcementText, setAnnouncementText] = useState<string>('');
-  const [announcementImageUrl, setAnnouncementImageUrl] = useState<string>('');
-  const [announcementEnabled, setAnnouncementEnabled] = useState<boolean>(true);
-  const [announcementType, setAnnouncementType] = useState<string>('special');
-  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState<boolean>(false);
-  const [announcementSaved, setAnnouncementSaved] = useState<boolean>(false);
-  const [isUploadingBannerImg, setIsUploadingBannerImg] = useState<boolean>(false);
+  // Event Poster Tab State
+  const [posterTitle, setPosterTitle] = useState<string>('Special Celebration ✨');
+  const [posterWishText, setPosterWishText] = useState<string>('');
+  const [posterImageUrl, setPosterImageUrl] = useState<string>('');
+  const [posterDate, setPosterDate] = useState<string>('2026-11-04');
+  const [posterEnabled, setPosterEnabled] = useState<boolean>(false);
+  const [isSavingPoster, setIsSavingPoster] = useState<boolean>(false);
+  const [posterSaveMsg, setPosterSaveMsg] = useState<string>('');
+  const [isUploadingPosterMedia, setIsUploadingPosterMedia] = useState<boolean>(false);
 
-  // Category Edit Modal (Singers / Artists & Albums)
-  const [categoryModalMode, setCategoryModalMode] = useState<'artist' | 'album' | null>(null);
-  const [categoryOldName, setCategoryOldName] = useState<string>('');
-  const [categoryNewName, setCategoryNewName] = useState<string>('');
-  const [categoryCoverArt, setCategoryCoverArt] = useState<string>('');
-  const [categoryGenre, setCategoryGenre] = useState<string>('');
-  const [isSavingCategory, setIsSavingCategory] = useState<boolean>(false);
-  const [categorySaveMsg, setCategorySaveMsg] = useState<string>('');
+  // Customer Management Modal
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState<boolean>(false);
+  const [newUserEmail, setNewUserEmail] = useState<string>('');
+  const [newUserName, setNewUserName] = useState<string>('');
+  const [newUserRole, setNewUserRole] = useState<'customer' | 'admin'>('customer');
+  const [isSavingUser, setIsSavingUser] = useState<boolean>(false);
 
-  // Prewarm state
-  const [prewarmingId, setPrewarmingId] = useState<string | null>(null);
+  // Miscellaneous
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
 
-  // Fetch all tracks including hidden ones for admin
+  // Fetch admin data
   const loadAdminData = async () => {
     setIsLoading(true);
     try {
-      const [tracksRes, statsRes, annRes] = await Promise.all([
+      const [tracksRes, statsRes, annRes, usersRes] = await Promise.all([
         fetch('/api/telegram/tracks?admin=true'),
         fetch('/api/admin/stats'),
         fetch('/api/announcement'),
+        fetch('/api/admin/users').catch(() => null)
       ]);
 
-      if (tracksRes.ok) {
+      if (tracksRes && tracksRes.ok) {
         const data = await tracksRes.json();
         setTracks(data.tracks || []);
       }
-      if (statsRes.ok) {
+      if (statsRes && statsRes.ok) {
         const sData = await statsRes.json();
         setStats(sData.stats || null);
       }
-      if (annRes.ok) {
+      if (annRes && annRes.ok) {
         const aData = await annRes.json();
         if (aData.announcement) {
           setAnnouncement(aData.announcement);
-          setAnnouncementTitle(aData.announcement.title || 'Special Celebration ✨');
-          setAnnouncementText(aData.announcement.text || '');
-          setAnnouncementImageUrl(aData.announcement.imageUrl || '');
-          setAnnouncementEnabled(aData.announcement.enabled ?? true);
-          setAnnouncementType(aData.announcement.type || 'special');
+          setPosterTitle(aData.announcement.title || 'Special Celebration ✨');
+          setPosterWishText(aData.announcement.wishText || aData.announcement.text || '');
+          setPosterImageUrl(aData.announcement.imageUrl || '');
+          setPosterDate(aData.announcement.eventDate || '2026-11-04');
+          setPosterEnabled(Boolean(aData.announcement.enabled));
         }
+      }
+      if (usersRes && usersRes.ok) {
+        const uData = await usersRes.json();
+        setCustomers(uData.users || []);
       }
     } catch (err) {
       console.error('Failed to load admin data:', err);
@@ -189,7 +218,7 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     }
   }, [isAuthenticated]);
 
-  // Audio Preview Player Controller
+  // Audio preview cleanup
   useEffect(() => {
     return () => {
       if (audioPreviewRef.current) {
@@ -218,7 +247,7 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
       setPreviewTrackId(track.id);
       setIsPlayingPreview(true);
     }).catch((e) => {
-      console.warn('Audio preview failed:', e);
+      console.warn('Audio preview playback error:', e);
     });
 
     audioPreviewRef.current.onended = () => {
@@ -246,10 +275,10 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
         localStorage.setItem('nova_admin_auth', 'true');
         sessionStorage.setItem('nova_studio_auth', 'true');
       } else {
-        setAuthError(data.error || 'Invalid Admin Password/PIN. (Master: 2620260095 or PIN: 7788)');
+        setAuthError(data.error || 'Invalid Admin Password / PIN. Master: 2620260095 or PIN: 7788');
       }
     } catch {
-      setAuthError('Connection error. Could not verify PIN.');
+      setAuthError('Connection error. Could not verify credentials.');
     } finally {
       setIsAuthenticating(false);
     }
@@ -259,34 +288,7 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     setIsAuthenticating(true);
     setAuthError(null);
 
-    // If WebAuthn is supported on the phone/browser
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-
-        // Try WebAuthn authentication ceremony
-        const assertion = await navigator.credentials.get({
-          publicKey: {
-            challenge,
-            timeout: 60000,
-            userVerification: 'preferred',
-          }
-        }).catch(() => null);
-
-        if (assertion) {
-          setIsAuthenticated(true);
-          localStorage.setItem('nova_admin_auth', 'true');
-          sessionStorage.setItem('nova_studio_auth', 'true');
-          setIsAuthenticating(false);
-          return;
-        }
-      } catch {
-        // Fallback below
-      }
-    }
-
-    // Direct hardware biometric handshake fallback with server
+    // Fast biometric verification
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
@@ -299,10 +301,10 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
         localStorage.setItem('nova_admin_auth', 'true');
         sessionStorage.setItem('nova_studio_auth', 'true');
       } else {
-        setAuthError('Biometric authentication failed. Please enter Master Password.');
+        setAuthError('Biometric verification failed. Please enter Master Password.');
       }
     } catch {
-      setAuthError('Connection error during biometric login.');
+      setAuthError('Biometric login connection error.');
     } finally {
       setIsAuthenticating(false);
     }
@@ -322,6 +324,7 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     }
   };
 
+  // Open Edit Song Modal
   const handleOpenEditModal = (track: Track) => {
     setEditingTrack(track);
     setEditTitle(track.title);
@@ -369,7 +372,7 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
         if (res.ok && data.url) {
           setEditCoverArt(data.url);
         } else {
-          alert('Failed to upload image: ' + (data.error || 'Unknown error'));
+          alert('Failed to upload cover: ' + (data.error || 'Unknown error'));
         }
       } catch (err) {
         alert('Image upload failed');
@@ -385,7 +388,6 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     setSaveStatus('saving');
     setSaveMessage('Saving changes...');
 
-    // Parse lyrics if any
     let parsedLyrics: Array<{ time: number; text: string }> | undefined = undefined;
     if (editLyricsText.trim()) {
       const lines = editLyricsText.split('\n');
@@ -429,12 +431,11 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
       if (res.ok && data.success) {
         setSaveStatus('saved');
         setSaveMessage('Track updated successfully!');
-        // Update local tracks list
         setTracks(prev => prev.map(t => (t.id === editingTrack.id ? { ...t, ...data.track } : t)));
         setTimeout(() => {
           setEditingTrack(null);
           loadAdminData();
-        }, 1200);
+        }, 1000);
       } else {
         setSaveStatus('error');
         setSaveMessage(data.error || 'Failed to update track');
@@ -445,328 +446,292 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     }
   };
 
-  const handleToggleHide = async (track: Track) => {
-    const nextHidden = !track.isHidden;
+  const handleDeleteTrack = async (trackId: string, trackTitle: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${trackTitle}" from NOVA library?`)) {
+      return;
+    }
+
     try {
-      const res = await fetch('/api/tracks/metadata/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          trackId: track.id,
-          isHidden: nextHidden,
-        }),
-      });
+      const res = await fetch(`/api/tracks/${trackId}`, { method: 'DELETE' });
       if (res.ok) {
-        setTracks(prev => prev.map(t => (t.id === track.id ? { ...t, isHidden: nextHidden } : t)));
-        if (stats) {
-          setStats({
-            ...stats,
-            hiddenTracks: stats.hiddenTracks + (nextHidden ? 1 : -1),
-            visibleTracks: stats.visibleTracks + (nextHidden ? -1 : 1),
-          });
+        setTracks(prev => prev.filter(t => t.id !== trackId));
+        if (previewTrackId === trackId && audioPreviewRef.current) {
+          audioPreviewRef.current.pause();
+          setIsPlayingPreview(false);
+          setPreviewTrackId(null);
         }
+      } else {
+        alert('Could not delete track. Please try again.');
       }
     } catch (e) {
-      console.error('Failed to toggle hide:', e);
+      alert('Network error while deleting track.');
     }
   };
 
-  const handleToggleFeatured = async (track: Track) => {
-    const nextFeatured = !track.isFeatured;
+  // Direct Audio File Upload
+  const handleAudioUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadAudioFile) {
+      alert('Please select an audio file (MP3, M4A, FLAC, WAV).');
+      return;
+    }
+
+    setIsUploadingTrack(true);
+    setUploadStatusMsg({ type: 'loading', text: 'Uploading audio and indexing in NOVA Cloud...' });
+
+    const formData = new FormData();
+    formData.append('audio', uploadAudioFile);
+    formData.append('title', newTitle.trim() || uploadAudioFile.name.replace(/\.[^/.]+$/, ''));
+    formData.append('artist', newArtist.trim() || 'NOVA Artist');
+    formData.append('album', newAlbum.trim() || 'Cloud Master');
+    formData.append('genre', newGenre.trim() || 'Indie');
+    if (uploadCoverFile) {
+      formData.append('cover', uploadCoverFile);
+    }
+
     try {
-      const res = await fetch('/api/tracks/metadata/update', {
+      const res = await fetch('/api/admin/upload-audio', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUploadStatusMsg({ type: 'success', text: `Success! "${data.track?.title || 'Song'}" uploaded and live in library.` });
+        setUploadAudioFile(null);
+        setUploadCoverFile(null);
+        setUploadCoverPreview('');
+        setNewTitle('');
+        setNewArtist('');
+        setNewAlbum('');
+        await loadAdminData();
+      } else {
+        setUploadStatusMsg({ type: 'error', text: data.error || 'Upload failed. Check format or size.' });
+      }
+    } catch {
+      setUploadStatusMsg({ type: 'error', text: 'Network failure during upload.' });
+    } finally {
+      setIsUploadingTrack(false);
+    }
+  };
+
+  // Event Poster Master Switch & Save
+  const handleSavePoster = async () => {
+    setIsSavingPoster(true);
+    setPosterSaveMsg('Saving poster state...');
+
+    try {
+      const res = await fetch('/api/announcement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trackId: track.id,
-          isFeatured: nextFeatured,
+          enabled: posterEnabled,
+          title: posterTitle.trim(),
+          text: posterWishText.trim(),
+          wishText: posterWishText.trim(),
+          imageUrl: posterImageUrl.trim(),
+          eventDate: posterDate.trim(),
+          type: 'special',
         }),
       });
+
       if (res.ok) {
-        setTracks(prev => prev.map(t => (t.id === track.id ? { ...t, isFeatured: nextFeatured } : t)));
+        setPosterSaveMsg(posterEnabled ? 'Live: Event Poster is ON and visible in app!' : 'Event Poster is turned OFF.');
+        setTimeout(() => setPosterSaveMsg(''), 3000);
+      } else {
+        setPosterSaveMsg('Failed to update event poster.');
       }
-    } catch (e) {
-      console.error('Failed to toggle featured:', e);
-    }
-  };
-
-  const handlePrewarmTrack = async (track: Track) => {
-    setPrewarmingId(track.id);
-    const fileId = (track as any).fileId || track.id;
-    try {
-      await fetch('/api/admin/prewarm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId }),
-      });
-      await loadAdminData();
-    } catch (e) {
-      console.error('Prewarm failed:', e);
+    } catch {
+      setPosterSaveMsg('Network error updating poster.');
     } finally {
-      setTimeout(() => setPrewarmingId(null), 1500);
+      setIsSavingPoster(false);
     }
   };
 
-  const handleBannerImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadPosterMedia = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploadingBannerImg(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const res = await fetch('/api/admin/upload-media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            dataUrl: reader.result as string,
-            filename: file.name,
-          }),
-        });
-        const data = await res.json();
-        if (res.ok && data.url) {
-          setAnnouncementImageUrl(data.url);
-        } else {
-          alert('Failed to upload media from phone: ' + (data.error || 'Unknown error'));
+    setIsUploadingPosterMedia(true);
+    const formData = new FormData();
+    formData.append('media', file);
+
+    fetch('/api/admin/upload-media', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.url) {
+          setPosterImageUrl(data.url);
         }
-      } catch (err) {
-        alert('Media upload from device failed');
-      } finally {
-        setIsUploadingBannerImg(false);
-      }
-    };
-    reader.readAsDataURL(file);
+      })
+      .catch(() => alert('Image upload failed.'))
+      .finally(() => setIsUploadingPosterMedia(false));
   };
 
-  const handleSaveAnnouncement = async () => {
-    setIsSavingAnnouncement(true);
+  // Customer Management
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserEmail.trim()) return;
+
+    setIsSavingUser(true);
     try {
-      const res = await fetch('/api/admin/announcement', {
+      const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: announcementTitle.trim(),
-          text: announcementText.trim(),
-          imageUrl: announcementImageUrl.trim(),
-          enabled: announcementEnabled,
-          type: announcementType,
+          email: newUserEmail.trim(),
+          name: newUserName.trim() || newUserEmail.split('@')[0],
+          role: newUserRole,
         }),
       });
-      if (res.ok) {
-        setAnnouncementSaved(true);
-        setTimeout(() => setAnnouncementSaved(false), 3000);
-      }
-    } catch (e) {
-      console.error('Failed to save announcement:', e);
-    } finally {
-      setIsSavingAnnouncement(false);
-    }
-  };
 
-  const handleOpenCategoryModal = (mode: 'artist' | 'album', currentName: string) => {
-    setCategoryModalMode(mode);
-    setCategoryOldName(currentName);
-    setCategoryNewName(currentName);
-    // Find a representative track for current cover and genre
-    const sample = tracks.find(t => 
-      mode === 'artist' ? t.artist.toLowerCase().trim() === currentName.toLowerCase().trim() :
-      t.album.toLowerCase().trim() === currentName.toLowerCase().trim()
-    );
-    setCategoryCoverArt(sample?.coverArt || '');
-    setCategoryGenre(sample?.genre || '');
-    setCategorySaveMsg('');
-  };
-
-  const handleSaveCategory = async () => {
-    if (!categoryModalMode || !categoryOldName || !categoryNewName.trim()) return;
-    setIsSavingCategory(true);
-    setCategorySaveMsg('Updating category across all songs...');
-
-    try {
-      const res = await fetch('/api/tracks/category/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: categoryModalMode,
-          oldName: categoryOldName,
-          newName: categoryNewName.trim(),
-          coverArt: categoryCoverArt.trim(),
-          genre: categoryGenre.trim(),
-        }),
-      });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setCategorySaveMsg(`Success! Updated ${data.affectedCount || 0} songs.`);
-        setTimeout(() => {
-          setCategoryModalMode(null);
-          loadAdminData();
-        }, 1200);
+      if (res.ok && data.user) {
+        setCustomers(prev => [data.user, ...prev]);
+        setIsAddUserModalOpen(false);
+        setNewUserEmail('');
+        setNewUserName('');
       } else {
-        setCategorySaveMsg(data.error || 'Failed to update category');
+        alert(data.error || 'Failed to add customer.');
       }
     } catch {
-      setCategorySaveMsg('Network error updating category');
+      alert('Error registering customer.');
     } finally {
-      setIsSavingCategory(false);
+      setIsSavingUser(false);
     }
   };
+
+  const handleDeleteCustomer = async (userId: string, email: string) => {
+    if (!window.confirm(`Delete customer account ${email}?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setCustomers(prev => prev.filter(u => u.id !== userId));
+      }
+    } catch {
+      alert('Failed to delete user.');
+    }
+  };
+
+  // Filter & Sort Tracks
+  const filteredTracks = useMemo(() => {
+    return tracks.filter(t => {
+      // 1. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesTitle = t.title.toLowerCase().includes(q);
+        const matchesArtist = t.artist.toLowerCase().includes(q);
+        const matchesAlbum = t.album.toLowerCase().includes(q);
+        const matchesGenre = (t.genre || '').toLowerCase().includes(q);
+        if (!matchesTitle && !matchesArtist && !matchesAlbum && !matchesGenre) return false;
+      }
+
+      // 2. Alphabet Filter
+      if (selectedLetter !== 'ALL') {
+        const firstChar = t.title.trim().charAt(0).toUpperCase();
+        if (firstChar !== selectedLetter) return false;
+      }
+
+      // 3. Status Filter
+      if (statusFilter === 'visible' && t.isHidden) return false;
+      if (statusFilter === 'hidden' && !t.isHidden) return false;
+      if (statusFilter === 'featured' && !t.isFeatured) return false;
+
+      return true;
+    }).sort((a, b) => {
+      if (sortOption === 'az') return a.title.localeCompare(b.title);
+      if (sortOption === 'za') return b.title.localeCompare(a.title);
+      if (sortOption === 'artist') return a.artist.localeCompare(b.artist);
+      return (b as any).createdAt ? (b as any).createdAt - ((a as any).createdAt || 0) : 0;
+    });
+  }, [tracks, searchQuery, selectedLetter, statusFilter, sortOption]);
 
   const handleCopyAdminUrl = () => {
     const url = typeof window !== 'undefined' ? `${window.location.origin}/admin` : '';
     navigator.clipboard.writeText(url);
     setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2500);
+    setTimeout(() => setCopiedUrl(false), 2000);
   };
 
-  // Distinct artists list
-  const distinctArtists = useMemo(() => {
-    const map = new Map<string, { name: string; count: number; coverArt?: string; genre?: string }>();
-    tracks.forEach(t => {
-      const name = (t.artist || 'Unknown Artist').trim();
-      const existing = map.get(name);
-      if (existing) {
-        existing.count++;
-        if (!existing.coverArt && t.coverArt) existing.coverArt = t.coverArt;
-      } else {
-        map.set(name, { name, count: 1, coverArt: t.coverArt, genre: t.genre });
-      }
-    });
-    return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [tracks]);
-
-  // Distinct albums list
-  const distinctAlbums = useMemo(() => {
-    const map = new Map<string, { name: string; artist: string; count: number; coverArt?: string; genre?: string }>();
-    tracks.forEach(t => {
-      const name = (t.album || 'Single Tracks').trim();
-      const existing = map.get(name);
-      if (existing) {
-        existing.count++;
-        if (!existing.coverArt && t.coverArt) existing.coverArt = t.coverArt;
-      } else {
-        map.set(name, { name, artist: t.artist, count: 1, coverArt: t.coverArt, genre: t.genre });
-      }
-    });
-    return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [tracks]);
-
-  // Filtered tracks
-  const filteredTracks = useMemo(() => {
-    return tracks.filter(t => {
-      // Status filter
-      if (statusFilter === 'visible' && t.isHidden) return false;
-      if (statusFilter === 'hidden' && !t.isHidden) return false;
-      if (statusFilter === 'featured' && !t.isFeatured) return false;
-      if (statusFilter === 'custom' && !t.hasCustomMetadata) return false;
-
-      // Artist filter
-      if (artistFilter !== 'all' && t.artist !== artistFilter) return false;
-
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = t.title.toLowerCase().includes(q);
-        const matchArtist = t.artist.toLowerCase().includes(q);
-        const matchAlbum = (t.album || '').toLowerCase().includes(q);
-        if (!matchTitle && !matchArtist && !matchAlbum) return false;
-      }
-
-      return true;
-    });
-  }, [tracks, statusFilter, artistFilter, searchQuery]);
-
-  // 1. PIN Login Screen
+  // 1. Zero-Trust Login Screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen w-full bg-[#0a0a0f] text-white flex flex-col items-center justify-center p-6 select-none relative overflow-hidden font-sans">
-        {/* Background Ambient Glows */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-10 right-10 w-72 h-72 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="min-h-screen w-full bg-[#07090E] text-white flex items-center justify-center p-4 relative overflow-hidden select-none">
+        <div className="absolute -top-32 -right-32 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-cyan-600/15 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-full max-w-md relative z-10 space-y-6">
-          {/* Top Logo & Branding */}
-          <div className="text-center space-y-2">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 mx-auto flex items-center justify-center text-white shadow-2xl shadow-purple-500/20 border border-white/10">
+        <div className="w-full max-w-md bg-[#0E131F]/90 border border-white/10 rounded-3xl p-7 sm:p-8 shadow-2xl relative z-10 backdrop-blur-2xl">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 mx-auto flex items-center justify-center shadow-xl shadow-purple-600/30 border border-white/20">
               <Shield className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-white">NOVA Cloud Admin</h1>
-            <p className="text-xs text-white/50">Private Music & Telegram Bot Management Portal</p>
-            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-white/60 font-medium">
-              <span>Lead Engineer:</span>
-              <span className="text-purple-400 font-semibold">Sourav Phukan</span>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono font-bold tracking-wider text-purple-300 uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              Master Executive Station
             </div>
+
+            <h1 className="text-2xl font-black tracking-tight text-white">NOVA Control Center</h1>
+            <p className="text-xs text-white/50 font-medium">Owner & Lead Engineer: Sourav Phukan</p>
           </div>
 
-          {/* Login Card */}
-          <div className="p-6 rounded-3xl bg-neutral-900/90 border border-white/10 shadow-2xl backdrop-blur-xl space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Lock className="w-4 h-4 text-purple-400" />
-                <span>Admin Authentication</span>
-              </h2>
-              <p className="text-xs text-white/50">Enter your secure Studio PIN to manage songs, metadata, and users.</p>
+          {authError && (
+            <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          <div className="mt-6 space-y-4">
+            <button
+              onClick={handleBiometricAuth}
+              disabled={isAuthenticating}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600/20 via-indigo-600/20 to-purple-600/20 hover:from-purple-600/30 hover:to-indigo-600/30 border border-purple-500/30 text-purple-200 hover:text-white transition-all flex items-center justify-center gap-3 text-xs font-bold active:scale-[0.98]"
+            >
+              <Fingerprint className="w-5 h-5 text-purple-400" />
+              <div className="text-left">
+                <div className="text-[11px] font-bold">Hardware Biometric Unlock</div>
+                <div className="text-[10px] text-white/40">TouchID • FaceID • Quick Fingerprint</div>
+              </div>
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-white/10" />
+              <span className="text-[10px] font-mono text-white/40 uppercase">Or Master Password / PIN</span>
+              <div className="flex-1 h-px bg-white/10" />
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <input
-                  type="password"
-                  placeholder="Enter Master Password or PIN (2620260095)"
-                  value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white text-center text-base tracking-wider placeholder:tracking-normal placeholder:text-white/30 focus:outline-none focus:border-purple-500 transition-colors"
-                  autoFocus
-                />
-                {authError && (
-                  <p className="text-xs text-rose-400 mt-2 flex items-center justify-center gap-1 font-medium">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{authError}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="submit"
-                  disabled={isAuthenticating || !pinInput.trim()}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  {isAuthenticating ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Unlock className="w-4 h-4" />
-                      <span>Unlock Portal</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleBiometricAuth}
-                  disabled={isAuthenticating}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <Fingerprint className="w-4 h-4 text-purple-400" />
-                  <span>Fingerprint / Face</span>
-                </button>
-              </div>
+            <form onSubmit={handleLogin} className="space-y-3">
+              <input
+                type="password"
+                placeholder="Enter Master Password or PIN..."
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                className="w-full bg-black/60 border border-white/15 focus:border-purple-500 rounded-2xl py-3.5 px-4 text-sm text-white placeholder:text-white/30 focus:outline-none transition-colors font-mono"
+              />
+              <button
+                type="submit"
+                disabled={isAuthenticating}
+                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-purple-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <span>Unlock Master Workstation</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </form>
 
-            <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40">
+            <div className="pt-2 flex items-center justify-between text-[11px] text-white/40 font-mono">
               <span>Master Key: <strong>2620260095</strong></span>
               <span>PIN: <strong>7788</strong></span>
             </div>
           </div>
 
-          {/* Quick return button */}
           {onBackToApp && (
             <button
               onClick={onBackToApp}
-              className="w-full py-2.5 text-xs text-white/50 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
+              className="mt-6 w-full py-2.5 text-xs text-white/50 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Return to Music Player App</span>
@@ -777,234 +742,324 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     );
   }
 
-  // 2. Main Authenticated Admin Portal
+  // 2. Authenticated Master Dashboard
   return (
-    <div className="min-h-screen w-full bg-[#0a0a0f] text-white flex flex-col font-sans select-none overflow-x-hidden">
-      {/* Top Universal Navbar */}
-      <header className="sticky top-0 z-40 w-full bg-[#0f0f16]/95 border-b border-white/10 backdrop-blur-xl px-4 sm:px-8 py-3.5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          {/* Brand & Creator */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-black tracking-tight text-white">NOVA Admin Portal</h1>
-                <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-bold uppercase tracking-wider border border-purple-500/30">
-                  Web Console
-                </span>
-              </div>
-              <p className="text-[11px] text-white/50">
-                NOVA Music Player • Creator: <span className="text-purple-300 font-semibold">Sourav Phukan</span>
-              </p>
-            </div>
+    <div className="min-h-screen w-full bg-[#07090E] text-white flex flex-col font-sans select-none overflow-x-hidden">
+      {/* Top Executive Header */}
+      <header className="sticky top-0 z-40 bg-[#080B12]/95 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/25 border border-white/20">
+            <Music className="w-5 h-5 text-white" />
           </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Direct Portal URL copy */}
-            <button
-              onClick={handleCopyAdminUrl}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white/80 transition-colors"
-              title="Copy secret link for PC or browser"
-            >
-              {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedUrl ? 'Copied Link!' : 'Copy Portal URL'}</span>
-            </button>
-
-            {/* Telegram Sync Button */}
-            <button
-              onClick={handleSyncTelegram}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-bold text-emerald-400 transition-all active:scale-95 shadow"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Sync Telegram'}</span>
-            </button>
-
-            {/* Switch to Player App */}
-            {onBackToApp ? (
-              <button
-                onClick={onBackToApp}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Player App</span>
-              </button>
-            ) : (
-              <a
-                href="/"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Player App</span>
-              </a>
-            )}
-
-            {/* Logout */}
-            <button
-              onClick={() => {
-                localStorage.removeItem('nova_admin_auth');
-                sessionStorage.removeItem('nova_studio_auth');
-                setIsAuthenticated(false);
-              }}
-              className="p-1.5 rounded-xl text-white/40 hover:text-rose-400 transition-colors"
-              title="Lock Admin Console"
-            >
-              <Lock className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-6">
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
-          <div className="p-4 rounded-2xl bg-neutral-900/70 border border-white/10 relative overflow-hidden">
-            <div className="flex items-center justify-between text-white/50 text-xs mb-1">
-              <span>Total Songs</span>
-              <Music className="w-4 h-4 text-purple-400" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-black text-white tracking-wide">NOVA MASTER STUDIO</h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live Node
+              </span>
             </div>
-            <div className="text-2xl font-black text-white">{stats?.totalTracks ?? tracks.length}</div>
-            <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1">
-              <span className="text-emerald-400 font-semibold">{stats?.visibleTracks ?? tracks.length} active</span>
-              <span>•</span>
-              <span className="text-amber-400 font-semibold">{stats?.hiddenTracks ?? 0} hidden</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-neutral-900/70 border border-white/10 relative overflow-hidden">
-            <div className="flex items-center justify-between text-white/50 text-xs mb-1">
-              <span>Instant Disk Cache</span>
-              <Zap className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-black text-white">{stats?.cachedFilesCount ?? 0} Tracks</div>
-            <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-semibold">
-              <span>0-second delay playback ready</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-neutral-900/70 border border-white/10 relative overflow-hidden">
-            <div className="flex items-center justify-between text-white/50 text-xs mb-1">
-              <span>Telegram Channel</span>
-              <Radio className="w-4 h-4 text-blue-400" />
-            </div>
-            <div className="text-base font-bold text-white truncate">NOVA Cloud</div>
-            <div className="text-[11px] text-white/40 mt-1 truncate">
-              ID: {stats?.channelId || '-1003542494794'}
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-neutral-900/70 border border-white/10 relative overflow-hidden">
-            <div className="flex items-center justify-between text-white/50 text-xs mb-1">
-              <span>Custom Posters & Metadata</span>
-              <Sparkles className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-2xl font-black text-white">{stats?.customMetadataCount ?? 0} Overrides</div>
-            <div className="text-[11px] text-white/40 mt-1">
-              Custom titles, artists & HD artwork
-            </div>
+            <p className="text-[10px] text-white/50 font-mono">Owner: Sourav Phukan • Latency: 4ms</p>
           </div>
         </div>
 
-        {/* Navigation Tabs Bar */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-2 overflow-x-auto no-scrollbar">
+        {/* Navigation Tabs (Pills) */}
+        <nav className="flex items-center gap-1 bg-black/50 border border-white/10 p-1 rounded-2xl overflow-x-auto no-scrollbar">
           <button
-            onClick={() => setActiveTab('tracks')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === 'tracks'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'bg-white/5 text-white/60 hover:text-white'
+            onClick={() => setActiveTab('overview')}
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'overview' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/70 hover:text-white'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>Overview</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('songs')}
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'songs' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/70 hover:text-white'
             }`}
           >
             <Music className="w-3.5 h-3.5" />
-            <span>Manage All Songs ({tracks.length})</span>
+            <span>Songs (A–Z)</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('categories')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === 'categories'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'bg-white/5 text-white/60 hover:text-white'
+            onClick={() => setActiveTab('upload')}
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'upload' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/70 hover:text-white'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Artists & Albums ({distinctArtists.length + distinctAlbums.length})</span>
+            <Upload className="w-3.5 h-3.5" />
+            <span>Upload Song</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('announcements')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === 'announcements'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'bg-white/5 text-white/60 hover:text-white'
+            onClick={() => setActiveTab('poster')}
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'poster' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/70 hover:text-white'
             }`}
           >
             <Bell className="w-3.5 h-3.5" />
-            <span>Special Day & Banners</span>
-            {announcement.enabled && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
+            <span>Event Poster</span>
+            {posterEnabled && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
           </button>
 
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === 'users'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'bg-white/5 text-white/60 hover:text-white'
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'users' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/70 hover:text-white'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>User Accounts</span>
+            <Users className="w-3.5 h-3.5" />
+            <span>Customers & Users</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('system')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-              activeTab === 'system'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                : 'bg-white/5 text-white/60 hover:text-white'
+            onClick={() => setActiveTab('telegram')}
+            className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'telegram' ? 'bg-purple-600 text-white shadow-sm' : 'text-white/70 hover:text-white'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Bot & Cloud Server</span>
+            <Radio className="w-3.5 h-3.5" />
+            <span>Telegram CDN</span>
+          </button>
+        </nav>
+
+        {/* Right Header Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopyAdminUrl}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white/80 transition-colors"
+          >
+            {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copiedUrl ? 'Copied Link' : 'Copy Link'}</span>
+          </button>
+
+          {onBackToApp && (
+            <button
+              onClick={onBackToApp}
+              className="py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-all flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Player App</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              localStorage.removeItem('nova_admin_auth');
+              sessionStorage.removeItem('nova_studio_auth');
+              setIsAuthenticated(false);
+            }}
+            className="py-1.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-300 hover:text-white transition-all flex items-center gap-1.5"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>Lock</span>
           </button>
         </div>
+      </header>
 
-        {/* TAB 1: ALL TRACKS MANAGEMENT */}
-        {activeTab === 'tracks' && (
-          <div className="space-y-4">
-            {/* Search and Filters */}
+      {/* Floating Audio Monitor Bar */}
+      {previewTrackId && (
+        <div className="bg-[#0A0E17] border-b border-white/10 px-4 sm:px-8 py-2.5 flex items-center justify-between gap-4 sticky top-[61px] z-30 shadow-md">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+              <Volume2 className="w-4 h-4 animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-white truncate">
+                Previewing: {tracks.find(t => t.id === previewTrackId)?.title || 'Audio Stream'}
+              </div>
+              <div className="text-[10px] text-white/40 truncate">
+                {tracks.find(t => t.id === previewTrackId)?.artist || 'Studio Monitor'} • 48kHz Direct Bus
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (audioPreviewRef.current) {
+                  if (isPlayingPreview) {
+                    audioPreviewRef.current.pause();
+                    setIsPlayingPreview(false);
+                  } else {
+                    audioPreviewRef.current.play();
+                    setIsPlayingPreview(true);
+                  }
+                }
+              }}
+              className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center gap-1"
+            >
+              {isPlayingPreview ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              <span>{isPlayingPreview ? 'Pause' : 'Play'}</span>
+            </button>
+            <button
+              onClick={() => {
+                if (audioPreviewRef.current) {
+                  audioPreviewRef.current.pause();
+                  audioPreviewRef.current.src = '';
+                }
+                setPreviewTrackId(null);
+                setIsPlayingPreview(false);
+              }}
+              className="p-1 rounded-lg text-white/40 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Studio Body */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-6">
+
+        {/* ================= TAB: OVERVIEW ================= */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Quick Metrics Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+              <div className="p-4 rounded-2xl bg-[#0D121F] border border-white/10 relative overflow-hidden">
+                <div className="flex items-center justify-between text-white/50 text-xs mb-1">
+                  <span>Catalog Tracks</span>
+                  <Music className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="text-2xl font-black text-white">{stats?.totalTracks ?? tracks.length}</div>
+                <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1 font-mono">
+                  <span className="text-emerald-400 font-bold">{stats?.visibleTracks ?? tracks.length} active</span>
+                  <span>•</span>
+                  <span className="text-amber-400 font-bold">{stats?.hiddenTracks ?? 0} hidden</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#0D121F] border border-white/10 relative overflow-hidden">
+                <div className="flex items-center justify-between text-white/50 text-xs mb-1">
+                  <span>Event Poster</span>
+                  <Bell className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-2xl font-black text-white">
+                  {posterEnabled ? <span className="text-emerald-400">LIVE (ON)</span> : <span className="text-white/40">OFF</span>}
+                </div>
+                <div className="text-[11px] text-white/40 mt-1 truncate">
+                  {posterTitle || 'No active banner'}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#0D121F] border border-white/10 relative overflow-hidden">
+                <div className="flex items-center justify-between text-white/50 text-xs mb-1">
+                  <span>Customer Accounts</span>
+                  <Users className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="text-2xl font-black text-white">{customers.length} Listeners</div>
+                <div className="text-[11px] text-emerald-400 mt-1 font-mono">
+                  Active authentication nodes
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#0D121F] border border-white/10 relative overflow-hidden">
+                <div className="flex items-center justify-between text-white/50 text-xs mb-1">
+                  <span>SSD Audio Cache</span>
+                  <HardDrive className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-2xl font-black text-white">{stats?.cachedFilesCount || 0} Files</div>
+                <div className="text-[11px] text-white/40 mt-1 font-mono">
+                  {stats?.cacheSizeMB || '0'} MB edge stored
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Action Station */}
+            <div className="p-6 rounded-3xl bg-[#0D121F] border border-white/10 space-y-4">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span>Executive Quick Actions</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  onClick={() => setActiveTab('upload')}
+                  className="p-4 rounded-2xl bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/30 text-left transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 mb-2 group-hover:scale-105 transition-transform">
+                    <Upload className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-bold text-white">Upload New Song</div>
+                  <div className="text-[11px] text-white/40 mt-0.5">MP3, M4A, FLAC or WAV file</div>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('poster')}
+                  className="p-4 rounded-2xl bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/30 text-left transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 mb-2 group-hover:scale-105 transition-transform">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-bold text-white">Toggle Event Poster</div>
+                  <div className="text-[11px] text-white/40 mt-0.5">Switch ON/OFF special day popup</div>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('songs')}
+                  className="p-4 rounded-2xl bg-cyan-600/10 hover:bg-cyan-600/20 border border-cyan-500/30 text-left transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 mb-2 group-hover:scale-105 transition-transform">
+                    <Music className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-bold text-white">Manage Songs (A–Z)</div>
+                  <div className="text-[11px] text-white/40 mt-0.5">Edit titles, singers, delete songs</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB: SONGS (A–Z) ================= */}
+        {activeTab === 'songs' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Alphabet Filter Pills */}
+            <div className="bg-[#0D121F] border border-white/10 p-2 rounded-2xl flex items-center gap-1 overflow-x-auto no-scrollbar">
+              {ALPHABETS.map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => setSelectedLetter(letter)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    selectedLetter === letter
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+
+            {/* Row Search and Sort Bar */}
             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-              {/* Search Bar */}
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search by song name, artist, or album..."
+                  placeholder="Search song title, singer, album..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white placeholder:text-white/30 text-xs focus:outline-none focus:border-purple-500"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0D121F] border border-white/10 text-white placeholder:text-white/30 text-xs focus:outline-none focus:border-purple-500"
                 />
               </div>
 
-              {/* Status Filter */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {/* Status filter */}
+              <div className="flex items-center gap-1.5">
                 {[
-                  { id: 'all', label: 'All Songs' },
-                  { id: 'visible', label: 'Active in App' },
-                  { id: 'hidden', label: 'Hidden / Draft' },
+                  { id: 'all', label: 'All' },
+                  { id: 'visible', label: 'Active' },
+                  { id: 'hidden', label: 'Hidden' },
                   { id: 'featured', label: 'Featured ⭐' },
-                  { id: 'custom', label: 'Edited' },
-                ].map((st) => (
+                ].map(st => (
                   <button
                     key={st.id}
                     onClick={() => setStatusFilter(st.id as any)}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap ${
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
                       statusFilter === st.id
-                        ? 'bg-white text-black font-bold'
+                        ? 'bg-white text-black'
                         : 'bg-white/5 text-white/60 hover:text-white border border-white/5'
                     }`}
                   >
@@ -1013,56 +1068,53 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                 ))}
               </div>
 
-              {/* Artist dropdown filter */}
-              {distinctArtists.length > 0 && (
-                <select
-                  value={artistFilter}
-                  onChange={(e) => setArtistFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500 cursor-pointer"
-                >
-                  <option value="all">All Artists ({distinctArtists.length})</option>
-                  {distinctArtists.map((art) => (
-                    <option key={art.name} value={art.name}>
-                      {art.name} ({art.count})
-                    </option>
-                  ))}
-                </select>
-              )}
+              {/* Sort selector */}
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as any)}
+                className="px-3 py-2 rounded-xl bg-[#0D121F] border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500 cursor-pointer font-bold"
+              >
+                <option value="az">Sort: A to Z</option>
+                <option value="za">Sort: Z to A</option>
+                <option value="artist">Sort: By Singer</option>
+                <option value="recent">Sort: Recently Added</option>
+              </select>
             </div>
 
-            {/* Tracks List / Table */}
+            {/* Songs Row Table */}
             {isLoading ? (
-              <div className="py-16 text-center text-white/40 space-y-2">
+              <div className="py-20 text-center text-white/40 space-y-2">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto text-purple-400" />
-                <p className="text-xs">Loading tracks from Telegram Cloud & local cache...</p>
+                <p className="text-xs">Loading songs from station repository...</p>
               </div>
             ) : filteredTracks.length === 0 ? (
-              <div className="py-16 text-center text-white/40 space-y-2 bg-neutral-900/40 rounded-2xl border border-white/5">
+              <div className="py-16 text-center text-white/40 space-y-2 bg-[#0D121F] rounded-2xl border border-white/5">
                 <Music className="w-8 h-8 mx-auto text-white/20" />
-                <p className="text-sm font-semibold text-white/60">No songs found matching your criteria</p>
-                <p className="text-xs text-white/40">Try adjusting your search query or status filter.</p>
+                <p className="text-sm font-semibold text-white/60">No songs found in this selection</p>
+                <p className="text-xs text-white/40">Try picking "ALL" in alphabet filter or clearing the search query.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2.5">
-                {filteredTracks.map((track) => {
-                  const isHidden = track.isHidden;
-                  const isFeatured = track.isFeatured;
+              <div className="space-y-2">
+                {filteredTracks.map((track, idx) => {
                   const isPreviewPlaying = previewTrackId === track.id && isPlayingPreview;
-                  const isThisPrewarming = prewarmingId === track.id;
+                  const format = track.format?.toUpperCase() || (track.audioUrl?.includes('.m4a') ? 'M4A' : track.audioUrl?.includes('.flac') ? 'FLAC' : 'MP3');
 
                   return (
                     <div
                       key={track.id}
-                      className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                        isHidden
-                          ? 'bg-neutral-900/40 border-dashed border-white/10 opacity-75'
-                          : 'bg-neutral-900/80 border-white/10 hover:border-white/20 shadow-md'
+                      className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        track.isHidden
+                          ? 'bg-[#0D121F]/40 border-dashed border-white/10 opacity-70'
+                          : 'bg-[#0D121F] border-white/10 hover:border-purple-500/40 shadow-sm'
                       }`}
                     >
-                      {/* Left: Thumbnail & Info */}
-                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                        {/* Cover thumbnail */}
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-800 flex-shrink-0 border border-white/10">
+                      {/* Left: Index #, Cover & Track Metadata */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="font-mono text-xs text-white/30 w-6 text-center shrink-0">
+                          {idx + 1}
+                        </span>
+
+                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-neutral-800 shrink-0 border border-white/10 group">
                           {track.coverArt ? (
                             <img
                               src={track.coverArt}
@@ -1076,62 +1128,40 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                             </div>
                           )}
 
-                          {/* Quick preview audio button overlay */}
                           <button
                             onClick={() => handlePlayPreview(track)}
-                            className="absolute inset-0 bg-black/40 hover:bg-black/60 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity"
+                            className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Play audio preview"
                           >
-                            {isPreviewPlaying ? (
-                              <Pause className="w-5 h-5 text-emerald-400" />
-                            ) : (
-                              <Play className="w-5 h-5 text-white" />
-                            )}
+                            {isPreviewPlaying ? <Pause className="w-4 h-4 text-emerald-400" /> : <Play className="w-4 h-4" />}
                           </button>
                         </div>
 
-                        {/* Title, Artist, & Badges */}
                         <div className="min-w-0 flex-1 space-y-0.5">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-white truncate">{track.title}</h3>
-                            {isFeatured && (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30 flex items-center gap-0.5">
-                                <Star className="w-2.5 h-2.5 fill-amber-300" />
-                                <span>Featured</span>
-                              </span>
-                            )}
-                            {isHidden && (
-                              <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30 flex items-center gap-0.5">
-                                <EyeOff className="w-2.5 h-2.5" />
-                                <span>Hidden</span>
-                              </span>
-                            )}
-                            {track.hasCustomMetadata && (
-                              <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-semibold border border-purple-500/30">
-                                Custom Poster
+                            <h4 className="text-xs sm:text-sm font-bold text-white truncate">{track.title}</h4>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              {format}
+                            </span>
+                            {track.isFeatured && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
+                                <Star className="w-2.5 h-2.5 fill-amber-300" /> Featured
                               </span>
                             )}
                           </div>
-
                           <div className="flex items-center gap-2 text-xs text-white/50 truncate">
                             <span className="text-white/80 font-medium">{track.artist}</span>
                             <span>•</span>
-                            <span>{track.album || 'Cloud Single'}</span>
+                            <span>{track.album || 'Single'}</span>
                             <span>•</span>
                             <span>{track.genre || 'Indie'}</span>
-                            {track.duration > 0 && (
-                              <>
-                                <span>•</span>
-                                <span>{Math.floor(track.duration / 60)}:{String(Math.floor(track.duration % 60)).padStart(2, '0')}</span>
-                              </>
-                            )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        {/* Audio Preview toggle button */}
+                      {/* Right: Control Actions */}
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        {/* Audio Preview */}
                         <button
                           onClick={() => handlePlayPreview(track)}
                           className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
@@ -1142,50 +1172,25 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                           title="Preview audio stream"
                         >
                           {isPreviewPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                          <span className="hidden md:inline">{isPreviewPlaying ? 'Playing' : 'Listen'}</span>
+                          <span className="hidden lg:inline">{isPreviewPlaying ? 'Playing' : 'Listen'}</span>
                         </button>
 
-                        {/* Prewarm to disk */}
-                        <button
-                          onClick={() => handlePrewarmTrack(track)}
-                          disabled={isThisPrewarming}
-                          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-emerald-400 transition-colors"
-                          title="Pre-cache track on server disk for 0s play"
-                        >
-                          <Zap className={`w-3.5 h-3.5 ${isThisPrewarming ? 'animate-bounce text-emerald-400' : ''}`} />
-                        </button>
-
-                        {/* Featured Star Toggle */}
-                        <button
-                          onClick={() => handleToggleFeatured(track)}
-                          className={`p-2 rounded-xl transition-colors ${
-                            isFeatured ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-white/40 hover:text-white'
-                          }`}
-                          title={isFeatured ? 'Remove from Featured' : 'Pin to Featured'}
-                        >
-                          <Star className={`w-3.5 h-3.5 ${isFeatured ? 'fill-amber-300' : ''}`} />
-                        </button>
-
-                        {/* Hide / Unhide Toggle */}
-                        <button
-                          onClick={() => handleToggleHide(track)}
-                          className={`p-2 rounded-xl transition-colors ${
-                            isHidden
-                              ? 'bg-rose-500/20 text-rose-300'
-                              : 'bg-white/5 text-white/40 hover:text-emerald-400'
-                          }`}
-                          title={isHidden ? 'Publish to App' : 'Hide from App'}
-                        >
-                          {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-
-                        {/* Edit Button */}
+                        {/* Edit Song Details */}
                         <button
                           onClick={() => handleOpenEditModal(track)}
-                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           <span>Edit</span>
+                        </button>
+
+                        {/* Delete Track */}
+                        <button
+                          onClick={() => handleDeleteTrack(track.id, track.title)}
+                          className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                          title="Delete song from NOVA"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1196,379 +1201,430 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
           </div>
         )}
 
-        {/* TAB: CATEGORY EDITING (Singers / Artists & Albums Bulk Management) */}
-        {activeTab === 'categories' && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            {/* Header info */}
-            <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* ================= TAB: UPLOAD SONG ================= */}
+        {activeTab === 'upload' && (
+          <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-200">
+            <div className="p-6 rounded-3xl bg-[#0D121F] border border-white/10 space-y-5">
               <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-purple-400" />
-                  <span>Category-Wise Management (Singers & Albums)</span>
-                </h2>
-                <p className="text-xs text-white/50 mt-0.5">
-                  Fix or customize singer names, album titles, and album poster artwork across all songs in one single click.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1.5 rounded-xl bg-purple-600/20 text-purple-300 text-xs font-bold border border-purple-500/30">
-                  {distinctArtists.length} Singers
-                </span>
-                <span className="px-3 py-1.5 rounded-xl bg-indigo-600/20 text-indigo-300 text-xs font-bold border border-indigo-500/30">
-                  {distinctAlbums.length} Albums
-                </span>
-              </div>
-            </div>
-
-            {/* Section 1: Singers / Artists Category */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>Singers & Artists Directory</span>
-                  <span className="text-xs font-semibold text-white/40">({distinctArtists.length})</span>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-purple-400" />
+                  <span>Upload High-Fidelity Song to NOVA Cloud</span>
                 </h3>
-                <span className="text-[11px] text-white/40">Click "Edit Singer" to update across all their tracks</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {distinctArtists.map((artist) => (
-                  <div
-                    key={artist.name}
-                    className="p-3.5 rounded-2xl bg-neutral-900/70 border border-white/10 hover:border-purple-500/40 transition-all flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-neutral-800 overflow-hidden flex-shrink-0 border border-white/10">
-                        {artist.coverArt ? (
-                          <img src={artist.coverArt} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-white/30 text-xs font-bold">
-                            {artist.name.slice(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-white truncate">{artist.name}</h4>
-                        <span className="text-[11px] text-purple-300 font-semibold">{artist.count} {artist.count === 1 ? 'song' : 'songs'}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleOpenCategoryModal('artist', artist.name)}
-                      className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-purple-600 text-white/80 hover:text-white text-xs font-bold transition-colors flex items-center gap-1 flex-shrink-0 border border-white/5"
-                    >
-                      <Edit3 className="w-3 h-3" />
-                      <span>Edit Singer</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Section 2: Albums Category */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>Albums & Collections Directory</span>
-                  <span className="text-xs font-semibold text-white/40">({distinctAlbums.length})</span>
-                </h3>
-                <span className="text-[11px] text-white/40">Click "Edit Album" to update title & album artwork</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {distinctAlbums.map((album) => (
-                  <div
-                    key={album.name}
-                    className="p-3.5 rounded-2xl bg-neutral-900/70 border border-white/10 hover:border-purple-500/40 transition-all flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-neutral-800 overflow-hidden flex-shrink-0 border border-white/10">
-                        {album.coverArt ? (
-                          <img src={album.coverArt} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-white/30">
-                            <Music className="w-4 h-4" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-white truncate">{album.name}</h4>
-                        <span className="text-[11px] text-indigo-300 font-semibold">{album.count} {album.count === 1 ? 'track' : 'tracks'}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleOpenCategoryModal('album', album.name)}
-                      className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-600 text-white/80 hover:text-white text-xs font-bold transition-colors flex items-center gap-1 flex-shrink-0 border border-white/5"
-                    >
-                      <Edit3 className="w-3 h-3" />
-                      <span>Edit Album</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: USER ACCOUNTS & MANAGEMENT */}
-        {activeTab === 'users' && (
-          <div className="space-y-5 max-w-3xl animate-in fade-in duration-300">
-            <div className="p-6 rounded-3xl bg-neutral-900/80 border border-white/10 space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Listener Accounts & Access Controls</span>
-                </h2>
-                <p className="text-xs text-white/50">
-                  Manage user profiles, accounts, and listenership status for NOVA Player users.
+                <p className="text-xs text-white/50 mt-1">
+                  Upload audio files from your phone or PC directly into the NOVA player library.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-300 flex items-center justify-center font-bold">
-                      SP
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">Sourav Phukan (Creator & Super Admin)</h4>
-                      <p className="text-[11px] text-white/40">souravphukan36@gmail.com • Full Master Privileges</p>
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-black uppercase tracking-wider border border-purple-500/30">
-                    Master Admin
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-white">Public Listener Web Login</h4>
-                    <p className="text-[11px] text-white/40">Dedicated login page for your friends & users to stream and save favorites</p>
-                  </div>
-                  <a
-                    href="/login.html"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors flex items-center gap-1.5"
-                  >
-                    <span>Open User Login Page</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: SPECIAL DAY & CREATOR ANNOUNCEMENTS */}
-        {activeTab === 'announcements' && (
-          <div className="p-6 rounded-3xl bg-neutral-900/80 border border-white/10 space-y-5 max-w-3xl">
-            <div className="space-y-1">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-400" />
-                <span>Live Special Day & User Announcement Banner</span>
-              </h2>
-              <p className="text-xs text-white/50">
-                Signify important days (festivals, celebrations, releases) with a dedicated photo banner, title, and message at the top of the listener app.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {/* Enable / Disable Switch */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/5">
-                <div>
-                  <span className="text-xs font-bold text-white block">Banner Active Status</span>
-                  <span className="text-[11px] text-white/40">When turned on, banner appears immediately on the listener app</span>
-                </div>
-                <button
-                  onClick={() => setAnnouncementEnabled(!announcementEnabled)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                    announcementEnabled ? 'bg-emerald-500 text-black' : 'bg-white/10 text-white/50'
-                  }`}
-                >
-                  {announcementEnabled ? 'Active (ON)' : 'Disabled (OFF)'}
-                </button>
-              </div>
-
-              {/* Banner Type */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-white/70">Banner Occasion / Style</label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: 'special', label: 'Special Day 🎉' },
-                    { id: 'festival', label: 'Festival / Celebration 🪔' },
-                    { id: 'update', label: 'Song Update 🎵' },
-                    { id: 'info', label: 'Announcement 📢' },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setAnnouncementType(t.id)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                        announcementType === t.id
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-white/5 text-white/60 hover:text-white'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Banner Title */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-white/70">Occasion / Banner Title</label>
-                <input
-                  type="text"
-                  value={announcementTitle}
-                  onChange={(e) => setAnnouncementTitle(e.target.value)}
-                  placeholder="e.g. Happy Bihu! 🎉 or Special Weekend Vibes ✨"
-                  className="w-full p-3 rounded-2xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500 font-semibold"
-                />
-              </div>
-
-              {/* Banner Photo / Video from Phone Storage */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-white/80 flex items-center justify-between">
-                  <span>📱 Event Media (Upload from Phone Storage / Gallery)</span>
-                  {isUploadingBannerImg && <span className="text-[11px] text-purple-400 animate-pulse font-mono">Uploading from device...</span>}
-                </label>
-
-                {/* Big Direct Phone Upload Card */}
-                <div className="p-4 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-purple-400 bg-purple-950/15 text-center transition-all">
-                  {announcementImageUrl ? (
-                    <div className="space-y-3">
-                      <div className="relative max-w-sm mx-auto h-36 rounded-xl overflow-hidden border border-purple-500/40 bg-black/60 shadow-lg">
-                        {announcementImageUrl.match(/\.(mp4|webm|mov|m4v)/i) || announcementImageUrl.includes('event_vid') ? (
-                          <video src={announcementImageUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                        ) : (
-                          <img src={announcementImageUrl} alt="Uploaded Event Poster" className="w-full h-full object-cover" />
-                        )}
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/80 backdrop-blur text-[10px] font-bold font-mono text-purple-300 border border-purple-500/30">
-                          <span>📱 ATTACHED FROM STORAGE</span>
-                        </div>
-                      </div>
-                      <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white cursor-pointer shadow-md transition-all">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Change Photo / Video File</span>
-                        <input
-                          type="file"
-                          accept="image/*,video/*,.mp4,.webm,.mov,.m4v"
-                          onChange={handleBannerImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
+              {uploadStatusMsg.text && (
+                <div className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 ${
+                  uploadStatusMsg.type === 'success'
+                    ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
+                    : uploadStatusMsg.type === 'loading'
+                    ? 'bg-purple-500/20 border border-purple-500/30 text-purple-300'
+                    : 'bg-red-500/20 border border-red-500/30 text-red-300'
+                }`}>
+                  {uploadStatusMsg.type === 'loading' ? (
+                    <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                  ) : uploadStatusMsg.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
                   ) : (
-                    <label className="flex flex-col items-center justify-center gap-2 py-2 cursor-pointer group">
-                      <div className="w-11 h-11 rounded-2xl bg-purple-600/25 border border-purple-500/40 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
-                        <Upload className="w-5 h-5" />
-                      </div>
-                      <span className="text-xs font-bold text-white group-hover:text-purple-300">
-                        Tap to Select Photo or Video from Phone
-                      </span>
-                      <span className="text-[11px] text-white/50">
-                        Gallery • Camera Roll • Phone Files (MP4, WebM, JPG, PNG)
-                      </span>
-                      <div className="mt-1 px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white shadow-md">
-                        📁 Open Gallery / Storage
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*,video/*,.mp4,.webm,.mov,.m4v"
-                        onChange={handleBannerImageUpload}
-                        className="hidden"
-                      />
-                    </label>
+                    <AlertCircle className="w-4 h-4 shrink-0" />
                   )}
-                </div>
-
-                {/* Collapsible Web Link Fallback */}
-                <details className="text-[11px] text-white/40 pt-0.5">
-                  <summary className="cursor-pointer hover:text-white/70 font-medium">Or paste web link instead (optional)</summary>
-                  <input
-                    type="text"
-                    value={announcementImageUrl}
-                    onChange={(e) => setAnnouncementImageUrl(e.target.value)}
-                    placeholder="https://... image link"
-                    className="w-full mt-1.5 p-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500 font-mono"
-                  />
-                </details>
-              </div>
-
-              {/* Banner Message Text */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-white/70">Announcement Words / Description</label>
-                <textarea
-                  rows={3}
-                  value={announcementText}
-                  onChange={(e) => setAnnouncementText(e.target.value)}
-                  placeholder="e.g., Wishing everyone joy, good health, and memorable melodies this auspicious day!"
-                  className="w-full p-3.5 rounded-2xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
-                />
-              </div>
-
-              {/* Live Preview of Special Day Banner */}
-              {announcementEnabled && (
-                <div className="space-y-2 pt-2">
-                  <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider">Live Listener App Preview</span>
-                  <div className="p-3.5 sm:p-4 rounded-3xl bg-[#12121a] border border-purple-500/30 flex items-center gap-3.5 shadow-xl relative overflow-hidden">
-                    {announcementImageUrl ? (
-                      <img
-                        src={announcementImageUrl}
-                        alt="Special Banner"
-                        className="w-13 h-13 rounded-2xl object-cover border border-white/10 shadow-md flex-shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-11 h-11 rounded-2xl bg-purple-600/20 text-purple-400 flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="w-5 h-5" />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300">
-                          {announcementType}
-                        </span>
-                        <h4 className="text-xs sm:text-sm font-bold text-white truncate">
-                          {announcementTitle || 'Special Day Title'}
-                        </h4>
-                      </div>
-                      <p className="text-xs text-white/80 font-medium line-clamp-2 mt-0.5">
-                        {announcementText || 'Your celebration message or update words will appear here.'}
-                      </p>
-                    </div>
-                  </div>
+                  <span>{uploadStatusMsg.text}</span>
                 </div>
               )}
 
-              {/* Save Button */}
-              <div className="pt-2 flex items-center gap-3">
+              <form onSubmit={handleAudioUploadSubmit} className="space-y-4">
+                {/* Audio File Selection Dropzone */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-white/70">Audio File (MP3, M4A, FLAC, WAV)</label>
+                  <label className="border-2 border-dashed border-white/15 hover:border-purple-500/50 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer bg-white/[0.02] hover:bg-white/[0.04] transition-all">
+                    <Music className="w-8 h-8 text-purple-400 mb-2" />
+                    <span className="text-xs font-bold text-white">
+                      {uploadAudioFile ? uploadAudioFile.name : 'Choose audio file or drag & drop'}
+                    </span>
+                    <span className="text-[10px] text-white/40 mt-1">
+                      {uploadAudioFile ? `${(uploadAudioFile.size / (1024 * 1024)).toFixed(2)} MB` : 'Lossless FLAC, Studio 24-bit M4A, or 320kbps MP3'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="audio/*,.mp3,.m4a,.flac,.wav"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setUploadAudioFile(file);
+                          if (!newTitle) {
+                            setNewTitle(file.name.replace(/\.[^/.]+$/, ''));
+                          }
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Song Title */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Song Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Tu Kya Jaane"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                {/* Singer & Album Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-white/70">Singer / Artist</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Zubeen Garg, A.R. Rahman"
+                      value={newArtist}
+                      onChange={(e) => setNewArtist(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-white/70">Album / Collection</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Chamkila Soundtrack"
+                      value={newAlbum}
+                      onChange={(e) => setNewAlbum(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Genre */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Genre</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Assamese Folk, Romantic, Bollywood"
+                    value={newGenre}
+                    onChange={(e) => setNewGenre(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                {/* Cover Artwork File Input */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Cover Poster Artwork (Optional)</label>
+                  <div className="flex items-center gap-3">
+                    <label className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold text-white cursor-pointer transition-colors flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-purple-400" />
+                      <span>{uploadCoverFile ? 'Change Poster' : 'Choose Poster Image'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setUploadCoverFile(file);
+                            const r = new FileReader();
+                            r.onload = () => setUploadCoverPreview(r.result as string);
+                            r.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {uploadCoverPreview && (
+                      <div className="flex items-center gap-2">
+                        <img src={uploadCoverPreview} alt="Preview" className="w-9 h-9 rounded-lg object-cover border border-white/20" />
+                        <span className="text-[11px] text-white/40">Ready to upload</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isUploadingTrack || !uploadAudioFile}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-purple-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    {isUploadingTrack ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Uploading & Processing Song...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>Publish Song to Station</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB: EVENT POSTER (MASTER SWITCH) ================= */}
+        {activeTab === 'poster' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-200">
+            {/* Left: Controls & Switch */}
+            <div className="p-6 rounded-3xl bg-[#0D121F] border border-white/10 space-y-5">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-amber-400" />
+                  <span>Event Poster & Celebration Manager</span>
+                </h3>
+                <p className="text-xs text-white/50 mt-1">
+                  Control the live event poster banner shown on user home screens during celebrations.
+                </p>
+              </div>
+
+              {/* Master ON / OFF Toggle Button */}
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-white">Event Poster Status</div>
+                  <div className="text-[11px] text-white/40">Turn entire banner ON or OFF in listener app</div>
+                </div>
+
                 <button
-                  onClick={handleSaveAnnouncement}
-                  disabled={isSavingAnnouncement}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition-all active:scale-95 flex items-center gap-2"
+                  type="button"
+                  onClick={() => setPosterEnabled(!posterEnabled)}
+                  className={`px-4 py-2 rounded-xl text-xs font-black tracking-wide uppercase transition-all shadow-md flex items-center gap-2 ${
+                    posterEnabled
+                      ? 'bg-emerald-500 text-black shadow-emerald-500/25'
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${posterEnabled ? 'bg-black animate-ping' : 'bg-red-400'}`} />
+                  <span>{posterEnabled ? 'ACTIVE (ON)' : 'DISABLED (OFF)'}</span>
+                </button>
+              </div>
+
+              {/* Title */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Celebration / Event Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Happy Bihu ✨ or Happy New Year 🎉"
+                  value={posterTitle}
+                  onChange={(e) => setPosterTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* Subtitle / Wish text */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Wish Message / Subtitle</label>
+                <textarea
+                  rows={3}
+                  placeholder="Wishing everyone joy, melodies, and peace on this special occasion!"
+                  value={posterWishText}
+                  onChange={(e) => setPosterWishText(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* Date */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Event Date</label>
+                <input
+                  type="date"
+                  value={posterDate}
+                  onChange={(e) => setPosterDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* Poster Image File or Link */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-white/70">Poster Media / Graphic</label>
+                <div className="flex items-center gap-2">
+                  <label className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-bold text-white cursor-pointer transition-colors flex items-center gap-1.5 shrink-0">
+                    <Upload className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{isUploadingPosterMedia ? 'Uploading...' : 'Upload Media'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadPosterMedia}
+                      className="hidden"
+                    />
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Or enter image URL https://..."
+                    value={posterImageUrl}
+                    onChange={(e) => setPosterImageUrl(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              {posterSaveMsg && (
+                <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{posterSaveMsg}</span>
+                </div>
+              )}
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleSavePoster}
+                  disabled={isSavingPoster}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-purple-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{isSavingAnnouncement ? 'Saving...' : 'Publish Special Day Banner'}</span>
+                  <span>{isSavingPoster ? 'Saving Poster...' : 'Save & Publish Poster'}</span>
                 </button>
-                {announcementSaved && (
-                  <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
-                    <Check className="w-4 h-4" /> Published live to user app!
-                  </span>
+              </div>
+            </div>
+
+            {/* Right: Live Mobile Mockup Preview */}
+            <div className="p-6 rounded-3xl bg-[#0D121F] border border-white/10 space-y-4 flex flex-col items-center">
+              <div className="w-full flex items-center justify-between">
+                <span className="text-xs font-bold text-white/50 uppercase tracking-wider">Live Mobile App Mockup</span>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                  posterEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'
+                }`}>
+                  {posterEnabled ? 'VISIBLE TO USERS' : 'HIDDEN FROM APP'}
+                </span>
+              </div>
+
+              {/* Mobile Phone Mockup Frame */}
+              <div className="w-full max-w-sm rounded-[32px] bg-[#0A0D14] border-4 border-white/10 p-4 shadow-2xl relative overflow-hidden">
+                <div className="w-24 h-4 bg-white/10 rounded-full mx-auto mb-4" />
+
+                {posterEnabled ? (
+                  <div className="rounded-2xl bg-gradient-to-br from-purple-900/40 via-indigo-900/30 to-black/60 border border-purple-500/30 p-4 space-y-3 relative overflow-hidden shadow-lg">
+                    {posterImageUrl ? (
+                      <img
+                        src={posterImageUrl}
+                        alt="Event poster"
+                        className="w-full h-36 object-cover rounded-xl border border-white/10"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-24 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                        <Sparkles className="w-8 h-8" />
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="inline-block px-2 py-0.5 rounded bg-purple-500/30 text-purple-200 text-[9px] font-bold uppercase tracking-wider mb-1">
+                        Special Celebration
+                      </div>
+                      <h4 className="text-sm font-bold text-white truncate">
+                        {posterTitle || 'Happy Celebration'}
+                      </h4>
+                      <p className="text-xs text-white/70 line-clamp-2 mt-0.5">
+                        {posterWishText || 'Warm wishes from NOVA station to all our music listeners.'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-white/30 space-y-1">
+                    <Bell className="w-8 h-8 mx-auto text-white/10" />
+                    <p className="text-xs font-bold">Event Poster is OFF</p>
+                    <p className="text-[10px]">Normal clean home screen without banner</p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 3: SYSTEM & BOT CONTROLS */}
-        {activeTab === 'system' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Telegram Channel Details */}
-            <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 space-y-4">
+        {/* ================= TAB: CUSTOMERS & USERS ================= */}
+        {activeTab === 'users' && (
+          <div className="space-y-5 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-cyan-400" />
+                  <span>Customer & Listener Account Management</span>
+                </h3>
+                <p className="text-xs text-white/50 mt-0.5">
+                  Manage registered listener IDs, access privileges, and active user logins.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsAddUserModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 self-start sm:self-auto"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Register Customer</span>
+              </button>
+            </div>
+
+            {/* Customers Table */}
+            <div className="bg-[#0D121F] border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+              <div className="p-3.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-white/40 uppercase tracking-wider">
+                <span>Customer / Email ID</span>
+                <span className="hidden sm:inline">Status</span>
+                <span className="hidden md:inline">Joined</span>
+                <span>Actions</span>
+              </div>
+
+              {customers.length === 0 ? (
+                <div className="py-12 text-center text-white/40 space-y-2">
+                  <Users className="w-8 h-8 mx-auto text-white/20" />
+                  <p className="text-xs">No registered customers found yet.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {customers.map((cust) => (
+                    <div key={cust.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-white/[0.02]">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0 border border-cyan-500/30">
+                          {cust.name ? cust.name.slice(0, 1).toUpperCase() : 'U'}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-white truncate">{cust.email}</div>
+                          <div className="text-[10px] text-white/40 truncate">{cust.name || 'Listener'}</div>
+                        </div>
+                      </div>
+
+                      <div className="hidden sm:flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          cust.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'
+                        }`}>
+                          {cust.status.toUpperCase()}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-white/60 text-[10px] font-mono">
+                          {cust.role.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="hidden md:block text-[11px] text-white/40 font-mono">
+                        {cust.createdAt ? new Date(cust.createdAt).toLocaleDateString() : 'Active'}
+                      </div>
+
+                      <div>
+                        <button
+                          onClick={() => handleDeleteCustomer(cust.id, cust.email)}
+                          className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          title="Remove user"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB: TELEGRAM CDN ================= */}
+        {activeTab === 'telegram' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in duration-200">
+            <div className="p-5 rounded-3xl bg-[#0D121F] border border-white/10 space-y-4">
               <div className="flex items-center gap-2 text-sm font-bold text-white">
                 <Radio className="w-4 h-4 text-blue-400" />
                 <span>Telegram Bot & Cloud Channel</span>
@@ -1597,12 +1653,11 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                 className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors flex items-center justify-center gap-2"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>Force Check for New Songs Now</span>
+                <span>{isSyncing ? 'Syncing...' : 'Force Check for New Songs Now'}</span>
               </button>
             </div>
 
-            {/* Cache & Edge Speed */}
-            <div className="p-5 rounded-3xl bg-neutral-900/80 border border-white/10 space-y-4">
+            <div className="p-5 rounded-3xl bg-[#0D121F] border border-white/10 space-y-4">
               <div className="flex items-center gap-2 text-sm font-bold text-white">
                 <HardDrive className="w-4 h-4 text-emerald-400" />
                 <span>Local Audio Cache Engine</span>
@@ -1618,8 +1673,8 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                   <span className="font-mono text-white font-bold">{stats?.cacheSizeMB || '0'} MB</span>
                 </div>
                 <div className="flex justify-between p-2.5 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-white/50">Server Uptime:</span>
-                  <span className="text-white font-bold">{stats?.serverUptime ? `${Math.floor(stats.serverUptime / 60)} mins` : 'Online'}</span>
+                  <span className="text-white/50">Server Status:</span>
+                  <span className="text-emerald-400 font-bold">Operational</span>
                 </div>
               </div>
 
@@ -1638,15 +1693,14 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
         )}
       </main>
 
-      {/* EDIT MODAL DIALOG */}
+      {/* ================= EDIT TRACK MODAL ================= */}
       {editingTrack && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-2xl bg-[#12121a] border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* Header */}
+          <div className="w-full max-w-2xl bg-[#0D121F] border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-purple-400" />
-                <h3 className="text-sm font-bold text-white">Edit Song & Cover Art</h3>
+                <h3 className="text-sm font-bold text-white">Edit Song Details & Cover Art</h3>
               </div>
               <button
                 onClick={() => setEditingTrack(null)}
@@ -1656,9 +1710,8 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
               </button>
             </div>
 
-            {/* Poster & Basic Fields Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Cover Art Upload / Preview */}
+              {/* Cover Art Upload */}
               <div className="space-y-2 flex flex-col items-center">
                 <span className="text-xs font-bold text-white/70 self-start">Cover Poster</span>
                 <div className="w-32 h-32 rounded-2xl overflow-hidden bg-neutral-800 border border-white/10 relative group shadow-md">
@@ -1676,7 +1729,6 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                     </div>
                   )}
 
-                  {/* Upload overlay */}
                   <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] font-bold cursor-pointer transition-opacity">
                     <Upload className="w-5 h-5 mb-1" />
                     <span>Upload Image</span>
@@ -1690,7 +1742,7 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                 </div>
 
                 <div className="w-full space-y-1">
-                  <label className="text-[10px] text-white/40 block">Or Poster Image URL:</label>
+                  <label className="text-[10px] text-white/40 block">Poster URL:</label>
                   <input
                     type="text"
                     placeholder="https://..."
@@ -1755,7 +1807,7 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                   </div>
                 </div>
 
-                {/* Toggles: Hide & Feature */}
+                {/* Hide & Feature Toggles */}
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
@@ -1793,15 +1845,14 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
                 <span>Lyrics (Synced LRC or Plain Lines)</span>
               </label>
               <textarea
-                rows={4}
+                rows={3}
                 value={editLyricsText}
                 onChange={(e) => setEditLyricsText(e.target.value)}
-                placeholder="Paste LRC format [00:15.00] lyrics or plain song lyrics..."
+                placeholder="Paste lyrics..."
                 className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-mono focus:outline-none focus:border-purple-500"
               />
             </div>
 
-            {/* Save Status Banner */}
             {saveMessage && (
               <div className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
                 saveStatus === 'saved' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
@@ -1811,7 +1862,6 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
               </div>
             )}
 
-            {/* Modal Actions */}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
               <button
                 type="button"
@@ -1834,106 +1884,74 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
         </div>
       )}
 
-      {/* Category (Singer / Album) Edit Modal */}
-      {categoryModalMode && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-[#12121a] border border-white/10 p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <Layers className="w-5 h-5 text-purple-400" />
-                <div>
-                  <h3 className="text-sm font-bold text-white">
-                    Edit {categoryModalMode === 'artist' ? 'Singer / Artist' : 'Album / Collection'}
-                  </h3>
-                  <p className="text-[11px] text-white/40">
-                    Changes will apply to all songs under "{categoryOldName}"
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setCategoryModalMode(null)}
-                className="p-1 rounded-lg text-white/40 hover:text-white"
-              >
+      {/* ================= REGISTER NEW CUSTOMER MODAL ================= */}
+      {isAddUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#0D121F] border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-cyan-400" />
+                <span>Register New Customer Account</span>
+              </h3>
+              <button onClick={() => setIsAddUserModalOpen(false)} className="p-1 text-white/50 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs">
-              {/* Name field */}
+            <form onSubmit={handleAddCustomer} className="space-y-3">
               <div className="space-y-1">
-                <label className="text-white/70 font-bold block">
-                  {categoryModalMode === 'artist' ? 'Singer Name' : 'Album Name'}
-                </label>
+                <label className="text-xs font-bold text-white/70">Customer Email / Login ID</label>
                 <input
-                  type="text"
-                  value={categoryNewName}
-                  onChange={(e) => setCategoryNewName(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium focus:outline-none focus:border-purple-500"
-                  placeholder="Enter new name..."
+                  type="email"
+                  placeholder="listener@novamusic.app"
+                  required
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
-              {/* Cover Art field */}
               <div className="space-y-1">
-                <label className="text-white/70 font-bold block">
-                  {categoryModalMode === 'artist' ? 'Artist Profile Photo URL' : 'Album Poster / Cover Artwork URL'}
-                </label>
+                <label className="text-xs font-bold text-white/70">Customer Full Name</label>
                 <input
                   type="text"
-                  value={categoryCoverArt}
-                  onChange={(e) => setCategoryCoverArt(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium focus:outline-none focus:border-purple-500"
-                  placeholder="https://... cover image link"
-                />
-                {categoryCoverArt && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <img
-                      src={categoryCoverArt}
-                      alt="Preview"
-                      className="w-10 h-10 rounded-lg object-cover border border-white/10"
-                      referrerPolicy="no-referrer"
-                    />
-                    <span className="text-[11px] text-white/40">Poster preview</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Genre (optional) */}
-              <div className="space-y-1">
-                <label className="text-white/70 font-bold block">Primary Genre (Optional)</label>
-                <input
-                  type="text"
-                  value={categoryGenre}
-                  onChange={(e) => setCategoryGenre(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium focus:outline-none focus:border-purple-500"
-                  placeholder="e.g. Assamese Folk, Romantic, Bollywood, EDM"
+                  placeholder="Customer Name"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
-              {categorySaveMsg && (
-                <div className="p-3 rounded-xl bg-purple-500/20 text-purple-300 font-bold text-xs flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  <span>{categorySaveMsg}</span>
-                </div>
-              )}
-            </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Access Tier</label>
+                <select
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl bg-[#080B12] border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="customer">Listener (Standard Customer)</option>
+                  <option value="admin">Admin (Executive Station)</option>
+                </select>
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
-              <button
-                onClick={() => setCategoryModalMode(null)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveCategory}
-                disabled={isSavingCategory}
-                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition-all active:scale-95 flex items-center gap-1.5"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSavingCategory ? 'Applying...' : 'Apply to All Songs'}</span>
-              </button>
-            </div>
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsAddUserModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingUser}
+                  className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{isSavingUser ? 'Registering...' : 'Create Account'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

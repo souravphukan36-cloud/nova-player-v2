@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { OneUIHeader } from './components/OneUIHeader';
 import { HomeTab } from './components/HomeTab';
@@ -14,8 +14,8 @@ import { SleepTimerModal } from './components/SleepTimerModal';
 import { FileScannerModal } from './components/FileScannerModal';
 import { CustomizerModal } from './components/CustomizerModal';
 import { CarModeModal } from './components/CarModeModal';
+import { IEMSoundStageModal } from './components/IEMSoundStageModal';
 import { AdminWebPortal } from './components/AdminWebPortal';
-import { SidebarNav } from './components/SidebarNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MainTab, LibrarySubTab } from './types';
 
@@ -43,11 +43,9 @@ const MainLayout: React.FC = () => {
 
   const [currentTab, setCurrentTab] = useState<MainTab>('home');
   const [librarySubTab, setLibrarySubTab] = useState<LibrarySubTab>('songs');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { 
     settings, 
-    currentTrack,
     nowPlayingOpen, setNowPlayingOpen,
     equalizerOpen, setEqualizerOpen,
     queueOpen, setQueueOpen,
@@ -56,17 +54,18 @@ const MainLayout: React.FC = () => {
     scannerOpen, setScannerOpen,
     customizerOpen, setCustomizerOpen,
     carModeOpen, setCarModeOpen,
+    iemModalOpen, setIEMModalOpen,
   } = usePlayer();
 
   // Web Browser Back Navigation Handler (closes top-level modals on browser back)
   const handleBackNavigation = useCallback(() => {
-    if (isMobileMenuOpen) {
-      setIsMobileMenuOpen(false);
-      return true;
-    }
     if (isAdminRoute) {
       window.history.pushState({}, '', '/');
       setIsAdminRoute(false);
+      return true;
+    }
+    if (iemModalOpen) {
+      setIEMModalOpen(false);
       return true;
     }
     if (equalizerOpen) {
@@ -108,8 +107,8 @@ const MainLayout: React.FC = () => {
     }
     return false;
   }, [
-    isMobileMenuOpen,
     isAdminRoute,
+    iemModalOpen,
     equalizerOpen,
     queueOpen,
     lyricsOpen,
@@ -119,6 +118,7 @@ const MainLayout: React.FC = () => {
     carModeOpen,
     nowPlayingOpen,
     currentTab,
+    setIEMModalOpen,
     setEqualizerOpen,
     setQueueOpen,
     setLyricsOpen,
@@ -185,7 +185,7 @@ const MainLayout: React.FC = () => {
       case 'search':
         return 'Find tracks across your device';
       case 'settings':
-        return 'Audio Customization, Themes & About';
+        return 'Audio Customization & About';
     }
   };
 
@@ -220,67 +220,56 @@ const MainLayout: React.FC = () => {
       }`}
       style={{ backgroundColor: bgColor }}
     >
-      {/* Main Responsive Body: Left Sidebar + Center Content Area */}
-      <div className="w-full flex-1 flex min-h-0 h-full relative overflow-hidden">
-        {/* 1. Left Sidebar Navigation (Line-by-line options on left) */}
-        <SidebarNav 
-          currentTab={currentTab} 
-          onSelectTab={setCurrentTab}
-          isOpenMobile={isMobileMenuOpen}
-          onCloseMobile={() => setIsMobileMenuOpen(false)}
+      {/* Centered One UI Container */}
+      <div className="w-full flex-1 flex flex-col min-h-0 h-full relative overflow-hidden max-w-md sm:max-w-lg md:max-w-xl mx-auto">
+        {/* Top Header matching original One UI design */}
+        <OneUIHeader 
+          title={getHeaderTitle()} 
+          subtitle={getHeaderSubtitle()}
+          onOpenSettings={() => setCurrentTab('settings')}
         />
 
-        {/* 2. Main Center Content View Area */}
-        <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden">
-          {/* Top Header */}
-          <OneUIHeader 
-            title={getHeaderTitle()} 
-            subtitle={getHeaderSubtitle()}
-            onOpenMenu={() => setIsMobileMenuOpen(true)}
-          />
-
-          {/* Scrollable Tab View Area with proper bottom padding for Web Player Bar */}
-          <main 
-            id="main-scroll-view"
-            className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden pb-36 md:pb-28"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-          >
-            <div className="max-w-6xl mx-auto w-full px-4 sm:px-6">
-              {currentTab === 'home' && (
-                <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
-              )}
-              {currentTab === 'cloud' && (
-                <CloudTab />
-              )}
-              {currentTab === 'library' && (
-                <LibraryTab initialSubTab={librarySubTab} />
-              )}
-              {currentTab === 'search' && (
-                <SearchTab />
-              )}
-              {currentTab === 'settings' && (
-                <SettingsTab />
-              )}
-            </div>
-          </main>
-        </div>
+        {/* Scrollable Tab View Area with proper bottom padding for MiniPlayer + BottomNav */}
+        <main 
+          id="main-scroll-view"
+          className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden pb-40"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <div className="w-full px-4 sm:px-5">
+            {currentTab === 'home' && (
+              <HomeTab onNavigateToLibrary={handleNavigateToLibrary} />
+            )}
+            {currentTab === 'cloud' && (
+              <CloudTab />
+            )}
+            {currentTab === 'library' && (
+              <LibraryTab initialSubTab={librarySubTab} />
+            )}
+            {currentTab === 'search' && (
+              <SearchTab />
+            )}
+            {currentTab === 'settings' && (
+              <SettingsTab />
+            )}
+          </div>
+        </main>
       </div>
 
-      {/* 3. Persistent Solid Web Player Bar & Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-auto flex flex-col">
-        <MiniPlayer />
-        <div className="w-full md:hidden">
+      {/* Persistent Floating MiniPlayer & Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-auto flex flex-col items-center">
+        <div className="w-full max-w-md sm:max-w-lg md:max-w-xl">
+          <MiniPlayer />
           <BottomNav 
             currentTab={currentTab} 
             onSelectTab={setCurrentTab} 
-            onOpenMenu={() => setIsMobileMenuOpen(true)}
           />
         </div>
       </div>
 
-      {/* 4. Desktop/Web Modals & Drawers */}
+      {/* Modals & Sheets */}
       <NowPlayingModal />
       <EqualizerModal />
+      <IEMSoundStageModal isOpen={iemModalOpen} onClose={() => setIEMModalOpen(false)} />
       <SleepTimerModal />
       <FileScannerModal />
       <CustomizerModal />

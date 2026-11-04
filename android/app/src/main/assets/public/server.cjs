@@ -831,7 +831,68 @@ async function startServer() {
     }
   } catch {
   }
-  app.get("/api/telegram/tracks", async (req, res) => {
+  const ADMIN_MASTER_PASSWORD = process.env.ADMIN_STUDIO_PASSWORD || "2620260095";
+  const ADMIN_PIN = process.env.ADMIN_STUDIO_PIN || process.env.NOVA_ADMIN_PIN || "7788";
+  const ADMIN_TOKEN_SECRET = process.env.ADMIN_TOKEN_SECRET || "nova_vault_secret_9988_sourav_audiophile";
+  function generateAdminToken(role = "owner") {
+    const timestamp = Date.now();
+    const signature = import_crypto.default.createHmac("sha256", ADMIN_TOKEN_SECRET).update(`${role}_${timestamp}`).digest("hex");
+    return `novatkn_${role}_${timestamp}_${signature}`;
+  }
+  function verifyAdminToken(token) {
+    if (!token) return false;
+    if (token === ADMIN_MASTER_PASSWORD || token === ADMIN_PIN) return true;
+    const parts = token.split("_");
+    if (parts.length !== 4 || parts[0] !== "novatkn") return false;
+    const [_, role, timestampStr, signature] = parts;
+    const timestamp = parseInt(timestampStr, 10);
+    if (isNaN(timestamp)) return false;
+    if (Date.now() - timestamp > 30 * 24 * 60 * 60 * 1e3) return false;
+    const expectedSignature = import_crypto.default.createHmac("sha256", ADMIN_TOKEN_SECRET).update(`${role}_${timestamp}`).digest("hex");
+    try {
+      return import_crypto.default.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+    } catch {
+      return false;
+    }
+  }
+  function requireAdminAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    let token = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.slice(7).trim();
+    } else if (req.headers["x-admin-token"]) {
+      token = String(req.headers["x-admin-token"]).trim();
+    } else if (req.headers["x-admin-key"]) {
+      token = String(req.headers["x-admin-key"]).trim();
+    } else if (req.query.admin_token) {
+      token = String(req.query.admin_token).trim();
+    }
+    if (verifyAdminToken(token)) {
+      next();
+    } else {
+      res.status(401).json({
+        success: false,
+        error: "Unauthorized: Valid Admin Token or Master Key is required."
+      });
+    }
+  }
+  app.post("/api/admin/login", (req, res) => {
+    const { pin, password } = req.body || {};
+    const input = String(password || pin || "").trim();
+    if (input === ADMIN_MASTER_PASSWORD || input === ADMIN_PIN) {
+      const token = generateAdminToken("owner");
+      res.json({
+        success: true,
+        authorized: true,
+        role: "owner",
+        token,
+        master: input === ADMIN_MASTER_PASSWORD
+      });
+    } else {
+      res.status(401).json({ success: false, authorized: false, error: "Incorrect Password or PIN" });
+    }
+  });
+  app.get(["/api/telegram/tracks", "/api/tracks"], async (req, res) => {
     const isAdmin = req.query.admin === "true" || req.query.all === "true";
     fetchTelegramUpdates().catch(() => {
     });
@@ -885,7 +946,7 @@ async function startServer() {
       announcement: currentAnnouncement
     });
   });
-  app.post("/api/admin/announcement", (req, res) => {
+  app.post("/api/admin/announcement", requireAdminAuth, (req, res) => {
     const { title, text, imageUrl, videoUrl, mediaType, linkUrl, enabled, type, wishText, eventDate, themeColor, resetToDefault } = req.body || {};
     if (resetToDefault) {
       currentAnnouncement = getDailyDefaultAnnouncement();
@@ -927,7 +988,7 @@ async function startServer() {
       members: currentMembers
     });
   });
-  app.post("/api/admin/members", (req, res) => {
+  app.post("/api/admin/members", requireAdminAuth, (req, res) => {
     const { name, email, role, status } = req.body || {};
     if (!name || !email) {
       res.status(400).json({ success: false, error: "Name and email are required" });
@@ -951,7 +1012,7 @@ async function startServer() {
       members: currentMembers
     });
   });
-  app.put("/api/admin/members/:id", (req, res) => {
+  app.put("/api/admin/members/:id", requireAdminAuth, (req, res) => {
     const { id } = req.params;
     const { name, email, role, status } = req.body || {};
     const member = currentMembers.find((m) => m.id === id);
@@ -969,7 +1030,7 @@ async function startServer() {
     }
     res.json({ success: true, members: currentMembers, member });
   });
-  app.delete("/api/admin/members/:id", (req, res) => {
+  app.delete("/api/admin/members/:id", requireAdminAuth, (req, res) => {
     const { id } = req.params;
     currentMembers = currentMembers.filter((m) => m.id !== id);
     try {
@@ -1057,7 +1118,24 @@ async function startServer() {
     if (album !== void 0) updated.album = String(album).trim();
     if (genre !== void 0) updated.genre = String(genre).trim();
     if (year !== void 0) updated.year = Number(year) || void 0;
-    if (coverArt !== void 0) updated.coverArt = String(coverArt).trim();
+    if (coverArt !== void 0) {
+      let resolvedCover = String(coverArt).trim();
+      if (resolvedCover.startsWith("data:image/")) {
+        try {
+          const matchImg = resolvedCover.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+          if (matchImg) {
+            const ext = matchImg[1] === "jpeg" ? "jpg" : matchImg[1].replace(/[^a-z0-9]/g, "");
+            const buf = Buffer.from(matchImg[2], "base64");
+            const hash = import_crypto.default.createHash("md5").update(buf).digest("hex");
+            const fname = `cover_${hash.slice(0, 12)}.${ext || "jpg"}`;
+            import_fs.default.writeFileSync(import_path.default.join(UPLOADS_DIR, fname), buf);
+            resolvedCover = `/api/uploads/${fname}`;
+          }
+        } catch {
+        }
+      }
+      updated.coverArt = resolvedCover;
+    }
     if (synthPreset !== void 0) updated.synthPreset = String(synthPreset).trim();
     if (isFavorite !== void 0) updated.isFavorite = Boolean(isFavorite);
     if (isHidden !== void 0) updated.isHidden = Boolean(isHidden);
@@ -1073,9 +1151,9 @@ async function startServer() {
       track: finalizedTrack
     });
   };
-  app.post("/api/tracks/metadata/update", handleMetadataUpdate);
-  app.post("/api/tracks/metadata", handleMetadataUpdate);
-  app.post("/api/tracks/category/update", (req, res) => {
+  app.post("/api/tracks/metadata/update", requireAdminAuth, handleMetadataUpdate);
+  app.post("/api/tracks/metadata", requireAdminAuth, handleMetadataUpdate);
+  app.post("/api/tracks/category/update", requireAdminAuth, (req, res) => {
     const { mode, oldName, newName, coverArt, genre } = req.body || {};
     if (!mode || !oldName || !newName) {
       res.status(400).json({ success: false, error: "mode (artist|album), oldName, and newName are required" });
@@ -1112,7 +1190,7 @@ async function startServer() {
       message: `Successfully updated ${affectedCount} songs in category "${cleanNew}"`
     });
   });
-  app.post("/api/tracks/metadata/reset", (req, res) => {
+  app.post("/api/tracks/metadata/reset", requireAdminAuth, (req, res) => {
     const { trackId } = req.body || {};
     if (!trackId || !trackOverrides[trackId]) {
       res.status(400).json({ success: false, error: "No custom metadata override exists for this track" });
@@ -1126,17 +1204,6 @@ async function startServer() {
       message: "Track reverted back to Telegram original",
       track
     });
-  });
-  const ADMIN_MASTER_PASSWORD = process.env.ADMIN_STUDIO_PASSWORD || "2620260095";
-  const ADMIN_PIN = process.env.ADMIN_STUDIO_PIN || process.env.NOVA_ADMIN_PIN || "7788";
-  app.post("/api/admin/login", (req, res) => {
-    const { pin, password } = req.body || {};
-    const input = String(password || pin || "").trim();
-    if (input === ADMIN_MASTER_PASSWORD || input === ADMIN_PIN) {
-      res.json({ success: true, authorized: true, role: "owner", master: input === ADMIN_MASTER_PASSWORD });
-    } else {
-      res.status(401).json({ success: false, authorized: false, error: "Incorrect Password or PIN" });
-    }
   });
   const USERS_FILE = import_path.default.join(CACHE_DIR, "users.json");
   let registeredUsers = {
@@ -1215,7 +1282,87 @@ async function startServer() {
     const { passwordHash, ...safeSourav } = registeredUsers["sourav"];
     res.json({ success: true, user: safeSourav });
   });
-  app.post("/api/admin/prewarm", async (req, res) => {
+  app.get("/api/admin/users", requireAdminAuth, (req, res) => {
+    const list = Object.values(registeredUsers).map(({ passwordHash, ...u }) => u);
+    res.json({ success: true, users: list });
+  });
+  app.post("/api/admin/users", requireAdminAuth, (req, res) => {
+    const { name, email, role, password } = req.body || {};
+    if (!email) {
+      res.status(400).json({ success: false, error: "Email is required" });
+      return;
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    const newId = `user_${Date.now()}`;
+    const newUser = {
+      id: newId,
+      name: String(name || cleanEmail.split("@")[0]),
+      email: cleanEmail,
+      passwordHash: import_crypto.default.createHash("sha256").update(String(password || "123456")).digest("hex"),
+      avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanEmail}`,
+      favorites: [],
+      playlistsCount: 0,
+      joinedAt: Date.now(),
+      lastActive: Date.now()
+    };
+    registeredUsers[newId] = newUser;
+    saveUsers();
+    const { passwordHash, ...safe } = newUser;
+    res.json({ success: true, user: safe, message: "Customer registered successfully" });
+  });
+  app.put("/api/admin/users/:id", requireAdminAuth, (req, res) => {
+    const { id } = req.params;
+    const { name, email, avatarUrl } = req.body || {};
+    const user = Object.values(registeredUsers).find((u) => u.id === id);
+    if (!user) {
+      res.status(404).json({ success: false, error: "User not found" });
+      return;
+    }
+    if (name) user.name = String(name).trim();
+    if (email) user.email = String(email).trim().toLowerCase();
+    if (avatarUrl) user.avatarUrl = String(avatarUrl).trim();
+    user.lastActive = Date.now();
+    saveUsers();
+    const { passwordHash, ...safe } = user;
+    res.json({ success: true, user: safe, message: "Customer updated successfully" });
+  });
+  app.delete("/api/admin/users/:id", requireAdminAuth, (req, res) => {
+    const { id } = req.params;
+    const key = Object.keys(registeredUsers).find((k) => registeredUsers[k].id === id || k === id);
+    if (!key) {
+      res.status(404).json({ success: false, error: "User not found" });
+      return;
+    }
+    if (key === "sourav") {
+      res.status(400).json({ success: false, error: "Owner account cannot be deleted" });
+      return;
+    }
+    delete registeredUsers[key];
+    saveUsers();
+    res.json({ success: true, message: "User deleted successfully" });
+  });
+  app.delete("/api/tracks/:id", requireAdminAuth, (req, res) => {
+    const trackId = req.params.id;
+    if (!trackId) {
+      res.status(400).json({ success: false, error: "trackId is required" });
+      return;
+    }
+    const initialLength = dynamicTracks.length;
+    dynamicTracks = dynamicTracks.filter((t) => t.id !== trackId && t.fileId !== trackId);
+    if (trackOverrides[trackId]) {
+      delete trackOverrides[trackId];
+      saveTrackOverrides();
+    }
+    saveTracksDb();
+    console.log(`[Track Engine] Deleted track "${trackId}" (Remaining tracks: ${dynamicTracks.length})`);
+    res.json({
+      success: true,
+      message: `Track ${trackId} removed from catalog`,
+      deletedCount: initialLength - dynamicTracks.length,
+      remainingCount: dynamicTracks.length
+    });
+  });
+  app.post("/api/admin/prewarm", requireAdminAuth, async (req, res) => {
     const { fileId } = req.body || {};
     if (fileId) {
       prewarmTrackCache(fileId);
@@ -1280,9 +1427,9 @@ async function startServer() {
       res.status(500).json({ success: false, error: err?.message || "Failed to process media upload" });
     }
   };
-  app.post("/api/admin/upload-image", handleMediaUpload);
-  app.post("/api/admin/upload-media", handleMediaUpload);
-  app.post("/api/admin/upload-audio", (req, res) => {
+  app.post("/api/admin/upload-image", requireAdminAuth, handleMediaUpload);
+  app.post("/api/admin/upload-media", requireAdminAuth, handleMediaUpload);
+  app.post("/api/admin/upload-audio", requireAdminAuth, (req, res) => {
     try {
       const { dataUrl, title, artist, album, duration, coverArt } = req.body || {};
       if (!dataUrl || typeof dataUrl !== "string") {
@@ -1313,6 +1460,23 @@ async function startServer() {
       const trackTitle = title && String(title).trim() || "Uploaded Master Track";
       const trackArtist = artist && String(artist).trim() || "Studio Master";
       const newTrackId = `upload_${uniqueHash.slice(0, 10)}`;
+      let resolvedCoverArt = coverArt || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80";
+      if (typeof coverArt === "string" && coverArt.startsWith("data:image/")) {
+        try {
+          const matchImg = coverArt.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+          if (matchImg) {
+            const ext2 = matchImg[1] === "jpeg" ? "jpg" : matchImg[1].replace(/[^a-z0-9]/g, "");
+            const buf = Buffer.from(matchImg[2], "base64");
+            const hash = import_crypto.default.createHash("md5").update(buf).digest("hex");
+            const fname = `cover_${hash.slice(0, 12)}.${ext2 || "jpg"}`;
+            import_fs.default.writeFileSync(import_path.default.join(UPLOADS_DIR, fname), buf);
+            resolvedCoverArt = `/api/uploads/${fname}`;
+            console.log(`[Upload Engine] Saved original cover image: ${fname} (${buf.length} bytes)`);
+          }
+        } catch (err) {
+          console.warn("Cover art base64 save note:", err);
+        }
+      }
       const newTrack = {
         id: newTrackId,
         title: trackTitle,
@@ -1320,7 +1484,7 @@ async function startServer() {
         album: album && String(album).trim() || "Uploaded Singles",
         duration: Number(duration) || 210,
         format: ext,
-        coverArt: coverArt || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80",
+        coverArt: resolvedCoverArt,
         audioUrl: `/api/uploads/${savedFileName}`,
         genre: "Uploaded Master",
         folder: `NOVA Studio / ${trackArtist}`,
@@ -1757,8 +1921,14 @@ async function startServer() {
   });
   app.get(["/admin", "/admin/"], (req, res) => {
     const adminPath = import_path.default.join(process.cwd(), "admin.html");
+    const distAdminPath = import_path.default.join(process.cwd(), "dist", "admin.html");
+    const publicAdminPath = import_path.default.join(process.cwd(), "public", "admin.html");
     if (import_fs.default.existsSync(adminPath)) {
       res.sendFile(adminPath);
+    } else if (import_fs.default.existsSync(distAdminPath)) {
+      res.sendFile(distAdminPath);
+    } else if (import_fs.default.existsSync(publicAdminPath)) {
+      res.sendFile(publicAdminPath);
     } else {
       res.redirect("/?page=admin");
     }
