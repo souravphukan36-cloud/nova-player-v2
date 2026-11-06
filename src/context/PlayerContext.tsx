@@ -424,11 +424,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (saved) return JSON.parse(saved);
     } catch {}
     return {
-      enabled: false,
+      enabled: true,
       targetCurve: 'harman-in-ear',
       crossfeed: 'studio',
-      subBassRumble: 60,
-      trebleAir: 50,
+      subBassRumble: 75,
+      trebleAir: 65,
       driverImpedance: 'standard',
     };
   });
@@ -535,39 +535,23 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     const syncFromCloud = async () => {
       try {
-        const res = await fetch('/api/telegram/tracks');
+        const res = await fetch('/api/tracks');
         if (res.ok) {
           const data = await res.json();
           if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
             setTracks(prev => {
-              const prevMap = new Map<string, Track>(prev.map(t => [t.id, t]));
-              let modified = false;
-              for (const rawTrack of data.tracks) {
-                const t = rawTrack as Track;
-                const existing = prevMap.get(t.id);
-                if (!existing) {
-                  prevMap.set(t.id, t);
-                  modified = true;
-                } else if (
-                  existing.title !== t.title || 
-                  existing.artist !== t.artist || 
-                  existing.coverArt !== t.coverArt ||
-                  existing.album !== t.album ||
-                  (t as any).hasCustomMetadata
-                ) {
-                  // Merge updated server metadata (title, artist, cover art, lyrics)
-                  prevMap.set(t.id, { ...existing, ...t });
-                  modified = true;
-                }
-              }
-              if (modified) {
-                const merged = Array.from(prevMap.values());
-                try {
-                  localStorage.setItem('nova_tracks', JSON.stringify(merged));
-                } catch {}
-                return merged;
-              }
-              return prev;
+              const serverTracks: Track[] = data.tracks;
+              const serverIds = new Set(serverTracks.map(t => t.id));
+              const localOnly = prev.filter(p => !serverIds.has(p.id) && (p.file || p.isDownloaded));
+              const updatedServer = serverTracks.map(st => {
+                const local = prev.find(p => p.id === st.id);
+                return local ? { ...st, isFavorite: local.isFavorite, playCount: Math.max(st.playCount || 0, local.playCount || 0) } : st;
+              });
+              const merged = [...updatedServer, ...localOnly];
+              try {
+                localStorage.setItem('nova_tracks', JSON.stringify(merged.map(({ file, ...rest }) => rest)));
+              } catch {}
+              return merged;
             });
           }
         }
@@ -579,25 +563,27 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const handleCloudUpdate = (e: CustomEvent<Track[]>) => {
       if (e.detail && Array.isArray(e.detail)) {
         setTracks(prev => {
-          const prevMap = new Map<string, Track>(prev.map(t => [t.id, t]));
-          for (const t of e.detail) {
-            const existing = prevMap.get(t.id);
-            if (existing) {
-              prevMap.set(t.id, { ...existing, ...t });
-            } else {
-              prevMap.set(t.id, t);
-            }
-          }
-          const merged = Array.from(prevMap.values());
+          const newTracks = e.detail.filter(t => !prev.some(p => p.id === t.id));
+          const updatedExisting = prev.map(p => {
+            const match = e.detail.find(t => t.id === p.id);
+            return match ? { ...p, ...match } : p;
+          });
+          const merged = [...newTracks, ...updatedExisting];
           try {
-            localStorage.setItem('nova_tracks', JSON.stringify(merged));
+            localStorage.setItem('nova_tracks', JSON.stringify(merged.map(({ file, ...rest }) => rest)));
           } catch {}
           return merged;
         });
 
+        // Also add new track to queue so user can immediately play it
+        setQueue(prevQueue => {
+          const newToAdd = e.detail.filter(t => !prevQueue.some(q => q.id === t.id));
+          return [...newToAdd, ...prevQueue];
+        });
+
         // Also update currently playing track if it was edited
         setCurrentTrack(curr => {
-          if (!curr) return curr;
+          if (!curr) return e.detail[0] || null;
           const match = e.detail.find(t => t.id === curr.id);
           return match ? { ...curr, ...match } : curr;
         });

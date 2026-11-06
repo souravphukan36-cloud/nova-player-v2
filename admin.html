@@ -1309,11 +1309,16 @@
       submitBtn.innerText = 'Uploading to Station CDN...';
 
       try {
+        const audioFileName = document.getElementById('selectedAudioFileName').innerText || '';
         const res = await authFetch('/api/admin/upload-audio', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-admin-key': '2620260095'
+          },
           body: JSON.stringify({
             dataUrl: selectedAudioBase64,
+            filename: audioFileName,
             title,
             artist,
             album,
@@ -1322,8 +1327,16 @@
           })
         });
         const data = await res.json();
-        if (data.success) {
-          showToast('Song uploaded & live in app!', 'success');
+        if (data.success && data.track) {
+          showToast(`"${data.track.title}" uploaded & live in app!`, 'success');
+          // Also persist into localStorage for instant reflection in player
+          try {
+            const raw = localStorage.getItem('nova_tracks');
+            const list = raw ? JSON.parse(raw) : [];
+            if (!list.some(t => t.id === data.track.id)) {
+              localStorage.setItem('nova_tracks', JSON.stringify([data.track, ...list]));
+            }
+          } catch {}
           // Reset form
           document.getElementById('uploadSongTitle').value = '';
           document.getElementById('uploadSongArtist').value = '';

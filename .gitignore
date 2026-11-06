@@ -18,3 +18,8 @@ public/audio/*.mp3
 android/app/build/
 android/.gradle/
 android/build/
+*.apk
+public/nova-player-source.zip
+.aistudio/
+active_telegram_paths.json
+.cache_resolved_paths.json

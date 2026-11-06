@@ -16,6 +16,8 @@ export interface Track {
   file?: File;
   synthPreset?: string; // For built-in high quality procedural synthesis
   audioUrl?: string;
+  fileId?: string;
+  filePath?: string;
   lyrics?: LyricLine[];
   folder: string;
   genre: string;

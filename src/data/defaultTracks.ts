@@ -1,6 +1,7 @@
 import { Track, Playlist } from '../types';
+import { TELEGRAM_VAULT_TRACKS } from './telegramRecoveredTracks';
 
-export const DEFAULT_TRACKS: Track[] = [
+export const CORE_FEATURED_TRACKS: Track[] = [
   {
     id: 'tg-tu-kya-jaane',
     title: 'Tu Kya Jaane',
@@ -197,7 +198,29 @@ export const DEFAULT_TRACKS: Track[] = [
   }
 ];
 
+const coreIds = new Set(CORE_FEATURED_TRACKS.map(t => t.id));
+const coreTitles = new Set(CORE_FEATURED_TRACKS.map(t => t.title.toLowerCase().trim()));
+
+const additionalVaultTracks = TELEGRAM_VAULT_TRACKS.filter(t => 
+  !coreIds.has(t.id) && !coreTitles.has(t.title.toLowerCase().trim())
+);
+
+export const DEFAULT_TRACKS: Track[] = [
+  ...CORE_FEATURED_TRACKS,
+  ...additionalVaultTracks
+];
+
 export const INITIAL_PLAYLISTS: Playlist[] = [
+  {
+    id: 'playlist-zubeen-garg',
+    name: 'Zubeen Garg Legends',
+    description: 'Legends of Assam - 140+ timeless recordings from NOVA Vault',
+    coverArt: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+    trackIds: DEFAULT_TRACKS.filter(t => t.artist.toLowerCase().includes('zubeen')).map(t => t.id).slice(0, 50),
+    isBuiltIn: true,
+    createdAt: Date.now() - 86400000 * 5,
+    updatedAt: Date.now()
+  },
   {
     id: 'playlist-favorites',
     name: 'Starred Vault',

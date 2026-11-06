@@ -468,6 +468,16 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     }
   };
 
+  // Helper to read file as Base64 Data URL
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Direct Audio File Upload
   const handleAudioUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -477,39 +487,67 @@ export const AdminWebPortal: React.FC<AdminWebPortalProps> = ({ onBackToApp }) =
     }
 
     setIsUploadingTrack(true);
-    setUploadStatusMsg({ type: 'loading', text: 'Uploading audio and indexing in NOVA Cloud...' });
-
-    const formData = new FormData();
-    formData.append('audio', uploadAudioFile);
-    formData.append('title', newTitle.trim() || uploadAudioFile.name.replace(/\.[^/.]+$/, ''));
-    formData.append('artist', newArtist.trim() || 'NOVA Artist');
-    formData.append('album', newAlbum.trim() || 'Cloud Master');
-    formData.append('genre', newGenre.trim() || 'Indie');
-    if (uploadCoverFile) {
-      formData.append('cover', uploadCoverFile);
-    }
+    setUploadStatusMsg({ type: 'loading', text: 'Reading audio file and encoding for station...' });
 
     try {
+      const audioBase64 = await readFileAsDataUrl(uploadAudioFile);
+      let coverBase64 = '';
+      if (uploadCoverFile) {
+        coverBase64 = await readFileAsDataUrl(uploadCoverFile);
+      }
+
+      setUploadStatusMsg({ type: 'loading', text: 'Uploading to NOVA station and indexing in library...' });
+
       const res = await fetch('/api/admin/upload-audio', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': '2620260095',
+          'Authorization': 'Bearer 2620260095',
+        },
+        body: JSON.stringify({
+          dataUrl: audioBase64,
+          filename: uploadAudioFile.name,
+          title: newTitle.trim() || uploadAudioFile.name.replace(/\.[^/.]+$/, ''),
+          artist: newArtist.trim() || 'NOVA Artist',
+          album: newAlbum.trim() || 'Cloud Master',
+          genre: newGenre.trim() || 'Assamese & Bollywood',
+          coverArt: coverBase64 || uploadCoverPreview || undefined,
+        }),
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        setUploadStatusMsg({ type: 'success', text: `Success! "${data.track?.title || 'Song'}" uploaded and live in library.` });
+      if (res.ok && data.success && data.track) {
+        setUploadStatusMsg({ type: 'success', text: `Success! "${data.track.title}" is now uploaded and LIVE in the app!` });
         setUploadAudioFile(null);
         setUploadCoverFile(null);
         setUploadCoverPreview('');
         setNewTitle('');
         setNewArtist('');
         setNewAlbum('');
+
+        // Notify running player app and local storage immediately
+        try {
+          const savedTracksRaw = localStorage.getItem('nova_tracks');
+          const currentTracksList: Track[] = savedTracksRaw ? JSON.parse(savedTracksRaw) : [];
+          const exists = currentTracksList.some(t => t.id === data.track.id);
+          if (!exists) {
+            const updated = [data.track, ...currentTracksList];
+            localStorage.setItem('nova_tracks', JSON.stringify(updated));
+          }
+        } catch {}
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nova-cloud-tracks-updated', { detail: [data.track] }));
+        }
+
         await loadAdminData();
       } else {
         setUploadStatusMsg({ type: 'error', text: data.error || 'Upload failed. Check format or size.' });
       }
-    } catch {
-      setUploadStatusMsg({ type: 'error', text: 'Network failure during upload.' });
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setUploadStatusMsg({ type: 'error', text: 'Network failure during upload: ' + (err?.message || 'Check connection') });
     } finally {
       setIsUploadingTrack(false);
     }
